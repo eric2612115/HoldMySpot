@@ -1,4 +1,7 @@
+import { useId } from 'react';
 import type { ItemLook } from '../domain/types';
+import { PLAYER_PALETTE } from '../three/characters/presets';
+import { CastFace } from './PersonFace';
 
 /** Flat, original item illustrations for lists, dots and the sheet header. */
 export function ItemIcon({ look, size = 56 }: { look: ItemLook; size?: number }) {
@@ -104,18 +107,88 @@ export function ItemIcon({ look, size = 56 }: { look: ItemLook; size?: number })
   );
 }
 
-/** Tiny round face of the player, used as the avatar in the top bar. */
+const sameColor = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+/**
+ * Tiny round face of the player (the top bar, the characters page). In the
+ * default colours it is the player's rendered portrait, like every other
+ * badge; once the viewer picks their own hair, skin or top it is the cozy
+ * cast's "You" drawn in SVG in those colours, shaded like the portraits (a lit
+ * crown, one soft sheen band on the hair, a soft shadow under the fringe and
+ * the chin), so it sits beside the rendered badges.
+ */
 export function PlayerFace({ hair, skin, top, size = 34 }: { hair: string; skin: string; top: string; size?: number }) {
+  const id = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  if (sameColor(hair, PLAYER_PALETTE.hair) && sameColor(skin, PLAYER_PALETTE.skin) && sameColor(top, PLAYER_PALETTE.top)) return <CastFace model="you" top={top} size={size} />;
+  const clip = `player${id}`;
+  const lit = `lit${id}`;
+  const shade = `shade${id}`;
+  const sheen = `sheen${id}`;
+  const cloth = `cloth${id}`;
+  const fringe = 'M7.5 21.4C6.9 13.4 12.3 8.2 20 8.2s13.1 5.2 12.5 13.2c-1-2-2.3-3.4-3.8-4.3-0.3 1.7-1.3 2.9-2.9 3.3 0.2-1.5-0.2-2.8-1.1-3.7-0.8 1.5-2.2 2.4-4 2.6 0.4-1.2 0.3-2.3-0.3-3.2-1.1 1.4-2.7 2.3-4.6 2.5 0.6-1 0.8-2 0.6-3-2.1 0.9-3.9 2.9-4.9 5.8z';
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
+      <defs>
+        <clipPath id={clip}>
+          <circle cx="20" cy="20" r="20" />
+        </clipPath>
+        <radialGradient id={lit} cx="0.36" cy="0.3" r="0.75">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.34" />
+          <stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0.06" />
+          <stop offset="1" stopColor="#5A3A44" stopOpacity="0.16" />
+        </radialGradient>
+        <linearGradient id={shade} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#5A3A44" stopOpacity="0.22" />
+          <stop offset="0.35" stopColor="#5A3A44" stopOpacity="0" />
+          <stop offset="0.82" stopColor="#5A3A44" stopOpacity="0" />
+          <stop offset="1" stopColor="#5A3A44" stopOpacity="0.14" />
+        </linearGradient>
+        <linearGradient id={sheen} x1="0.15" y1="0.2" x2="0.85" y2="0.6">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.42" stopColor="#FFFFFF" stopOpacity="0.2" />
+          <stop offset="0.58" stopColor="#FFFFFF" stopOpacity="0.2" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0.12" />
+        </linearGradient>
+        <linearGradient id={cloth} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.16" />
+          <stop offset="1" stopColor="#2B1D3A" stopOpacity="0.16" />
+        </linearGradient>
+      </defs>
       <circle cx="20" cy="20" r="20" fill={top} />
-      <ellipse cx="20" cy="22" rx="12" ry="11" fill={skin} />
-      <path d="M8 20c0-8 5-12 12-12s12 4 12 12c-2-3-5-4-8-4-1 2-3 3-5 3 0-1 0-2-1-3-3 0-7 1-10 4z" fill={hair} />
-      <ellipse cx="15.5" cy="23" rx="1.6" ry="2.2" fill="#2B2340" />
-      <ellipse cx="24.5" cy="23" rx="1.6" ry="2.2" fill="#2B2340" />
-      <circle cx="13" cy="27" r="2" fill="#FF9DB4" opacity="0.7" />
-      <circle cx="27" cy="27" r="2" fill="#FF9DB4" opacity="0.7" />
-      <path d="M18.5 28.5q1.5 1.4 3 0" fill="none" stroke="#5A2E3A" strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="20" cy="20" r="20" fill="#FFFFFF" opacity="0.38" />
+      {/* Drawn a little larger than the badge, like the portraits: the head fills it, the hood shows below. */}
+      <g clipPath={`url(#${clip})`}>
+        <g transform="translate(20 23) scale(1.16) translate(-20 -23)">
+          {/* The hoodie's shoulders and hood. */}
+          <path d="M5 40c0.8-6.4 6.6-9.6 15-9.6s14.2 3.2 15 9.6z" fill={top} />
+          <path d="M5 40c0.8-6.4 6.6-9.6 15-9.6s14.2 3.2 15 9.6z" fill={`url(#${cloth})`} />
+          <path d="M12.6 31.2c2-1.4 4.6-2.1 7.4-2.1s5.4 0.7 7.4 2.1c-2 2-4.6 3-7.4 3s-5.4-1-7.4-3z" fill="#000000" opacity="0.12" />
+          <ellipse cx="7.7" cy="22.6" rx="2.1" ry="2.7" fill={skin} />
+          <ellipse cx="32.3" cy="22.6" rx="2.1" ry="2.7" fill={skin} />
+          <ellipse cx="7.7" cy="22.6" rx="2.1" ry="2.7" fill="#5A3A44" opacity="0.12" />
+          <ellipse cx="32.3" cy="22.6" rx="2.1" ry="2.7" fill="#5A3A44" opacity="0.12" />
+          <ellipse cx="20" cy="21.4" rx="12.7" ry="11.6" fill={skin} />
+          <ellipse cx="20" cy="21.4" rx="12.7" ry="11.6" fill={`url(#${lit})`} />
+          <ellipse cx="20" cy="21.4" rx="12.7" ry="11.6" fill={`url(#${shade})`} />
+          <path d={fringe} fill={hair} />
+          <path d={fringe} fill={`url(#${sheen})`} />
+          {[
+            [15.3, 1],
+            [24.7, -1],
+          ].map(([x, out]) => (
+            <g key={x}>
+              <ellipse cx={x} cy="23.4" rx="2" ry="2.6" fill="#2B1D24" />
+              <ellipse cx={x} cy="24.9" rx="1.3" ry="0.75" fill="#9A6448" opacity="0.8" />
+              <circle cx={x - out * 0.65} cy="22.4" r="0.85" fill="#FFFFFF" />
+              <circle cx={x + out * 0.75} cy="24.5" r="0.32" fill="#FFFFFF" />
+            </g>
+          ))}
+          <ellipse cx="11.9" cy="27.1" rx="2.5" ry="1.35" fill="#FF8AA2" opacity="0.5" />
+          <ellipse cx="28.1" cy="27.1" rx="2.5" ry="1.35" fill="#FF8AA2" opacity="0.5" />
+          <ellipse cx="20" cy="26.4" rx="0.55" ry="0.4" fill="#E6A58C" />
+          <path d="M18.9 28.4q1.1 0.9 2.2 0" fill="none" stroke="#7A3A3E" strokeWidth="0.8" strokeLinecap="round" />
+        </g>
+      </g>
     </svg>
   );
 }

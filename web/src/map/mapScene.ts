@@ -2,8 +2,8 @@ import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapLibreMap 
 import * as THREE from 'three';
 import type { CityConfig } from '../config/cities';
 import type { TaskPoint } from '../domain/types';
-import { Chibi, type ChibiSpec } from '../three/characters/chibi';
-import { castSpec, crowdSpec, lookOfName, lookOfUser, specOf, userOfName } from '../three/characters/presets';
+import { CozyPerson, type Person } from '../three/characters/cozy';
+import { castLook, CROWD_LOOKS, lookOfName, lookOfUser, userOfName, type PersonLook } from '../three/characters/presets';
 import { PathDots, TapMarker } from '../three/effects/effects';
 import { TaskBeacon } from '../three/items/beacon';
 import { createOutlineSettings } from '../three/materials/toon';
@@ -87,7 +87,7 @@ export interface MapSceneEvents {
 
 interface Npc {
   id: string;
-  chibi: Chibi;
+  person: Person;
   pos: Vec2;
   path: Vec2[] | null;
   pathIdx: number;
@@ -154,6 +154,8 @@ export class MapScene implements CustomLayerInterface {
   private readonly outline = createOutlineSettings(0.05);
   private readonly mvp = new THREE.Matrix4();
   private readonly cameraPos = new THREE.Vector3();
+  /** The camera's position for the cast's fabric sheen (the same vector, updated every frame). */
+  private readonly castView = { value: this.cameraPos };
   private readonly tmp4 = new THREE.Vector4();
   /**
    * The player's see-through silhouette. Drawn before the scene, against the
@@ -166,7 +168,7 @@ export class MapScene implements CustomLayerInterface {
     depthWrite: false,
   });
 
-  readonly player: Chibi;
+  readonly player: Person;
   private readonly youRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   private playerPos: Vec2 = { x: 0, z: 0 };
   private path: Vec2[] | null = null;
@@ -234,7 +236,7 @@ export class MapScene implements CustomLayerInterface {
     sun.position.set(-30, 90, 45);
     this.scene.add(sun, sun.target);
 
-    this.player = new Chibi(castSpec('player'), this.outline);
+    this.player = this.makePerson(castLook('player'), 'player', 1);
     this.player.root.scale.setScalar(CHAR_SCALE);
     // A soft ring under the player, so you can always find yourself.
     this.youRing = new THREE.Mesh(
@@ -246,12 +248,20 @@ export class MapScene implements CustomLayerInterface {
     this.youRing.renderOrder = 4;
     this.player.root.add(this.youRing);
     this.player.face(((180 - city.bearing) * Math.PI) / 180 + Math.PI, true);
-    // The player's body also draws as a soft silhouette wherever a building hides it.
-    this.player.root.traverse((o) => {
-      const mesh = o as THREE.Mesh;
-      if (mesh.isMesh && (mesh.material instanceof THREE.MeshToonMaterial || mesh === this.youRing)) mesh.layers.enable(XRAY_LAYER);
-    });
+    // The player's body also draws as a soft silhouette wherever a building hides it (once the model is in).
+    const xray = () =>
+      this.player.root.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh && ((mesh as THREE.SkinnedMesh).isSkinnedMesh || mesh.material instanceof THREE.MeshToonMaterial || mesh === this.youRing)) mesh.layers.enable(XRAY_LAYER);
+      });
+    xray();
+    void (this.player as CozyPerson).ready?.then(xray);
     this.scene.add(this.player.root, this.marker.root, this.dots.mesh);
+  }
+
+  /** A person of the cozy cast for the map (bigger heads, the map's faces); the older chibi stands in if a model cannot load. */
+  private makePerson(look: PersonLook, name: string, seed: number): Person {
+    return new CozyPerson(look.model, look, { mode: 'map', seed, view: this.castView, outline: this.outline, name });
   }
 
   // ------------------------------------------------------------ public API
@@ -339,7 +349,7 @@ export class MapScene implements CustomLayerInterface {
     this.player.hop(2);
     if (!pointId) return;
     this.beacons.get(pointId)?.beacon.bump();
-    for (const npc of this.npcs) if (npc.pointId === pointId) npc.chibi.hop(2);
+    for (const npc of this.npcs) if (npc.pointId === pointId) npc.person.hop(2);
   }
 
   /** Straight-line distance from the player to a task point, in metres. */
@@ -378,7 +388,8 @@ export class MapScene implements CustomLayerInterface {
     if (!this.ready || !this.graph) return;
     for (const [id, npc] of this.serverWalkers) {
       if (walkers[id]) continue;
-      this.scene.remove(npc.chibi.root);
+      this.scene.remove(npc.person.root);
+      npc.person.dispose();
       this.serverWalkers.delete(id);
       this.npcs.splice(this.npcs.indexOf(npc), 1);
       for (const order of this.lineWalkers.values()) if (order.includes(id)) order.splice(order.indexOf(id), 1);
@@ -403,7 +414,7 @@ export class MapScene implements CustomLayerInterface {
     }
     // Only the neighbourhood this view has streets for.
     if (Math.hypot(raw.x - graph.center.x, raw.z - graph.center.z) > GRAPH_RADIUS) {
-      if (npc) npc.chibi.root.visible = false;
+      if (npc) npc.person.root.visible = false;
       return;
     }
     const snap = snapToGraph(graph, raw);
@@ -424,16 +435,16 @@ export class MapScene implements CustomLayerInterface {
     if (!npc) {
       // Each demo person keeps their own look (human or animal-person, presets.ts).
       this.unmaskTagWalker(userId);
-      const chibi = new Chibi(specOf(lookOfUser(userId), userId, 70 + this.serverWalkers.size), this.outline);
-      chibi.root.scale.setScalar(CHAR_SCALE * 0.92);
-      chibi.root.position.set(goal.x, 0, goal.z);
-      this.scene.add(chibi.root);
-      npc = { id: `server:${userId}`, chibi, pos: { ...goal }, path: null, pathIdx: 0, home: { ...goal }, wait: 0, mode: 'server', speed: 9 };
+      const person = this.makePerson(lookOfUser(userId), userId, 70 + this.serverWalkers.size);
+      person.root.scale.setScalar(CHAR_SCALE * 0.92);
+      person.root.position.set(goal.x, 0, goal.z);
+      this.scene.add(person.root);
+      npc = { id: `server:${userId}`, person, pos: { ...goal }, path: null, pathIdx: 0, home: { ...goal }, wait: 0, mode: 'server', speed: 9 };
       this.serverWalkers.set(userId, npc);
       this.npcs.push(npc);
       return;
     }
-    npc.chibi.root.visible = true;
+    npc.person.root.visible = true;
     npc.lineDir = lineDir;
     npc.lineIndex = lineIndex;
     if (Math.hypot(goal.x - npc.pos.x, goal.z - npc.pos.z) < 1) return;
@@ -472,7 +483,7 @@ export class MapScene implements CustomLayerInterface {
     const k = 1 - Math.exp(-dt * 8);
     const prev = npc.shown ?? target;
     npc.shown = { x: prev.x + (target.x - prev.x) * k, z: prev.z + (target.z - prev.z) * k };
-    npc.chibi.root.position.set(npc.shown.x, 0, npc.shown.z);
+    npc.person.root.position.set(npc.shown.x, 0, npc.shown.z);
   }
 
   /** The task point whose offer the walking queuer carries (the tag above their head), if any. */
@@ -835,13 +846,13 @@ export class MapScene implements CustomLayerInterface {
     const names = p.queue.queuers.slice(0, 3);
     names.forEach((name, k) => {
       // Demo queuers in line wear their own look; anyone else gets the crowd look of their name.
-      const chibi = new Chibi(specOf(lookOfName(name), name, 10 + index * 3 + k), this.outline);
-      chibi.root.scale.setScalar(CHAR_SCALE * 0.92);
+      const person = this.makePerson(lookOfName(name), name, 10 + index * 3 + k);
+      person.root.scale.setScalar(CHAR_SCALE * 0.92);
       const npcPos = this.lineSpot(line, k);
-      chibi.root.position.set(npcPos.x, 0, npcPos.z);
-      chibi.faceTowards(-line.dir.x, -line.dir.z, true);
-      this.scene.add(chibi.root);
-      this.npcs.push({ id: `${p.id}:${name}`, chibi, pos: npcPos, path: null, pathIdx: 0, home: npcPos, wait: 1e9, mode: 'queue', speed: 0, pointId: p.id, userId: userOfName(name)?.id });
+      person.root.position.set(npcPos.x, 0, npcPos.z);
+      person.faceTowards(-line.dir.x, -line.dir.z, true);
+      this.scene.add(person.root);
+      this.npcs.push({ id: `${p.id}:${name}`, person, pos: npcPos, path: null, pathIdx: 0, home: npcPos, wait: 1e9, mode: 'queue', speed: 0, pointId: p.id, userId: userOfName(name)?.id });
     });
     line.end = this.lineSpot(line, names.length);
   }
@@ -854,9 +865,9 @@ export class MapScene implements CustomLayerInterface {
     // The walker with the ask is the queuer named on its tag (TaskLabels); the other is a crowd animal-person.
     const askPoint = asks ? this.pointsById.get(asks) : undefined;
     const asker = askPoint ? (askPoint.offers.find((o) => !o.checkedIn) ?? askPoint.offers[0])?.queuerName : undefined;
-    const looks: Array<{ spec: () => ChibiSpec; tag?: string }> = [
-      { spec: () => (asker ? specOf(lookOfName(asker), asker, 30) : castSpec('passerby', 30)), tag: asks },
-      { spec: () => crowdSpec(1, 31) },
+    const looks: Array<{ look: PersonLook; name: string; seed: number; tag?: string }> = [
+      { look: asker ? lookOfName(asker) : castLook('passerby'), name: asker ?? 'passerby', seed: 30, tag: asks },
+      { look: CROWD_LOOKS[1]!, name: 'crowd-1', seed: 31 },
     ];
     const { forward, right } = bearingAxes(this.city.bearing);
     const onStreet = ([r, f]: [number, number]): Vec2 => {
@@ -865,17 +876,17 @@ export class MapScene implements CustomLayerInterface {
       return snap ? { ...snap.point } : raw;
     };
     looks.forEach((look, i) => {
-      const chibi = new Chibi(look.spec(), this.outline);
-      chibi.root.scale.setScalar(CHAR_SCALE * 0.95);
+      const person = this.makePerson(look.look, look.name, look.seed);
+      person.root.scale.setScalar(CHAR_SCALE * 0.95);
       // The queuer with an ask walks a set route back and forth, carrying the ask in
       // view; the other walker wanders the streets.
       const [a, b] = this.city.walkerRoute;
       const patrol: [Vec2, Vec2] | undefined = look.tag ? [onStreet(a), onStreet(b)] : undefined;
       // Start halfway along the route, in the clear between the labels.
       const pos = patrol ? onStreet([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]) : onStreet([-50, 140]);
-      chibi.root.position.set(pos.x, 0, pos.z);
-      this.scene.add(chibi.root);
-      const npc: Npc = { id: `walker-${i}`, chibi, pos, path: null, pathIdx: 0, home: pos, wait: 0.5 + i, mode: 'wander', speed: 9, tagPointId: look.tag, patrol };
+      person.root.position.set(pos.x, 0, pos.z);
+      this.scene.add(person.root);
+      const npc: Npc = { id: `walker-${i}`, person, pos, path: null, pathIdx: 0, home: pos, wait: 0.5 + i, mode: 'wander', speed: 9, tagPointId: look.tag, patrol };
       this.npcs.push(npc);
       if (look.tag && asker) this.tagWalker = { npc, userId: userOfName(asker)?.id ?? null };
     });
@@ -890,16 +901,16 @@ export class MapScene implements CustomLayerInterface {
     const t = this.tagWalker;
     if (!t || t.userId !== userId) return;
     this.tagWalker = null;
-    const old = t.npc.chibi;
-    const chibi = new Chibi(castSpec('passerby', 30), this.outline);
-    chibi.root.scale.copy(old.root.scale);
-    chibi.root.position.copy(old.root.position);
-    chibi.face(old.root.rotation.y, true);
-    chibi.walking = old.walking;
+    const old = t.npc.person;
+    const person = this.makePerson(castLook('passerby'), 'passerby', 30);
+    person.root.scale.copy(old.root.scale);
+    person.root.position.copy(old.root.position);
+    person.face(old.root.rotation.y, true);
+    person.walking = old.walking;
     this.scene.remove(old.root);
     old.dispose();
-    this.scene.add(chibi.root);
-    t.npc.chibi = chibi;
+    this.scene.add(person.root);
+    t.npc.person = person;
   }
 
   private decorate(p: TaskPoint, line: QueueLine) {
@@ -1051,16 +1062,16 @@ export class MapScene implements CustomLayerInterface {
             if (npc.pathIdx >= npc.path.length) {
               npc.path = null;
               // In line: face the shop like everyone else in it.
-              if (npc.lineDir) npc.chibi.faceTowards(npc.lineDir.x, npc.lineDir.z);
+              if (npc.lineDir) npc.person.faceTowards(npc.lineDir.x, npc.lineDir.z);
             }
           } else {
             npc.pos = { x: npc.pos.x + (dx / d) * budget, z: npc.pos.z + (dz / d) * budget };
             budget = 0;
-            if (d > 0.4) npc.chibi.faceTowards(dx, dz);
+            if (d > 0.4) npc.person.faceTowards(dx, dz);
           }
         }
-        npc.chibi.walking = npc.path !== null;
-        npc.chibi.walkRate = Math.min(2.2, 0.85 * Math.max(1, npc.speed / 9) ** 0.5);
+        npc.person.walking = npc.path !== null;
+        npc.person.walkRate = Math.min(2.2, 0.85 * Math.max(1, npc.speed / 9) ** 0.5);
         this.placeWalker(npc, dt);
       } else if (npc.mode === 'wander' && this.graph) {
         if (!npc.path) {
@@ -1099,15 +1110,15 @@ export class MapScene implements CustomLayerInterface {
             } else {
               npc.pos = { x: npc.pos.x + (dx / d) * budget, z: npc.pos.z + (dz / d) * budget };
               budget = 0;
-              if (d > 0.4) npc.chibi.faceTowards(dx, dz);
+              if (d > 0.4) npc.person.faceTowards(dx, dz);
             }
           }
         }
-        npc.chibi.walking = npc.path !== null;
-        npc.chibi.walkRate = 0.85;
+        npc.person.walking = npc.path !== null;
+        npc.person.walkRate = 0.85;
         this.placeWalker(npc, dt);
       }
-      npc.chibi.update(dt);
+      npc.person.update(dt);
     }
   }
 
@@ -1234,8 +1245,8 @@ export class MapScene implements CustomLayerInterface {
     for (const npc of this.npcs) {
       if (!npc.tagPointId) continue;
       // A walker's tag shows only while the walker is on screen, right above their head (or ears, or tail).
-      const drawn = npc.chibi.root.position;
-      const top = this.project(drawn.x, (npc.chibi.top + 0.08) * npc.chibi.root.scale.y, drawn.z);
+      const drawn = npc.person.root.position;
+      const top = this.project(drawn.x, (npc.person.top + 0.08) * npc.person.root.scale.y, drawn.z);
       const base = this.project(drawn.x, 0, drawn.z);
       const visible = this.onScreen(top, 16) && this.onScreen(base, 16);
       sink.place(`walker:${npc.tagPointId}`, { x: top?.x ?? 0, y: top?.y ?? 0, scale: top ? shrink(top.w) : 1, visible });

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CastStage, type Motion, type StageLayout, type StageMember } from '../three/castStage';
 import type { PaletteSlot } from '../three/characters/chibi';
-import { castSpec, lookOfAvatar, personSpec, SPECIES_NAMES, type PersonLook } from '../three/characters/presets';
+import { castLook, lookOfAvatar, SPECIES_NAMES, type PersonLook } from '../three/characters/presets';
 import { useLook } from '../state/look';
 import { useMediaQuery } from '../ui/hooks';
 import { PlayerFace } from '../ui/ItemIcon';
@@ -67,8 +67,8 @@ export function CharactersPage() {
   useEffect(() => {
     if (!host.current) return;
     const members: StageMember[] = [
-      { id: PLAYER, spec: castSpec('player') },
-      ...SEED_USERS.map((u) => ({ id: u.id, spec: personSpec(u.avatar ?? u.id) })),
+      { id: PLAYER, look: castLook('player') },
+      ...SEED_USERS.map((u) => ({ id: u.id, look: lookOfAvatar(u.avatar, u.id) })),
     ];
     const s = new CastStage(host.current, members, LAYOUT, (id) => {
       setFocus(id);
@@ -115,8 +115,8 @@ export function CharactersPage() {
         <div className="cast-head__title">
           <h1>The cast</h1>
           <p>
-            {people.length + 1} original characters, {animals} of them animal-people, built from simple shapes. Tap anyone to meet them; drag to look around, {touch ? 'pinch' : 'scroll'} to
-            zoom.
+            {people.length + 1} original characters, {animals} of them animal-people, the soft plush cast of our film. Tap anyone to meet them; drag to look around, {touch ? 'pinch' : 'scroll'}{' '}
+            to zoom.
           </p>
         </div>
         <button

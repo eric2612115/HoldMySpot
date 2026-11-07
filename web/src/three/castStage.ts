@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { Chibi, LOOK_AROUND, type ChibiPalette, type ChibiSpec } from './characters/chibi';
+import { LOOK_AROUND, type ChibiPalette } from './characters/chibi';
+import { CozyPerson, type Person } from './characters/cozy';
+import type { PersonLook } from './characters/presets';
 import { createOutlineSettings, toon } from './materials/toon';
 
 export type Motion = 'idle' | 'walk';
 
 export interface StageMember {
   id: string;
-  spec: ChibiSpec;
+  look: PersonLook;
 }
 
 /** Rows of member ids, front row first: one arrangement for wide screens and one for phones. */
@@ -43,7 +45,7 @@ export class CastStage {
   private readonly camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
   private readonly controls: OrbitControls;
   private readonly outline = createOutlineSettings(0.032);
-  private readonly cast = new Map<string, Chibi>();
+  private readonly cast = new Map<string, Person>();
   private readonly spots = new Map<string, THREE.Mesh>();
   private readonly ground = new THREE.Group();
   private readonly layoutRows: StageLayout;
@@ -91,11 +93,13 @@ export class CastStage {
     this.scene.add(sun);
     this.scene.add(this.ground);
 
+    const view = { value: this.camera.position };
     members.forEach((m, i) => {
-      const chibi = new Chibi(m.spec, this.outline);
-      chibi.root.userData.memberId = m.id;
-      this.scene.add(chibi.root);
-      this.cast.set(m.id, chibi);
+      // The film's proportions and faces, with the knit and fabric weaves for close-ups.
+      const person = new CozyPerson(m.look.model, m.look, { mode: 'stage', seed: i + 1, view, outline: this.outline, name: m.id });
+      person.root.userData.memberId = m.id;
+      this.scene.add(person.root);
+      this.cast.set(m.id, person);
       const spot = new THREE.Mesh(new THREE.CircleGeometry(0.72, 40), toon(SPOT_COLORS[i % SPOT_COLORS.length]));
       spot.rotation.x = -Math.PI / 2;
       this.scene.add(spot);
@@ -121,7 +125,7 @@ export class CastStage {
   }
 
   /** A close-up turns the face toward the camera, so the body (and the tail) keep their angle. */
-  private aim(c: Chibi, focused: boolean) {
+  private aim(c: Person, focused: boolean) {
     let d = Math.atan2(CLOSE_DIR.x, CLOSE_DIR.z) - c.facing;
     d = Math.atan2(Math.sin(d), Math.cos(d));
     c.lookYaw = focused ? THREE.MathUtils.clamp(d, -CLOSE_LOOK_MAX, CLOSE_LOOK_MAX) : 0;
@@ -206,7 +210,7 @@ export class CastStage {
   }
 
   /** The members in view now: everyone, or the focused one. */
-  private inView(): Chibi[] {
+  private inView(): Person[] {
     const c = this.focused ? this.cast.get(this.focused) : null;
     return c ? [c] : [...this.cast.values()].filter((x) => x.root.visible);
   }
@@ -216,7 +220,7 @@ export class CastStage {
    * corner fits, with the target nudged so the group sits in the middle of the frame
    * (perspective otherwise leaves the near row low and empty sky on top).
    */
-  private fit(start: THREE.Vector3, dir: THREE.Vector3, chibis: Chibi[], below = 0): { target: THREE.Vector3; dist: number } {
+  private fit(start: THREE.Vector3, dir: THREE.Vector3, chibis: Person[], below = 0): { target: THREE.Vector3; dist: number } {
     const pts: THREE.Vector3[] = [];
     for (const c of chibis) {
       const p = c.root.position;

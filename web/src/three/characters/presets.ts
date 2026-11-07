@@ -1,4 +1,5 @@
 import { SEED_USERS, type User } from '@holdmyspot/shared';
+import type { CastModel } from './castModels';
 import type { Accessory, ChibiPalette, ChibiSpec, FurColours, HairStyle, Species, TopStyle } from './chibi';
 
 export type CastRole = 'player' | 'queuer' | 'buyer' | 'passerby';
@@ -12,7 +13,7 @@ export interface CastMember {
 
 /** The player's default look. Hair, top and trousers are meant to be recoloured to match a real person. */
 export const PLAYER_PALETTE: ChibiPalette = {
-  skin: '#FFD8C0',
+  skin: '#F6D0B8',
   hair: '#3B2F4A',
   top: '#6C5CE7',
   bottom: '#2E3A59',
@@ -20,7 +21,10 @@ export const PLAYER_PALETTE: ChibiPalette = {
   accent: '#FFC53D',
 };
 
-/** Role archetypes: the player, and the generic walkers the map falls back to. */
+/**
+ * Role archetypes of the older procedural chibi (chibi.ts), which now only stands in when a cast model cannot load.
+ * The app's own people are the cozy cast: `castLook`, `PEOPLE` and `CROWD_LOOKS` below.
+ */
 export const CAST: CastMember[] = [
   {
     role: 'player',
@@ -78,11 +82,15 @@ export function castSpec(role: CastRole, seed?: number): ChibiSpec {
 // ------------------------------------------------------------------ people
 
 /**
- * A person's look. Humans have hair; animal-people have fur colours instead
- * and their main fur is `palette.skin`. Every look is original: the human
- * chibi body and our everyday clothes, with our own heads and tails.
+ * A person's look. `model` is their baked character from the film's cozy cast
+ * (castModels.ts): what the map, the characters page and the face badges show.
+ * The rest describes the same person in plain terms: species, colours (humans
+ * have hair; animal-people have fur colours instead and their main fur is
+ * `palette.skin`), and the hair, top and accessory the older procedural chibi
+ * uses if a model cannot load. Every look is original.
  */
 export interface PersonLook {
+  model: CastModel;
   species: Species;
   hair?: HairStyle;
   top: TopStyle;
@@ -106,162 +114,195 @@ const NO_HAIR = '#3A2B33';
 
 /**
  * The demo people, keyed by the `avatar` string each seeded user carries
- * (shared/src/seed.ts). Mia and Wei, the film's leads, stay human; Wei wears
- * the colours the film's opening uses for the owner's avatar.
+ * (shared/src/seed.ts). Mia, Wei, Lin, Rex and Priya are the film's own
+ * characters; the others are new looks made the same way. Mia and Wei, the
+ * film's leads, stay human; Wei is the owner's character.
  */
 export const PEOPLE: Record<string, PersonLook> = {
   // Requesters.
   'requester-mia': {
+    model: 'mia',
     species: 'human',
     hair: 'bob',
-    top: 'jacket',
+    top: 'hoodie',
     accessory: 'phone',
-    palette: { skin: '#F5CDB0', hair: '#2B2033', top: '#FF7BAC', bottom: '#3E4B7C', shoes: '#FFFFFF', accent: '#FFF3D6' },
+    palette: { skin: '#f8d6c2', hair: '#3e3242', top: '#ff8fb8', bottom: '#3f4f86', shoes: '#fffaf5', accent: '#ff6f9e' },
   },
   'requester-jun': {
+    model: 'jun',
     species: 'cat',
     top: 'jacket',
     accessory: 'phone',
-    palette: { skin: '#F6E9D7', hair: NO_HAIR, top: '#3D5A98', bottom: '#E9D6BF', shoes: '#8D6BE0', accent: '#FFF3D6' },
-    fur: { light: '#FFFFFF', mark: '#8C6A55', pattern: 'points' },
+    palette: { skin: '#f4e8d8', hair: NO_HAIR, top: '#3d5a98', bottom: '#e9d6bf', shoes: '#8d6be0', accent: '#fffdf8' },
+    fur: { light: '#fbf3e8', mark: '#7a5a48', pattern: 'points' },
   },
   'requester-priya': {
+    model: 'priya',
     species: 'human',
     hair: 'bun',
-    top: 'tee',
-    accessory: 'tote',
-    palette: { skin: '#B97A56', hair: '#1F1A2B', top: '#FFB454', bottom: '#4E5D94', shoes: '#FFFFFF', accent: '#7FD6C2' },
+    top: 'jacket',
+    accessory: 'coffee',
+    palette: { skin: '#b97e5c', hair: '#261c20', top: '#3aa0a6', bottom: '#f2e2c4', shoes: '#e86a5c', accent: '#2f8d93' },
   },
   'requester-sam': {
+    model: 'sam',
     species: 'human',
-    hair: 'beanie',
+    hair: 'bun',
     top: 'hoodie',
     accessory: 'none',
-    palette: { skin: '#FFE0CC', hair: '#B5651D', top: '#57C4E5', bottom: '#3A3F5C', shoes: '#F4F4F4', accent: '#FFB4A2' },
+    palette: { skin: '#ffdcc6', hair: '#b5651d', top: '#57c4e5', bottom: '#3a3f5c', shoes: '#ffb4a2', accent: '#ffb4a2' },
   },
   'requester-noor': {
+    model: 'noor',
     species: 'human',
-    hair: 'bob',
+    hair: 'bun',
     top: 'jacket',
     accessory: 'tote',
-    palette: { skin: '#8A5A3C', hair: '#2B1D16', top: '#B69CFF', bottom: '#2F3E46', shoes: '#FFFFFF', accent: '#FFF3D6' },
+    palette: { skin: '#8a5a3c', hair: '#2b1d16', top: '#b69cff', bottom: '#2f3e46', shoes: '#b69cff', accent: '#f2c14e' },
   },
   'requester-leo': {
+    model: 'leo',
     species: 'dog',
     top: 'tee',
     accessory: 'coffee',
-    palette: { skin: '#8A5A3C', hair: NO_HAIR, top: '#FFC53D', bottom: '#3C4466', shoes: '#FFFFFF', accent: '#F45B69' },
-    fur: { light: '#F3DCC2', mark: '#5A3524', pattern: 'blaze' },
+    palette: { skin: '#9a6646', hair: NO_HAIR, top: '#8fcbef', bottom: '#3c4466', shoes: '#f45b69', accent: '#f45b69' },
+    fur: { light: '#f3dcc2', mark: '#5a3524', pattern: 'blaze' },
   },
   // Queuers.
   'queuer-wei': {
+    model: 'wei',
     species: 'human',
     hair: 'tousled',
     top: 'hoodie',
-    accessory: 'backpack',
-    palette: { skin: '#F2C7A6', hair: '#30251F', top: '#E9B24A', bottom: '#3E4B7C', shoes: '#F6F2EA', accent: '#EC8571' },
+    accessory: 'coffee',
+    palette: { skin: '#f0c7a8', hair: '#352823', top: '#f4b93c', bottom: '#5574b6', shoes: '#f39c88', accent: '#4a64b4' },
   },
   'queuer-lin': {
+    model: 'lin',
     species: 'fox',
     top: 'hoodie',
-    accessory: 'tote',
-    palette: { skin: '#F08A45', hair: NO_HAIR, top: '#B69CFF', bottom: '#3A3F5C', shoes: '#FFFFFF', accent: '#FFD166' },
-    fur: { light: '#FFF6EC', mark: '#5A3A2E' },
+    accessory: 'phone',
+    palette: { skin: '#f59a52', hair: NO_HAIR, top: '#b9a3f4', bottom: '#5f78b8', shoes: '#ffd36e', accent: '#3fb0a6' },
+    fur: { light: '#fff3e6', mark: '#5e4038' },
   },
   'queuer-rin': {
+    model: 'rin',
     species: 'cat',
     top: 'tee',
     accessory: 'phone',
-    palette: { skin: '#FFF4E8', hair: NO_HAIR, top: '#1C9380', bottom: '#56688F', shoes: '#FFFFFF', accent: '#FFB4A2' },
-    fur: { light: '#FFFFFF', mark: '#F0A055', mark2: '#6E4B3A', pattern: 'calico' },
+    palette: { skin: '#686c7d', hair: NO_HAIR, top: '#1c9380', bottom: '#56688f', shoes: '#ffb4a2', accent: '#ffb4a2' },
+    fur: { light: '#f6f4f8', mark: '#4b4f5f' },
   },
   'queuer-ava': {
+    model: 'ava',
     species: 'squirrel',
     top: 'jacket',
     accessory: 'coffee',
-    palette: { skin: '#C2703D', hair: NO_HAIR, top: '#278F5F', bottom: '#4E5D94', shoes: '#FF8FAB', accent: '#FFFFFF' },
-    fur: { light: '#FBE6CC', mark: '#7A3F22' },
+    palette: { skin: '#9e9792', hair: NO_HAIR, top: '#278f5f', bottom: '#4e5d94', shoes: '#ff8fab', accent: '#fffaf6' },
+    fur: { light: '#f4eee8', mark: '#5f5853' },
   },
   'queuer-jo': {
+    model: 'jo',
     species: 'dog',
     top: 'hoodie',
     accessory: 'none',
-    palette: { skin: '#E3B27E', hair: NO_HAIR, top: '#F06A5E', bottom: '#2E3A59', shoes: '#FFFFFF', accent: '#FFD166' },
-    fur: { light: '#FFF3E0', mark: '#8E5A33' },
+    palette: { skin: '#45404c', hair: NO_HAIR, top: '#e2434f', bottom: '#2e3a59', shoes: '#2e3a59', accent: '#fff4e8' },
+    fur: { light: '#fbf8f4', mark: '#2a2630', pattern: 'blaze' },
   },
   'queuer-rex': {
+    model: 'rex',
     species: 'raccoon',
     top: 'hoodie',
     accessory: 'backpack',
-    palette: { skin: '#A3A2AF', hair: NO_HAIR, top: '#B54C6E', bottom: '#2F3E46', shoes: '#FFFFFF', accent: '#9BE3C9' },
-    fur: { light: '#F4F1EA', mark: '#5B5566' },
+    palette: { skin: '#bdb9c9', hair: NO_HAIR, top: '#e0507f', bottom: '#4a5168', shoes: '#8ec9f0', accent: '#5aa7e0' },
+    fur: { light: '#f7f5f8', mark: '#3e3848' },
   },
   'queuer-dana': {
+    model: 'dana',
     species: 'bunny',
-    top: 'hoodie',
+    top: 'jacket',
     accessory: 'tote',
-    palette: { skin: '#C9946C', hair: NO_HAIR, top: '#FFD166', bottom: '#56688F', shoes: '#FFFFFF', accent: '#FF8FAB' },
-    fur: { light: '#FFF0E0', mark: '#8B5A3C' },
+    palette: { skin: '#c9946c', hair: NO_HAIR, top: '#8fd9c0', bottom: '#56688f', shoes: '#ff8fab', accent: '#ff9fb8' },
+    fur: { light: '#fff0e0', mark: '#8b5a3c', pattern: 'dutch' },
   },
   'queuer-theo': {
+    model: 'theo',
     species: 'human',
     hair: 'tousled',
     top: 'jacket',
     accessory: 'coffee',
-    palette: { skin: '#FFD8C0', hair: '#C68B59', top: '#2F3E46', bottom: '#C9B79C', shoes: '#FFFFFF', accent: '#84A59D' },
+    palette: { skin: '#ffd6bf', hair: '#c68b59', top: '#3f525c', bottom: '#c9b79c', shoes: '#6b4a3a', accent: '#a9c4b5' },
   },
   'queuer-mo': {
+    model: 'mo',
     species: 'human',
     hair: 'beanie',
     top: 'tee',
     accessory: 'phone',
-    palette: { skin: '#9C6644', hair: '#1B1B1B', top: '#FF9248', bottom: '#3C4466', shoes: '#FFFFFF', accent: '#3FB7A5' },
+    palette: { skin: '#9c6644', hair: '#1b1b1b', top: '#ff8a3d', bottom: '#3c4466', shoes: '#3fb7a5', accent: '#3fb7a5' },
   },
 };
 
 /**
  * Looks for everyone else (crowd requesters, people in a line who are not
- * demo users, walkers): half humans, half animal-people. A name always gets
- * the same look. Extras are a quieter tier: muted tops, and never a named
- * person's top colour, skin and hair pair, or the same species in a close fur
- * colour (presets.test.ts), so nobody seems to appear twice.
+ * demo users, walkers): the film's crowd, half humans (a grandpa in a
+ * cardigan, a cloud of curls, a guy in a knit beanie, a kid with pigtails) and
+ * half animal-people (a tabby in a scarf, a shaggy dog, a bunny in a lilac
+ * raincoat, a squirrel with a huge tail). A name always gets the same look.
+ * Extras never wear a named person's top colour, skin and hair pair, or the
+ * same species in a close fur colour (presets.test.ts), so nobody seems to
+ * appear twice.
  */
 export const CROWD_LOOKS: PersonLook[] = [
-  { species: 'human', hair: 'bun', top: 'tee', accessory: 'tote', palette: { skin: '#F1C19C', hair: '#7A4A2E', top: '#D9A0AE', bottom: '#56688F', shoes: '#FFFFFF', accent: '#E8C77A' } },
+  { model: 'crowd-grandpa', species: 'human', hair: 'tousled', top: 'jacket', accessory: 'none', palette: { skin: '#f1c6a8', hair: '#d2ccc8', top: '#d8c2a2', bottom: '#7d6b5c', shoes: '#c9b8a4', accent: '#8fb4d9' } },
   {
-    // A Dutch bunny: chocolate with a pale blaze down the face.
+    model: 'crowd-bunny',
     species: 'bunny',
-    top: 'tee',
-    accessory: 'tote',
-    palette: { skin: '#6E4F42', hair: NO_HAIR, top: '#E6B59C', bottom: '#3A3F5C', shoes: '#FFFFFF', accent: '#9DC4B5' },
-    fur: { light: '#FFF6EE', mark: '#4A332B', pattern: 'dutch' },
-  },
-  { species: 'human', hair: 'tousled', top: 'hoodie', accessory: 'none', palette: { skin: '#E3A47E', hair: '#6B4A35', top: '#8FA3C7', bottom: '#3A3F5C', shoes: '#F4F4F4', accent: '#E8B4A8' } },
-  {
-    // Black and white, with a pale blaze and muzzle.
-    species: 'dog',
     top: 'jacket',
-    accessory: 'phone',
-    palette: { skin: '#3B3644', hair: NO_HAIR, top: '#C98B7B', bottom: '#2E3A59', shoes: '#F28482', accent: '#F2E3C6' },
-    fur: { light: '#FFFFFF', mark: '#2A2530', pattern: 'blaze' },
+    accessory: 'none',
+    palette: { skin: '#fbf6f2', hair: NO_HAIR, top: '#cbb7ef', bottom: '#5a6a9a', shoes: '#cbb7ef', accent: '#efe7fb' },
+    fur: { light: '#ffffff', mark: '#e9dcd6' },
   },
-  { species: 'human', hair: 'bob', top: 'tee', accessory: 'phone', palette: { skin: '#F3C9A8', hair: '#B5651D', top: '#E59A8C', bottom: '#4E5D94', shoes: '#FF8FAB', accent: '#FFFFFF' } },
+  { model: 'crowd-curls', species: 'human', hair: 'bob', top: 'tee', accessory: 'phone', palette: { skin: '#8d5a3f', hair: '#2a1d1a', top: '#ff9a52', bottom: '#34437a', shoes: '#ff9a52', accent: '#9de2c9' } },
   {
-    species: 'squirrel',
+    model: 'crowd-dog',
+    species: 'dog',
     top: 'hoodie',
     accessory: 'none',
-    palette: { skin: '#A7A39E', hair: NO_HAIR, top: '#A3B98E', bottom: '#2F3E46', shoes: '#FFFFFF', accent: '#FFFFFF' },
-    fur: { light: '#F7F3EE', mark: '#6F6A66' },
+    palette: { skin: '#ead2aa', hair: NO_HAIR, top: '#f0785a', bottom: '#3c4a72', shoes: '#3c4a72', accent: '#fff4e8' },
+    fur: { light: '#fff6e8', mark: '#a8774e', pattern: 'blaze' },
   },
-  { species: 'human', hair: 'beanie', top: 'jacket', accessory: 'none', palette: { skin: '#C68A62', hair: '#3A2A22', top: '#A7B4C9', bottom: '#2F3E46', shoes: '#FFFFFF', accent: '#84A59D' } },
+  { model: 'crowd-beanie', species: 'human', hair: 'beanie', top: 'hoodie', accessory: 'coffee', palette: { skin: '#e2b08c', hair: '#3a2a22', top: '#4f9a6a', bottom: '#8a8f9e', shoes: '#e9574a', accent: '#e9574a' } },
   {
+    model: 'crowd-squirrel',
+    species: 'squirrel',
+    top: 'jacket',
+    accessory: 'none',
+    palette: { skin: '#c8733f', hair: NO_HAIR, top: '#6f8fe0', bottom: '#7a4a32', shoes: '#6f8fe0', accent: '#6f8fe0' },
+    fur: { light: '#fbe3c6', mark: '#7a3f22' },
+  },
+  { model: 'crowd-kid', species: 'human', hair: 'bun', top: 'tee', accessory: 'none', palette: { skin: '#ffe0cc', hair: '#4a3228', top: '#ffb59a', bottom: '#5f78b8', shoes: '#ff5a6a', accent: '#ff5a6a' } },
+  {
+    model: 'crowd-cat',
     species: 'cat',
-    top: 'tee',
-    accessory: 'coffee',
-    palette: { skin: '#9AA3B5', hair: NO_HAIR, top: '#D4B060', bottom: '#4E5D94', shoes: '#FFFFFF', accent: '#FF8FAB' },
-    fur: { light: '#F4F6FA', mark: '#6E768A' },
+    top: 'jacket',
+    accessory: 'none',
+    palette: { skin: '#a9a1a6', hair: NO_HAIR, top: '#a8c69a', bottom: '#4f5a7a', shoes: '#d9c3a5', accent: '#e9574a' },
+    fur: { light: '#f2ede8', mark: '#6f666c' },
   },
 ];
+
+/** The player's look: the cozy cast's "You", whose hair, top and trousers follow the viewer's colours. */
+export const PLAYER_LOOK: PersonLook = { model: 'you', species: 'human', hair: 'tousled', top: 'hoodie', accessory: 'phone', palette: { ...PLAYER_PALETTE } };
+
+/** The generic passer-by on the map when nobody else fits: the crowd's guy in a knit beanie, with his coffee. */
+export const PASSERBY_LOOK: PersonLook = CROWD_LOOKS.find((l) => l.model === 'crowd-beanie')!;
+
+/** A fresh copy of a role's look (palettes are mutable). */
+export function castLook(role: 'player' | 'passerby'): PersonLook {
+  const l = role === 'player' ? PLAYER_LOOK : PASSERBY_LOOK;
+  return { ...l, palette: { ...l.palette }, fur: l.fur ? { ...l.fur } : undefined };
+}
 
 function hash(key: string): number {
   let h = 7;

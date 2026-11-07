@@ -343,7 +343,7 @@ Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run dem
 | Fastify 5, Zod 4 and `node:sqlite` | The server's REST and server-sent-events API, request validation, and the market and ledger in one SQLite file. |
 | React 19 and Vite 8 (with Zustand and React Router in the web app) | The phone web app and the ops console. |
 | MapLibre GL JS with OpenFreeMap tiles | The maps in the web app and beside the Bryntum board. |
-| three.js | The 3D scene over the map: KayKit City Builder and Restaurant Bits props (CC0), characters and items drawn in code. |
+| three.js | The 3D scene over the map: KayKit City Builder and Restaurant Bits props (CC0), our own cast as small skinned models (`web/public/models/cast/`, one draw call each), items drawn in code. |
 | jsQR, jpeg-js and qrcode | Reading a receipt's QR code against its print, decoding JPEG photos, and drawing the QR codes on the synthetic demo receipts. |
 | Playwright with Chromium | Approving sandbox orders as the test buyer in the gate script, rendering the 21 demo photos, and the screenshots, clips and sponsor checks. |
 | ffmpeg | Joins the sandbox walk's frames into its three clips. |
@@ -492,7 +492,7 @@ npm run demo -- --stop               # stops only what the launcher started
 
 HoldMySpot is released under the [MIT Licence](LICENSE).
 
-- **3D props:** KayKit City Builder Bits and Restaurant Bits by Kay Lousberg (www.kaylousberg.com), CC0, in `web/public/models/` with their licence files. The characters and item models are drawn in code.
+- **3D props:** KayKit City Builder Bits and Restaurant Bits by Kay Lousberg (www.kaylousberg.com), CC0, in `web/public/models/` with their licence files. The characters in `web/public/models/cast/` (models, faces and portraits) are our own, made for HoldMySpot and its film, under the same MIT Licence; the item models are drawn in code.
 - **Map:** tiles and the "liberty" style from OpenFreeMap, data from OpenStreetMap contributors through OpenMapTiles; the attribution is shown on every map. Rendered with MapLibre GL JS (BSD-3-Clause).
 - **Fonts:** Figtree and Fredoka (SIL Open Font License 1.1), bundled through Fontsource.
 - **Sponsor libraries:** AG Studio, AG Grid Enterprise and AG Charts Enterprise (commercial; they run in AG's trial mode without a key, or with your own trial key); Bryntum Scheduler Community (MIT).
