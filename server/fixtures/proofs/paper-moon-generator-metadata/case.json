@@ -1,0 +1,35 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-generator-metadata",
+  "description": "A clean-looking receipt whose file says it was made by an image generator: needs review.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c15",
+    "qty": 1,
+    "proofCode": "E6WK8",
+    "feeCents": 1200,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Rin",
+  "requester": "Jun L.",
+  "checkedInAt": "2026-11-12T10:55:00-08:00",
+  "uploadedAt": "2026-11-12T12:31:00-08:00",
+  "generatorMetadata": true,
+  "expect": {
+    "status": "needs_review",
+    "hard": [],
+    "soft": [
+      "generator_metadata"
+    ],
+    "retailCents": 3400,
+    "captureCents": 4600
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

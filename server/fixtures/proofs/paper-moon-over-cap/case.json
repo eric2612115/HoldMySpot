@@ -1,0 +1,34 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-over-cap",
+  "description": "The shop charged $38.00; above the $36.00 retail cap: needs review (only the cap can be charged).",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c7",
+    "qty": 1,
+    "proofCode": "F9RM6",
+    "feeCents": 1200,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Wei",
+  "requester": "Mia R.",
+  "checkedInAt": "2026-11-12T10:50:00-08:00",
+  "uploadedAt": "2026-11-12T12:05:00-08:00",
+  "expect": {
+    "status": "needs_review",
+    "hard": [],
+    "soft": [
+      "within_retail_cap"
+    ],
+    "retailCents": 3800,
+    "captureCents": 4800
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

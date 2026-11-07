@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-qr-wrong-store",
+  "description": "The QR code carries another store ID than Paper Moon: shop_match fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c3",
+    "qty": 1,
+    "proofCode": "H4NP7",
+    "feeCents": 1300,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Ava",
+  "requester": "Jun L.",
+  "checkedInAt": "2026-11-12T10:52:00-08:00",
+  "uploadedAt": "2026-11-12T11:50:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "shop_match"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

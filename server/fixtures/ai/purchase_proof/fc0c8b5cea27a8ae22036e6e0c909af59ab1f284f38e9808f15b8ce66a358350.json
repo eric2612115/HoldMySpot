@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "task": "purchase_proof",
+  "fixtureKey": "fc0c8b5cea27a8ae22036e6e0c909af59ab1f284f38e9808f15b8ce66a358350",
+  "provider": "muse",
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-11-07T02:39:18.038Z",
+  "latencyMs": 6660,
+  "data": {
+    "anomalies": [],
+    "currency": "USD",
+    "invoiceNumber": "LL-1112-0883",
+    "issuedAtLocal": "2026-11-12 11:32",
+    "itemPhoto": {
+      "codeSeen": "A9HT6",
+      "unitsVisible": 2
+    },
+    "lines": [
+      {
+        "name": "LUCKY CAT PLUSH",
+        "qty": 2,
+        "totalMinor": 5200,
+        "unitMinor": 2600
+      }
+    ],
+    "printedName": "LITTLE LANTERN TOYS",
+    "sellerTaxId": "41500028",
+    "totalMinor": 5200
+  }
+}

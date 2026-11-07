@@ -1,0 +1,29 @@
+{
+  "kind": "check_in",
+  "id": "checkin-no-line",
+  "description": "The code is visible but there is no line (shutter down): line_visible needs review.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "claim": {
+    "id": "claim-c19",
+    "code": "H7AW3"
+  },
+  "queuer": "Ava",
+  "geofence": {
+    "ok": true,
+    "distanceM": 20,
+    "radiusM": 80
+  },
+  "at": "2026-11-12T09:40:00-08:00",
+  "expect": {
+    "status": "needs_review",
+    "hard": [],
+    "soft": [
+      "line_visible"
+    ]
+  },
+  "files": {
+    "line": "line.png"
+  },
+  "reusedPhoto": null
+}

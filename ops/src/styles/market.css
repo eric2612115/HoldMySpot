@@ -1,0 +1,458 @@
+/* Market view: AG Studio with HoldMySpot's custom widgets. */
+
+.market {
+  height: 100%;
+  min-height: 0;
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-1);
+  background: var(--paper);
+}
+
+.market-studio {
+  height: 100%;
+}
+
+.hms-w {
+  height: 100%;
+  width: 100%;
+  font-family: var(--font-money);
+  color: var(--ink);
+  font-size: 12.5px;
+  overflow: hidden;
+}
+
+.hms-empty {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--ink-3);
+  padding: 12px;
+}
+
+/* ---- Gap board ---- */
+
+.hms-gapboard {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 4px;
+  padding: 2px 6px 4px;
+}
+
+.hms-gap-scale {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 144px 0 184px;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.hms-gap-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: auto;
+}
+
+.hms-gap-row {
+  display: grid;
+  grid-template-columns: 170px 1fr 120px;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hms-gap-row:hover {
+  background: var(--mist);
+}
+
+.hms-gap-list li.is-picked .hms-gap-row {
+  background: var(--grape-mist);
+  box-shadow: inset 0 0 0 1.5px var(--grape);
+}
+
+.hms-gap-list li.is-top .hms-gap-row {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, white), #fff 70%);
+}
+
+.hms-gap-shop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+
+.hms-gap-shop i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.hms-gap-shop span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hms-rail {
+  position: relative;
+  height: 26px;
+  margin: 0 18px 0 8px;
+}
+
+.hms-rail-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--line);
+  border-radius: 2px;
+}
+
+.hms-bridge {
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  margin-top: -5px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent) 45%, white) 0 4px, color-mix(in srgb, var(--accent) 25%, white) 4px 8px);
+}
+
+.hms-bridge b {
+  position: absolute;
+  left: 50%;
+  bottom: 9px;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hms-dot {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 1px 3px rgba(35, 30, 90, 0.3);
+}
+
+.hms-dot em {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-3);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hms-dot.is-bid {
+  background: var(--grape);
+}
+
+.hms-dot.is-bid em {
+  left: auto;
+  right: 4px;
+  transform: none;
+}
+
+.hms-dot.is-ask em {
+  left: 4px;
+  transform: none;
+}
+
+.hms-dot.is-ask {
+  background: var(--sun);
+}
+
+.hms-gap-depth {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 11px;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.hms-gap-depth .is-bid {
+  color: var(--grape-deep);
+  font-weight: 700;
+}
+
+.hms-gap-depth .is-ask {
+  color: #8a5d00;
+}
+
+.hms-gap-key {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.hms-gap-key span::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.hms-gap-key .is-bid::before {
+  background: var(--grape);
+}
+.hms-gap-key .is-ask::before {
+  background: var(--sun);
+}
+.hms-gap-key .is-gap::before {
+  border-radius: 3px;
+  width: 14px;
+  background: repeating-linear-gradient(135deg, #c7c0f9 0 3px, #e4e0fd 3px 6px);
+}
+
+/* ---- Depth ladder ---- */
+
+.hms-depth {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 6px;
+  padding: 2px 8px 6px;
+}
+
+.hms-depth-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hms-depth-head i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.hms-depth-head strong {
+  font-family: var(--font-play);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hms-depth-head span {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.hms-depth-cols,
+.hms-depth-rows li {
+  display: grid;
+  grid-template-columns: 1fr 112px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.hms-depth-cols {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  text-transform: capitalize;
+}
+
+.hms-depth-cols span:nth-child(1) {
+  text-align: right;
+}
+.hms-depth-cols span:nth-child(2) {
+  text-align: center;
+}
+
+.hms-depth-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: auto;
+}
+
+.hms-depth-bid,
+.hms-depth-ask {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+}
+
+.hms-depth-bid {
+  justify-content: flex-end;
+}
+
+.hms-depth-bid span,
+.hms-depth-ask span {
+  height: 14px;
+  border-radius: 5px;
+  min-width: 6px;
+}
+
+.hms-depth-bid span {
+  background: color-mix(in srgb, var(--grape) 70%, white);
+}
+
+.hms-depth-ask span {
+  background: var(--sun);
+}
+
+.hms-depth-bid em,
+.hms-depth-ask em {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.hms-depth-fee {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+}
+
+.hms-depth-fee .is-bid {
+  text-align: right;
+  color: var(--grape-deep);
+}
+
+.hms-depth-fee .is-ask {
+  color: #8a5d00;
+}
+
+/* ---- Spotlight (built by the market desk agent) ---- */
+
+.hms-spot {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 10px;
+  padding: 6px 10px 8px;
+  background: radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent) 22%, white) 0%, #fff 60%);
+  border-radius: 14px;
+}
+
+.hms-spot-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.hms-spot-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+.hms-spot-shop {
+  font-family: var(--font-play);
+  font-weight: 600;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.hms-spot-figures {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin: 2px 0 2px;
+}
+
+.hms-spot-gap {
+  font-family: var(--font-play);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hms-spot-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.hms-spot-pair .is-bid {
+  color: var(--grape-deep);
+}
+
+.hms-spot-pair .is-ask {
+  color: #8a5d00;
+}
+
+.hms-spot p {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.4;
+  max-width: 60ch;
+}
+
+.hms-spot-others {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0 0;
+  border-top: 1px dashed var(--line-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 11.5px;
+}
+
+.hms-spot-others li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hms-spot-others i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.hms-spot-others b {
+  font-variant-numeric: tabular-nums;
+}

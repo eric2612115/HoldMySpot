@@ -1,0 +1,28 @@
+{
+  "kind": "check_in",
+  "id": "checkin-paper-moon-rex",
+  "description": "Hero: Rex's line photo with his code; passes (his receipt is the fake one).",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "claim": {
+    "id": "claim-rex",
+    "code": "F2KX9"
+  },
+  "queuer": "Rex",
+  "geofence": {
+    "ok": true,
+    "distanceM": 52,
+    "radiusM": 80
+  },
+  "at": "2026-11-12T10:57:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "peopleAhead": 46
+  },
+  "files": {
+    "line": "line.png"
+  },
+  "reusedPhoto": null
+}

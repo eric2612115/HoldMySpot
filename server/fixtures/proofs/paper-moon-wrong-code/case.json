@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-wrong-code",
+  "description": "The sticky note shows another job's code: code_visible fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c10",
+    "qty": 1,
+    "proofCode": "J3RA8",
+    "feeCents": 1200,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Ava",
+  "requester": "Sam W.",
+  "checkedInAt": "2026-11-12T10:52:00-08:00",
+  "uploadedAt": "2026-11-12T12:11:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "code_visible"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

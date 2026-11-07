@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "sugar-cloud-cake-genuine",
+  "description": "Sugar Cloud Bakery errand in San Francisco: receipt without a QR; passes, capture $47.00.",
+  "shopId": "sugar-cloud-bakery",
+  "itemId": "cake-sugar-cloud",
+  "job": {
+    "id": "job-c16",
+    "qty": 1,
+    "proofCode": "P3WN7",
+    "feeCents": 900,
+    "retailCapCentsPerUnit": 4000,
+    "shippingCents": 0,
+    "mode": "local"
+  },
+  "queuer": "Jo",
+  "requester": "Noor A.",
+  "checkedInAt": "2026-11-12T09:40:00-08:00",
+  "uploadedAt": "2026-11-12T10:24:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "retailCents": 3800,
+    "captureCents": 4700
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

@@ -1,0 +1,35 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-recycled-photo",
+  "description": "The item photo is Lin's photo from 11-11 with the code edited: duplicate_photo fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c6",
+    "qty": 1,
+    "proofCode": "N6TY4",
+    "feeCents": 1100,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Rin",
+  "requester": "Leo M.",
+  "checkedInAt": "2026-11-12T10:55:00-08:00",
+  "uploadedAt": "2026-11-12T11:58:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "duplicate_photo"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": {
+    "file": "item.png",
+    "from": "lin-item-1111"
+  }
+}

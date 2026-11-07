@@ -1,0 +1,24 @@
+{
+  "name": "@holdmyspot/shared",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HoldMySpot contract (REST + SSE types) and shared market rules. TypeScript source only, no build step.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts",
+    "./ports": "./src/ports.ts"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "typescript": "~5.9.3"
+  }
+}

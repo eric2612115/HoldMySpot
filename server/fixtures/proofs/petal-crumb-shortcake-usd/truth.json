@@ -1,0 +1,29 @@
+{
+  "images": [
+    "receipt.png",
+    "item.png"
+  ],
+  "outputs": {
+    "purchase_proof": {
+      "printedName": "PETAL & CRUMB BAKERY",
+      "sellerTaxId": null,
+      "invoiceNumber": "#4417",
+      "issuedAtLocal": "2026-11-11 15:12",
+      "currency": "USD",
+      "lines": [
+        {
+          "name": "STRAWBERRY SHORTCAKE",
+          "qty": 1,
+          "unitMinor": 3800,
+          "totalMinor": 3800
+        }
+      ],
+      "totalMinor": 3800,
+      "itemPhoto": {
+        "codeSeen": "X4KE7",
+        "unitsVisible": 1
+      },
+      "anomalies": []
+    }
+  }
+}

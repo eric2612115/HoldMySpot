@@ -1,0 +1,32 @@
+{
+  "kind": "check_in",
+  "id": "checkin-recycled",
+  "description": "Rin's line photo from 11-11 with a new code edited in: duplicate_photo fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "claim": {
+    "id": "claim-c20",
+    "code": "P8EM2"
+  },
+  "queuer": "Rin",
+  "geofence": {
+    "ok": true,
+    "distanceM": 47,
+    "radiusM": 80
+  },
+  "at": "2026-11-12T10:46:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "duplicate_photo"
+    ],
+    "soft": []
+  },
+  "files": {
+    "line": "line.png"
+  },
+  "reusedPhoto": {
+    "file": "line.png",
+    "from": "rin-line-1111"
+  }
+}

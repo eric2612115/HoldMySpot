@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "petal-crumb-shortcake-usd",
+  "description": "New York errand: receipt without a QR, printed name matches; capture $47.00.",
+  "shopId": "petal-crumb-bakery",
+  "itemId": "cake-petal-crumb",
+  "job": {
+    "id": "job-dana",
+    "qty": 1,
+    "proofCode": "X4KE7",
+    "feeCents": 900,
+    "retailCapCentsPerUnit": 4000,
+    "shippingCents": 0,
+    "mode": "local"
+  },
+  "queuer": "Dana",
+  "requester": "Jun L.",
+  "checkedInAt": "2026-11-11T14:20:00-05:00",
+  "uploadedAt": "2026-11-11T15:16:00-05:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "retailCents": 3800,
+    "captureCents": 4700
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

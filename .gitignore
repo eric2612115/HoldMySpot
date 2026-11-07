@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+# Third-party asset packs are cloned here for reference; only the models
+# the app uses are copied into web/public/models (with their licence).
+assets-src/*/repo/
+
+# HoldMySpot server runtime data: SQLite database and uploaded photos.
+server/data/
+
+# Screenshots: only the final set of the current pass goes into git. Working shots
+# (QA runs) stay local; earlier passes were moved out of the repo.
+proto-shots/*
+!proto-shots/v2/
+proto-shots/v2/*
+!proto-shots/v2/final/
+
+# Owner-only notes (may contain Chinese and machine-specific details); never committed.
+private/

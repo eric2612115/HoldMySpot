@@ -1,0 +1,29 @@
+{
+  "images": [
+    "receipt.png",
+    "item.png"
+  ],
+  "outputs": {
+    "purchase_proof": {
+      "printedName": "LITTLE LANTERN TOYS",
+      "sellerTaxId": "41500028",
+      "invoiceNumber": "LL-1112-0907",
+      "issuedAtLocal": "2026-11-12 12:17",
+      "currency": "USD",
+      "lines": [
+        {
+          "name": "LUCKY CAT PLUSH",
+          "qty": 1,
+          "unitMinor": 2600,
+          "totalMinor": 2600
+        }
+      ],
+      "totalMinor": 2600,
+      "itemPhoto": {
+        "codeSeen": "A7PN3",
+        "unitsVisible": 1
+      },
+      "anomalies": []
+    }
+  }
+}

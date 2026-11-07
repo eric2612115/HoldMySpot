@@ -1,0 +1,29 @@
+{
+  "images": [
+    "receipt.png",
+    "item.png"
+  ],
+  "outputs": {
+    "purchase_proof": {
+      "printedName": "PAPER MOON TOYS",
+      "sellerTaxId": "41500017",
+      "invoiceNumber": "PM-1112-0431",
+      "issuedAtLocal": "2026-11-12 11:50",
+      "currency": "USD",
+      "lines": [
+        {
+          "name": "MOCHI BUNNY PLUSH SAKURA",
+          "qty": 1,
+          "unitMinor": 3400,
+          "totalMinor": 3400
+        }
+      ],
+      "totalMinor": 3400,
+      "itemPhoto": {
+        "codeSeen": "T3HW8",
+        "unitsVisible": 1
+      },
+      "anomalies": []
+    }
+  }
+}

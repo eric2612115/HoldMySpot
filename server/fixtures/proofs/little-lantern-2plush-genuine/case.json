@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "little-lantern-2plush-genuine",
+  "description": "Little Lantern Toys, two Lucky Cat plush at the shop price; passes, $52.00, capture $64.00.",
+  "shopId": "little-lantern-toys",
+  "itemId": "plush-little-lantern",
+  "job": {
+    "id": "job-c13",
+    "qty": 2,
+    "proofCode": "A9HT6",
+    "feeCents": 600,
+    "retailCapCentsPerUnit": 2800,
+    "shippingCents": 1300,
+    "mode": "ship"
+  },
+  "queuer": "Rin",
+  "requester": "Sam W.",
+  "checkedInAt": "2026-11-12T11:05:00-08:00",
+  "uploadedAt": "2026-11-12T11:35:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "retailCents": 5200,
+    "captureCents": 6400
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

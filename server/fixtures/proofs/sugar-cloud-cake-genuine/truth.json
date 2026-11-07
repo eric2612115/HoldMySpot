@@ -1,0 +1,29 @@
+{
+  "images": [
+    "receipt.png",
+    "item.png"
+  ],
+  "outputs": {
+    "purchase_proof": {
+      "printedName": "SUGAR CLOUD BAKERY",
+      "sellerTaxId": null,
+      "invoiceNumber": "#1180",
+      "issuedAtLocal": "2026-11-12 10:21",
+      "currency": "USD",
+      "lines": [
+        {
+          "name": "STRAWBERRY CLOUD CAKE",
+          "qty": 1,
+          "unitMinor": 3800,
+          "totalMinor": 3800
+        }
+      ],
+      "totalMinor": 3800,
+      "itemPhoto": {
+        "codeSeen": "P3WN7",
+        "unitsVisible": 1
+      },
+      "anomalies": []
+    }
+  }
+}

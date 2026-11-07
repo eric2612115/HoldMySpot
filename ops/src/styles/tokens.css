@@ -1,0 +1,108 @@
+/*
+ * HoldMySpot ops tokens. Same palette and two voices as the web app
+ * (web/src/styles/tokens.css): round Fredoka for people and places,
+ * straight Figtree with tabular figures for times and money.
+ */
+:root {
+  --ink: #23253a;
+  --ink-2: #4a4e68;
+  --ink-3: #7e839d;
+  --paper: #ffffff;
+  --mist: #f4f5fb;
+  --line: #e6e7f1;
+  --line-2: #d9dbe9;
+  --ground: #eef4e6;
+  --ground-2: #e4eedb;
+
+  --grape: #5b4cf0;
+  --grape-deep: #4536d6;
+  --grape-soft: #eeebff;
+  --grape-mist: #f6f4ff;
+  --sun: #ffc53d;
+  --sun-deep: #c98a00;
+  --sun-soft: #fff4d4;
+  --hot: #f0476a;
+  --hot-deep: #c92a4c;
+  --hot-soft: #ffe5eb;
+  --mint: #2fb37a;
+  --mint-soft: #dcf5e9;
+  --sky: #4cc9f0;
+  --sky-soft: #e2f6fd;
+
+  --held: #9a5a00;
+  --held-bg: #fff0d2;
+  --captured: #0d7450;
+  --captured-bg: #d9f3e6;
+  --released: #4f5674;
+  --released-bg: #eceef6;
+  --paid: #1b52c7;
+  --paid-bg: #e0eaff;
+
+  --font-play: 'Fredoka Variable', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --font-money: 'Figtree Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-panel: 22px;
+  --radius-card: 16px;
+  --radius-bar: 9px;
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(35, 30, 90, 0.06), 0 4px 14px rgba(35, 30, 90, 0.07);
+  --shadow-2: 0 2px 6px rgba(35, 30, 90, 0.08), 0 18px 44px rgba(35, 30, 90, 0.18);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-money);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 3px solid var(--grape);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

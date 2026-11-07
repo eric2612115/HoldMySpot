@@ -1,0 +1,35 @@
+{
+  "images": [
+    "receipt.png",
+    "item.png"
+  ],
+  "outputs": {
+    "purchase_proof": {
+      "printedName": "STEAM LANTERN RAMEN",
+      "sellerTaxId": null,
+      "invoiceNumber": "#2291",
+      "issuedAtLocal": "2026-11-12 12:05",
+      "currency": "USD",
+      "lines": [
+        {
+          "name": "BLACK GARLIC TONKOTSU TO GO",
+          "qty": 2,
+          "unitMinor": 1900,
+          "totalMinor": 3800
+        },
+        {
+          "name": "ICED BARLEY TEA",
+          "qty": 1,
+          "unitMinor": 350,
+          "totalMinor": 350
+        }
+      ],
+      "totalMinor": 4150,
+      "itemPhoto": {
+        "codeSeen": "Y5NC3",
+        "unitsVisible": 2
+      },
+      "anomalies": []
+    }
+  }
+}

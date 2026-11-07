@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-priya-genuine",
+  "description": "Hero: Lin's receipt for Priya's re-offered plush at $10; passes, capture $44.00.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-priya",
+    "qty": 1,
+    "proofCode": "T3HW8",
+    "feeCents": 1000,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Lin",
+  "requester": "Priya K.",
+  "checkedInAt": "2026-11-12T11:30:00-08:00",
+  "uploadedAt": "2026-11-12T11:52:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "retailCents": 3400,
+    "captureCents": 4400
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

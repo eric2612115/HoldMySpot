@@ -1,0 +1,552 @@
+{
+  "_about": "PayPal sandbox responses written from the shapes in PayPal's REST API reference (Orders v2, Payments v2, Payouts v1, Disputes v1, Notifications v1). Ids are made up; people and places are fictional. Real responses recorded by scripts/sandbox-gates.mjs go to fixtures/recorded/ and are checked by recorded.test.ts.",
+  "oauth-token": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "0a1b2c3d4e5f6" },
+    "body": {
+      "scope": "https://uri.paypal.com/services/invoicing https://uri.paypal.com/services/disputes/read-buyer https://uri.paypal.com/services/payments/realtimepayment https://uri.paypal.com/services/disputes/update-seller https://uri.paypal.com/services/payments/payment/authcapture openid https://uri.paypal.com/services/disputes/read-seller https://uri.paypal.com/services/payments/refund https://api.paypal.com/v1/payments/.* https://uri.paypal.com/payments/payouts https://uri.paypal.com/services/shipping/trackers/readwrite https://uri.paypal.com/services/applications/webhooks",
+      "access_token": "A21AAFIXTUREACCESSTOKENVALUE0000",
+      "token_type": "Bearer",
+      "app_id": "APP-80W284485P519543T",
+      "expires_in": 32400,
+      "nonce": "2026-11-08T01:00:00ZfixtureNonce"
+    }
+  },
+  "order-create": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "f1a2b3c4d5e6f" },
+    "body": {
+      "id": "5O190127TN364715T",
+      "intent": "AUTHORIZE",
+      "status": "PAYER_ACTION_REQUIRED",
+      "payment_source": { "paypal": {} },
+      "purchase_units": [
+        {
+          "reference_id": "bid_0001",
+          "custom_id": "bid_0001",
+          "invoice_id": "HMS-bid_0001",
+          "description": "HoldMySpot hold: up to $115.00 for 2 x Lucky Cat plush, launch-day drop",
+          "soft_descriptor": "HOLDMYSPOT",
+          "amount": {
+            "currency_code": "USD",
+            "value": "115.00",
+            "breakdown": { "item_total": { "currency_code": "USD", "value": "80.00" }, "shipping": { "currency_code": "USD", "value": "35.00" } }
+          },
+          "payee": { "email_address": "merchant@business.example.com", "merchant_id": "MERCHANT123ABC" }
+        }
+      ],
+      "create_time": "2026-11-08T01:00:00Z",
+      "links": [
+        { "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "self", "method": "GET" },
+        { "href": "https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T", "rel": "payer-action", "method": "GET" }
+      ]
+    }
+  },
+  "order-authorize": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "a9b8c7d6e5f40" },
+    "body": {
+      "id": "5O190127TN364715T",
+      "intent": "AUTHORIZE",
+      "status": "COMPLETED",
+      "payment_source": {
+        "paypal": {
+          "email_address": "buyer@personal.example.com",
+          "account_id": "QYR5Z8XDVJNXQ",
+          "account_status": "VERIFIED",
+          "name": { "given_name": "Test", "surname": "Buyer" },
+          "address": { "country_code": "US" }
+        }
+      },
+      "purchase_units": [
+        {
+          "reference_id": "bid_0001",
+          "custom_id": "bid_0001",
+          "invoice_id": "HMS-bid_0001",
+          "shipping": {
+            "name": { "full_name": "Test Buyer" },
+            "address": { "address_line_1": "1 Example Street", "admin_area_2": "New York", "admin_area_1": "NY", "postal_code": "10001", "country_code": "US" }
+          },
+          "payments": {
+            "authorizations": [
+              {
+                "status": "CREATED",
+                "id": "0AW2184448108334S",
+                "amount": { "currency_code": "USD", "value": "115.00" },
+                "invoice_id": "HMS-bid_0001",
+                "custom_id": "bid_0001",
+                "seller_protection": { "status": "ELIGIBLE", "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"] },
+                "expiration_time": "2026-12-07T01:00:05Z",
+                "links": [
+                  { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S", "rel": "self", "method": "GET" },
+                  { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S/capture", "rel": "capture", "method": "POST" },
+                  { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S/void", "rel": "void", "method": "POST" },
+                  { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S/reauthorize", "rel": "reauthorize", "method": "POST" },
+                  { "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "up", "method": "GET" }
+                ],
+                "create_time": "2026-11-08T01:00:05Z",
+                "update_time": "2026-11-08T01:00:05Z"
+              }
+            ]
+          }
+        }
+      ],
+      "payer": {
+        "name": { "given_name": "Test", "surname": "Buyer" },
+        "email_address": "buyer@personal.example.com",
+        "payer_id": "QYR5Z8XDVJNXQ",
+        "address": { "country_code": "US" }
+      },
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "self", "method": "GET" }]
+    }
+  },
+  "authorization-get": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "b1c2d3e4f5061" },
+    "body": {
+      "id": "0AW2184448108334S",
+      "status": "PARTIALLY_CAPTURED",
+      "amount": { "currency_code": "USD", "value": "115.00" },
+      "invoice_id": "HMS-bid_0001",
+      "custom_id": "bid_0001",
+      "seller_protection": { "status": "ELIGIBLE", "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"] },
+      "supplementary_data": { "related_ids": { "order_id": "5O190127TN364715T" } },
+      "expiration_time": "2026-12-07T01:00:05Z",
+      "links": [
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S", "rel": "self", "method": "GET" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "up", "method": "GET" }
+      ],
+      "create_time": "2026-11-08T01:00:05Z",
+      "update_time": "2026-11-08T01:40:00Z"
+    }
+  },
+  "authorization-voided": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "c2d3e4f506172" },
+    "body": {
+      "id": "0AW2184448108334S",
+      "status": "VOIDED",
+      "amount": { "currency_code": "USD", "value": "115.00" },
+      "invoice_id": "HMS-bid_0001",
+      "supplementary_data": { "related_ids": { "order_id": "5O190127TN364715T" } },
+      "expiration_time": "2026-12-07T01:00:05Z",
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S", "rel": "self", "method": "GET" }],
+      "create_time": "2026-11-08T01:00:05Z",
+      "update_time": "2026-11-08T03:00:00Z"
+    }
+  },
+  "authorization-reauthorized": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "d3e4f50617283" },
+    "body": {
+      "id": "8AA831015G517922L",
+      "status": "CREATED",
+      "amount": { "currency_code": "USD", "value": "115.00" },
+      "expiration_time": "2026-12-07T01:00:05Z",
+      "links": [
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/8AA831015G517922L", "rel": "self", "method": "GET" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/8AA831015G517922L/capture", "rel": "capture", "method": "POST" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/8AA831015G517922L/void", "rel": "void", "method": "POST" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "up", "method": "GET" }
+      ],
+      "create_time": "2026-11-11T09:00:00Z",
+      "update_time": "2026-11-11T09:00:00Z"
+    }
+  },
+  "capture-receipt": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "e4f5061728394" },
+    "body": {
+      "id": "7TK53561YB803214S",
+      "status": "COMPLETED",
+      "amount": { "currency_code": "USD", "value": "76.01" },
+      "final_capture": false,
+      "invoice_id": "HMS-job_0001-R",
+      "note_to_payer": "Little Lantern Toys receipt, 2 plush, plus the queue fee",
+      "seller_protection": { "status": "ELIGIBLE", "dispute_categories": ["ITEM_NOT_RECEIVED", "UNAUTHORIZED_TRANSACTION"] },
+      "seller_receivable_breakdown": {
+        "gross_amount": { "currency_code": "USD", "value": "76.01" },
+        "paypal_fee": { "currency_code": "USD", "value": "3.14" },
+        "net_amount": { "currency_code": "USD", "value": "72.87" }
+      },
+      "links": [
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/captures/7TK53561YB803214S", "rel": "self", "method": "GET" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/captures/7TK53561YB803214S/refund", "rel": "refund", "method": "POST" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S", "rel": "up", "method": "GET" }
+      ],
+      "create_time": "2026-11-08T01:44:00Z",
+      "update_time": "2026-11-08T01:44:00Z"
+    }
+  },
+  "refund-completed": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "f50617283940a" },
+    "body": {
+      "id": "1JU08902781691411",
+      "status": "COMPLETED",
+      "amount": { "currency_code": "USD", "value": "5.00" },
+      "invoice_id": "HMS-job_0001-F1",
+      "note_to_payer": "Partial refund",
+      "seller_payable_breakdown": {
+        "gross_amount": { "currency_code": "USD", "value": "5.00" },
+        "paypal_fee": { "currency_code": "USD", "value": "0.00" },
+        "net_amount": { "currency_code": "USD", "value": "5.00" },
+        "total_refunded_amount": { "currency_code": "USD", "value": "5.00" }
+      },
+      "links": [
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/refunds/1JU08902781691411", "rel": "self", "method": "GET" },
+        { "href": "https://api-m.sandbox.paypal.com/v2/payments/captures/7TK53561YB803214S", "rel": "up", "method": "GET" }
+      ],
+      "create_time": "2026-11-08T05:00:00Z",
+      "update_time": "2026-11-08T05:00:00Z"
+    }
+  },
+  "order-tracked": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "0617283940a1b" },
+    "body": {
+      "id": "5O190127TN364715T",
+      "intent": "AUTHORIZE",
+      "status": "COMPLETED",
+      "purchase_units": [
+        {
+          "reference_id": "bid_0001",
+          "invoice_id": "HMS-bid_0001",
+          "shipping": {
+            "name": { "full_name": "Test Buyer" },
+            "address": { "address_line_1": "1 Example Street", "admin_area_2": "New York", "admin_area_1": "NY", "postal_code": "10001", "country_code": "US" },
+            "trackers": [
+              {
+                "id": "7TK53561YB803214S-HMS0001TRACK",
+                "status": "SHIPPED",
+                "items": [],
+                "links": [{ "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T/trackers/7TK53561YB803214S-HMS0001TRACK", "rel": "self", "method": "GET" }],
+                "create_time": "2026-11-08T06:00:00Z",
+                "update_time": "2026-11-08T06:00:00Z"
+              }
+            ]
+          }
+        }
+      ],
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v2/checkout/orders/5O190127TN364715T", "rel": "self", "method": "GET" }]
+    }
+  },
+  "payout-create": {
+    "status": 201,
+    "headers": { "paypal-debug-id": "17283940a1b2c" },
+    "body": {
+      "batch_header": {
+        "payout_batch_id": "5UXD2E8A7EBQJ",
+        "batch_status": "PENDING",
+        "sender_batch_header": {
+          "sender_batch_id": "payout:job_0001:fee",
+          "email_subject": "You have a payout from HoldMySpot",
+          "email_message": "Queue fee for 2 plush at Little Lantern Toys."
+        }
+      },
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/payments/payouts/5UXD2E8A7EBQJ", "rel": "self", "method": "GET", "encType": "application/json" }]
+    }
+  },
+  "payout-batch": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "283940a1b2c3d" },
+    "body": {
+      "batch_header": {
+        "payout_batch_id": "5UXD2E8A7EBQJ",
+        "batch_status": "SUCCESS",
+        "time_created": "2026-11-08T01:45:00Z",
+        "time_completed": "2026-11-08T01:45:30Z",
+        "sender_batch_header": { "sender_batch_id": "payout:job_0001:fee", "email_subject": "You have a payout from HoldMySpot" },
+        "amount": { "currency": "USD", "value": "21.60" },
+        "fees": { "currency": "USD", "value": "0.00" }
+      },
+      "items": [
+        {
+          "payout_item_id": "8AELMXH8UB2P8",
+          "transaction_id": "0C413693MN970190K",
+          "activity_id": "0E158638XS0329106",
+          "transaction_status": "SUCCESS",
+          "payout_item_fee": { "currency": "USD", "value": "0.00" },
+          "payout_batch_id": "5UXD2E8A7EBQJ",
+          "payout_item": {
+            "recipient_type": "EMAIL",
+            "amount": { "currency": "USD", "value": "21.60" },
+            "note": "Queue fee, 2 x Lucky Cat plush, Little Lantern Toys",
+            "receiver": "queuer-payouts@personal.example.com",
+            "sender_item_id": "po_0001",
+            "recipient_wallet": "PAYPAL"
+          },
+          "time_processed": "2026-11-08T01:45:30Z",
+          "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/payments/payouts-item/8AELMXH8UB2P8", "rel": "item", "method": "GET" }]
+        }
+      ],
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/payments/payouts/5UXD2E8A7EBQJ", "rel": "self", "method": "GET" }]
+    }
+  },
+  "payout-item-unclaimed": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "3940a1b2c3d4e" },
+    "body": {
+      "payout_item_id": "8AELMXH8UB2P8",
+      "transaction_id": "0C413693MN970190K",
+      "activity_id": "0E158638XS0329106",
+      "transaction_status": "UNCLAIMED",
+      "payout_item_fee": { "currency": "USD", "value": "0.00" },
+      "payout_batch_id": "5UXD2E8A7EBQJ",
+      "payout_item": {
+        "recipient_type": "EMAIL",
+        "amount": { "currency": "USD", "value": "21.60" },
+        "note": "Queue fee, 2 x Lucky Cat plush, Little Lantern Toys",
+        "receiver": "queuer-payouts@personal.example.com",
+        "sender_item_id": "po_0001",
+        "recipient_wallet": "PAYPAL"
+      },
+      "time_processed": "2026-11-08T01:45:30Z",
+      "errors": {
+        "name": "RECEIVER_UNREGISTERED",
+        "message": "Receiver is unregistered",
+        "information_link": "https://developer.paypal.com/docs/api/payments.payouts-batch/#errors"
+      },
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/payments/payouts-item/8AELMXH8UB2P8", "rel": "item", "method": "GET" }]
+    }
+  },
+  "disputes-list": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "40a1b2c3d4e5f" },
+    "body": {
+      "items": [
+        {
+          "dispute_id": "PP-D-27803",
+          "create_time": "2026-11-08T07:00:00.000Z",
+          "update_time": "2026-11-08T07:00:00.000Z",
+          "status": "WAITING_FOR_SELLER_RESPONSE",
+          "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+          "dispute_state": "REQUIRED_ACTION",
+          "dispute_amount": { "currency_code": "USD", "value": "76.01" },
+          "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27803", "rel": "self", "method": "GET" }]
+        },
+        {
+          "dispute_id": "PP-D-27804",
+          "create_time": "2026-11-08T08:00:00.000Z",
+          "update_time": "2026-11-08T08:00:00.000Z",
+          "status": "OPEN",
+          "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+          "dispute_amount": { "currency_code": "USD", "value": "12.00" },
+          "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27804", "rel": "self", "method": "GET" }]
+        }
+      ],
+      "links": []
+    }
+  },
+  "dispute-hms": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "a1b2c3d4e5f60" },
+    "body": {
+      "dispute_id": "PP-D-27803",
+      "create_time": "2026-11-08T07:00:00.000Z",
+      "update_time": "2026-11-08T07:00:00.000Z",
+      "disputed_transactions": [
+        {
+          "seller_transaction_id": "7TK53561YB803214S",
+          "create_time": "2026-11-08T01:44:00.000Z",
+          "transaction_status": "COMPLETED",
+          "gross_amount": { "currency_code": "USD", "value": "76.01" },
+          "invoice_number": "HMS-job_0001-R",
+          "custom": "bid_0001",
+          "buyer": { "name": "Test Buyer" },
+          "seller": { "email": "merchant@business.example.com", "merchant_id": "MERCHANT123ABC", "name": "HoldMySpot" }
+        }
+      ],
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+      "status": "WAITING_FOR_SELLER_RESPONSE",
+      "dispute_amount": { "currency_code": "USD", "value": "76.01" },
+      "dispute_life_cycle_stage": "INQUIRY",
+      "dispute_channel": "INTERNAL",
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27803", "rel": "self", "method": "GET" }]
+    }
+  },
+  "dispute-other-app": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "b2c3d4e5f6071" },
+    "body": {
+      "dispute_id": "PP-D-27804",
+      "create_time": "2026-11-08T08:00:00.000Z",
+      "update_time": "2026-11-08T08:00:00.000Z",
+      "disputed_transactions": [
+        {
+          "seller_transaction_id": "9XL12345AB6789012",
+          "gross_amount": { "currency_code": "USD", "value": "12.00" },
+          "invoice_number": "OTHER-APP-0042"
+        }
+      ],
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+      "status": "OPEN",
+      "dispute_amount": { "currency_code": "USD", "value": "12.00" },
+      "dispute_life_cycle_stage": "INQUIRY"
+    }
+  },
+  "dispute-resolved-seller": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "c3d4e5f607182" },
+    "body": {
+      "dispute_id": "PP-D-27803",
+      "create_time": "2026-11-08T07:00:00.000Z",
+      "update_time": "2026-11-08T09:00:00.000Z",
+      "disputed_transactions": [{ "seller_transaction_id": "7TK53561YB803214S", "invoice_number": "HMS-job_0001-R" }],
+      "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+      "status": "RESOLVED",
+      "dispute_amount": { "currency_code": "USD", "value": "76.01" },
+      "dispute_outcome": { "outcome_code": "RESOLVED_SELLER_FAVOUR", "amount_refunded": { "currency_code": "USD", "value": "0.00" } },
+      "dispute_life_cycle_stage": "CHARGEBACK"
+    }
+  },
+  "dispute-action": {
+    "status": 200,
+    "headers": { "paypal-debug-id": "d4e5f60718293" },
+    "body": { "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-D-27803", "rel": "self", "method": "GET" }] }
+  },
+  "webhook-verify-success": { "status": 200, "headers": { "paypal-debug-id": "e5f60718293a4" }, "body": { "verification_status": "SUCCESS" } },
+  "webhook-verify-failure": { "status": 200, "headers": { "paypal-debug-id": "f60718293a4b5" }, "body": { "verification_status": "FAILURE" } },
+  "webhook-event-capture-completed": {
+    "id": "WH-58D329510W468432D-8HN650336L201105X",
+    "event_version": "1.0",
+    "create_time": "2026-11-08T01:44:30.000Z",
+    "resource_type": "capture",
+    "resource_version": "2.0",
+    "event_type": "PAYMENT.CAPTURE.COMPLETED",
+    "summary": "Payment completed for $ 76.01 USD",
+    "resource": {
+      "id": "7TK53561YB803214S",
+      "status": "COMPLETED",
+      "amount": { "currency_code": "USD", "value": "76.01" },
+      "final_capture": false,
+      "invoice_id": "HMS-job_0001-R",
+      "links": [{ "href": "https://api-m.sandbox.paypal.com/v2/payments/authorizations/0AW2184448108334S", "rel": "up", "method": "GET" }]
+    },
+    "links": [{ "href": "https://api-m.sandbox.paypal.com/v1/notifications/webhooks-events/WH-58D329510W468432D-8HN650336L201105X", "rel": "self", "method": "GET" }]
+  },
+  "webhook-event-payout-item": {
+    "id": "WH-1FD70245KW880453T-0YF06392M1029584M",
+    "event_version": "1.0",
+    "create_time": "2026-11-08T01:46:00.000Z",
+    "resource_type": "payouts_item",
+    "event_type": "PAYMENT.PAYOUTS-ITEM.UNCLAIMED",
+    "resource": {
+      "payout_item_id": "8AELMXH8UB2P8",
+      "transaction_status": "UNCLAIMED",
+      "payout_batch_id": "5UXD2E8A7EBQJ",
+      "sender_batch_id": "payout:job_0001:fee",
+      "payout_item": { "receiver": "queuer-payouts@personal.example.com", "sender_item_id": "po_0001", "amount": { "currency": "USD", "value": "21.60" } }
+    }
+  },
+  "error-instrument-declined": {
+    "status": 422,
+    "headers": { "paypal-debug-id": "90957fca61718" },
+    "body": {
+      "name": "UNPROCESSABLE_ENTITY",
+      "details": [{ "issue": "INSTRUMENT_DECLINED", "description": "The instrument presented  was either declined by the processor or bank, or it can't be used for this payment." }],
+      "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+      "debug_id": "90957fca61718",
+      "links": [
+        { "href": "https://developer.paypal.com/docs/api/orders/v2/#error-INSTRUMENT_DECLINED", "rel": "information_link", "method": "GET" },
+        { "href": "https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T", "rel": "redirect", "method": "GET" }
+      ]
+    }
+  },
+  "error-order-already-authorized": {
+    "status": 422,
+    "headers": { "paypal-debug-id": "1a2b3c4d5e6f7" },
+    "body": {
+      "name": "UNPROCESSABLE_ENTITY",
+      "details": [{ "issue": "ORDER_ALREADY_AUTHORIZED", "description": "Order already authorized. If 'intent=AUTHORIZE' only one authorization per order is allowed." }],
+      "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+      "debug_id": "1a2b3c4d5e6f7"
+    }
+  },
+  "error-authorization-expired": {
+    "status": 422,
+    "headers": { "paypal-debug-id": "2b3c4d5e6f708" },
+    "body": {
+      "name": "UNPROCESSABLE_ENTITY",
+      "details": [{ "issue": "AUTHORIZATION_EXPIRED", "description": "An expired authorization cannot be captured." }],
+      "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+      "debug_id": "2b3c4d5e6f708"
+    }
+  },
+  "error-authorization-voided": {
+    "status": 422,
+    "headers": { "paypal-debug-id": "3c4d5e6f70819" },
+    "body": {
+      "name": "UNPROCESSABLE_ENTITY",
+      "details": [{ "issue": "AUTHORIZATION_VOIDED", "description": "A voided authorization cannot be captured or reauthorized." }],
+      "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+      "debug_id": "3c4d5e6f70819"
+    }
+  },
+  "error-max-capture-amount": {
+    "status": 422,
+    "headers": { "paypal-debug-id": "4d5e6f708192a" },
+    "body": {
+      "name": "UNPROCESSABLE_ENTITY",
+      "details": [
+        {
+          "issue": "MAX_CAPTURE_AMOUNT_EXCEEDED",
+          "description": "Capture amount exceeds allowable limit. Please contact customer service or your account manager to request the change to your overage limit. The default overage limit is 115%, which allows the sum of all captures to be up to 115% of the order amount."
+        }
+      ],
+      "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+      "debug_id": "4d5e6f708192a"
+    }
+  },
+  "error-permission-not-granted": {
+    "status": 403,
+    "headers": { "paypal-debug-id": "5e6f708192a3b" },
+    "body": {
+      "name": "NOT_AUTHORIZED",
+      "details": [{ "issue": "PERMISSION_NOT_GRANTED", "description": "Payee of the authorization has not granted permission to perform capture on the authorization." }],
+      "message": "Authorization failed due to insufficient permissions.",
+      "debug_id": "5e6f708192a3b"
+    }
+  },
+  "error-not-found": {
+    "status": 404,
+    "headers": { "paypal-debug-id": "6f708192a3b4c" },
+    "body": {
+      "name": "RESOURCE_NOT_FOUND",
+      "details": [{ "issue": "INVALID_RESOURCE_ID", "description": "Specified resource ID does not exist. Please check the resource ID and try again." }],
+      "message": "The specified resource does not exist.",
+      "debug_id": "6f708192a3b4c"
+    }
+  },
+  "error-rate-limit": {
+    "status": 429,
+    "headers": { "paypal-debug-id": "708192a3b4c5d", "retry-after": "2" },
+    "body": { "name": "RATE_LIMIT_REACHED", "message": "Too many requests. Blocked due to rate limiting.", "debug_id": "708192a3b4c5d" }
+  },
+  "error-internal": {
+    "status": 500,
+    "headers": { "paypal-debug-id": "8192a3b4c5d6e" },
+    "body": { "name": "INTERNAL_SERVER_ERROR", "message": "An internal server error occurred.", "debug_id": "8192a3b4c5d6e" }
+  },
+  "error-unauthorized-token": {
+    "status": 401,
+    "headers": { "paypal-debug-id": "92a3b4c5d6e7f" },
+    "body": { "name": "AUTHENTICATION_FAILURE", "message": "Authentication failed due to missing authorization header, or invalid authentication credentials.", "debug_id": "92a3b4c5d6e7f" }
+  },
+  "error-oauth-invalid-client": {
+    "status": 401,
+    "body": { "error": "invalid_client", "error_description": "Client Authentication failed" }
+  },
+  "error-payout-duplicate": {
+    "status": 400,
+    "headers": { "paypal-debug-id": "a3b4c5d6e7f80" },
+    "body": {
+      "name": "USER_BUSINESS_ERROR",
+      "message": "User business error.",
+      "debug_id": "a3b4c5d6e7f80",
+      "information_link": "https://developer.paypal.com/docs/api/payments.payouts-batch/#errors",
+      "details": [{ "field": "SENDER_BATCH_ID", "location": "body", "issue": "Batch with given sender_batch_id already exists" }],
+      "links": []
+    }
+  }
+}

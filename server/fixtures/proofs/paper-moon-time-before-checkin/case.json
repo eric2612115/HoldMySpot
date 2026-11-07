@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-time-before-checkin",
+  "description": "Printed 10:31, before the check-in at 10:50 and before opening: time_window fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c4",
+    "qty": 1,
+    "proofCode": "R8EF2",
+    "feeCents": 1400,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Lin",
+  "requester": "Sam W.",
+  "checkedInAt": "2026-11-12T10:50:00-08:00",
+  "uploadedAt": "2026-11-12T11:39:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "time_window"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

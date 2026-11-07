@@ -1,0 +1,30 @@
+[
+  {
+    "id": "lin-item-1111",
+    "file": "lin-item-1111.png",
+    "ownerId": "job-h-lin",
+    "purpose": "item_photo",
+    "uploadedAt": "2026-11-11T11:52:00-08:00"
+  },
+  {
+    "id": "jo-item-1110",
+    "file": "jo-item-1110.png",
+    "ownerId": "job-h-jo",
+    "purpose": "item_photo",
+    "uploadedAt": "2026-11-10T11:38:00-08:00"
+  },
+  {
+    "id": "ava-receipt-1111",
+    "file": "ava-receipt-1111.png",
+    "ownerId": "job-h-ava",
+    "purpose": "receipt",
+    "uploadedAt": "2026-11-11T11:31:00-08:00"
+  },
+  {
+    "id": "rin-line-1111",
+    "file": "rin-line-1111.png",
+    "ownerId": "claim-h-rin",
+    "purpose": "line_photo",
+    "uploadedAt": "2026-11-11T10:40:00-08:00"
+  }
+]

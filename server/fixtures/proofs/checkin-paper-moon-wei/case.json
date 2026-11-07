@@ -1,0 +1,28 @@
+{
+  "kind": "check_in",
+  "id": "checkin-paper-moon-wei",
+  "description": "Hero: Wei's line photo with his check-in code and about 40 people ahead; passes.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "claim": {
+    "id": "claim-wei",
+    "code": "M4RT7"
+  },
+  "queuer": "Wei",
+  "geofence": {
+    "ok": true,
+    "distanceM": 34,
+    "radiusM": 80
+  },
+  "at": "2026-11-12T10:50:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "peopleAhead": 40
+  },
+  "files": {
+    "line": "line.png"
+  },
+  "reusedPhoto": null
+}

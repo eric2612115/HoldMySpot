@@ -1,0 +1,38 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-rex-fake",
+  "description": "Hero: Rex's fake receipt: another store on the QR, printed before his check-in, the line does not add up to the total, recycled item photo. Nothing is captured.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-rex",
+    "qty": 1,
+    "proofCode": "C8MR2",
+    "feeCents": 1100,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Rex",
+  "requester": "Priya K.",
+  "checkedInAt": "2026-11-12T10:57:00-08:00",
+  "uploadedAt": "2026-11-12T11:18:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "shop_match",
+      "time_window",
+      "totals_add_up",
+      "duplicate_photo"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": {
+    "file": "item.png",
+    "from": "jo-item-1110"
+  }
+}

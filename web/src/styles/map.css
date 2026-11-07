@@ -1,0 +1,1265 @@
+.map-page {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* clip, where supported, also stops focus or scrollIntoView from shifting the whole screen. */
+  overflow: clip;
+  isolation: isolate;
+  background: var(--ground);
+  font-family: var(--font-play);
+}
+
+/* More specific than MapLibre's own .maplibregl-map rule, which loads later with the page. */
+.map-page > .map-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.map-canvas .maplibregl-canvas {
+  outline: none;
+  cursor: pointer;
+}
+
+.sky-haze {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 24%;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, #d9e9ff 0%, rgba(241, 236, 255, 0.92) 30%, rgba(241, 236, 255, 0.5) 62%, rgba(241, 236, 255, 0) 100%);
+  transition: opacity 0.4s var(--ease-out);
+}
+
+/* With a sheet open the map is a short strip: keep the shop and its line clear. */
+.sky-haze.is-dim {
+  opacity: 0.25;
+}
+
+/* Floating labels over task points. */
+.labels {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tlabel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0 0 calc(9px + var(--stem, 0px));
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  will-change: transform;
+  filter: drop-shadow(0 5px 10px rgba(40, 30, 110, 0.18));
+  /* Hidden until the map places it; fades instead of blinking. */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    visibility 0s linear 0.18s;
+}
+
+.tlabel.is-shown,
+.wtag.is-shown {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.18s ease;
+}
+
+.tlabel.is-shown {
+  pointer-events: auto;
+}
+
+.tlabel__ticket {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 13px 6px;
+  border-radius: 12px;
+  background: var(--paper);
+  /* Ticket notches on both sides, like a take-a-number slip. */
+  -webkit-mask:
+    radial-gradient(circle 5px at 0 50%, transparent 95%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 5px at 100% 50%, transparent 95%, #000) right / 51% 100% no-repeat;
+  mask:
+    radial-gradient(circle 5px at 0 50%, transparent 95%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 5px at 100% 50%, transparent 95%, #000) right / 51% 100% no-repeat;
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--hue) 70%, white);
+}
+
+.tlabel__name {
+  font: 600 11px/1.1 var(--font-play);
+  color: color-mix(in srgb, var(--hue) 62%, var(--ink));
+  letter-spacing: 0.01em;
+}
+
+.tlabel__stats {
+  font: 500 12.5px/1.2 var(--font-play);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.tlabel__count {
+  display: inline-block;
+  font-weight: 650;
+  transform-origin: 50% 60%;
+  animation: bump 0.5s var(--ease-out);
+}
+
+/* The tip slides along the ticket so it always points at the item. */
+.tlabel__tip {
+  position: absolute;
+  left: calc(50% + var(--tip-x, 0px));
+  bottom: calc(2px + var(--stem, 0px));
+  width: 14px;
+  height: 8px;
+  transform: translateX(-50%);
+  background: var(--paper);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+/* A thin stem down to the item when the ticket was pushed up to clear a nearer one. */
+.tlabel__stem {
+  position: absolute;
+  left: calc(50% + var(--tip-x, 0px));
+  bottom: 0;
+  width: 2px;
+  height: calc(var(--stem, 0px) + 3px);
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--hue) 60%, var(--ink));
+  opacity: 0.55;
+}
+
+.tlabel.is-selected .tlabel__ticket {
+  background: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--hue);
+}
+.tlabel.is-selected .tlabel__stats {
+  color: #fff;
+}
+.tlabel.is-selected .tlabel__name {
+  color: color-mix(in srgb, var(--hue) 60%, white);
+}
+.tlabel.is-selected .tlabel__tip {
+  background: var(--ink);
+}
+
+/* A new bid: the count gives a small nudge and blushes, without covering its neighbours. */
+@keyframes bump {
+  0% {
+    transform: none;
+  }
+  30% {
+    transform: translateY(-1.5px) scale(1.1);
+    color: var(--hot);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* A walking queuer's ask: a speech bubble with a tail down to their head. */
+.wtag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding-bottom: calc(9px + var(--stem, 0px));
+  transform-origin: 50% 100%;
+  will-change: transform;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.18s ease,
+    visibility 0s linear 0.18s;
+}
+
+.wtag__bubble {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 7px;
+  border-radius: 999px;
+  background: rgba(35, 37, 58, 0.88);
+  color: #fff;
+  font: 500 11.5px/1.2 var(--font-play);
+  white-space: nowrap;
+}
+
+.wtag__tip {
+  background: rgba(35, 37, 58, 0.88);
+  bottom: calc(2px + var(--stem, 0px));
+  width: 12px;
+  height: 7px;
+}
+
+.wtag__stem {
+  background: rgba(35, 37, 58, 0.7);
+}
+
+.wtag__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4cc9f0;
+  box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.3);
+}
+
+.wtag__dot.is-off {
+  background: #9aa0bd;
+  box-shadow: none;
+}
+
+/* Top bar. */
+.topbar {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  /* Above the sheet's scrim, so Money and the avatar stay one tap away. */
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.phone .topbar {
+  top: 54px;
+}
+
+@media (max-width: 720px), (max-height: 560px) {
+  .phone .topbar {
+    top: max(14px, env(safe-area-inset-top));
+  }
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.player-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 14px 4px 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-1);
+  color: var(--ink);
+  text-decoration: none;
+  max-width: 62%;
+}
+
+.player-chip svg {
+  flex: none;
+  border-radius: 50%;
+}
+
+.player-chip__text {
+  display: grid;
+  min-width: 0;
+}
+
+.player-chip__text strong {
+  font: 600 14.5px/1.15 var(--font-play);
+}
+
+.player-chip__text span {
+  font: 500 11.5px/1.25 var(--font-money);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.money-chip {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  padding: 7px 14px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  font-family: var(--font-money);
+  text-align: right;
+}
+
+.money-chip.is-open {
+  box-shadow:
+    0 0 0 2px var(--pp),
+    var(--shadow-1);
+}
+
+/* The mode banner (docs/DOMAIN.md section 9): on every screen, since the top bar stays above sheets. */
+.money-chip__mode {
+  padding: 2px 6px 3px;
+  border-radius: 6px;
+  background: #fff1d6;
+  color: #7a5200;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.money-chip__value {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--pp);
+  line-height: 1.15;
+  animation: chip-in 0.4s var(--ease-out);
+}
+
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Money panel: plain, exact, clearly money. */
+.money {
+  position: absolute;
+  top: 116px;
+  left: 10px;
+  right: 10px;
+  z-index: 6;
+  max-height: calc(100% - 136px);
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--paper);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-money);
+  transform-origin: top right;
+  transform: translateY(-10px) scale(0.97);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 0.28s var(--ease-out),
+    opacity 0.2s,
+    visibility 0s linear 0.28s;
+}
+
+@media (max-width: 720px), (max-height: 560px) {
+  .phone .money {
+    top: 76px;
+  }
+}
+
+.money.is-open {
+  transform: none;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform 0.32s var(--ease-out),
+    opacity 0.2s;
+}
+
+.money__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.money__head h2 {
+  font: 700 18px/1.2 var(--font-money);
+}
+
+.money__head p {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.money__held {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 14px 0 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--held-bg);
+  color: var(--held);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.money__held strong {
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.money__totals {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.money__totals .money__held {
+  margin: 0;
+}
+
+.money__held.is-paid {
+  background: #e3efff;
+  color: #1f5fbf;
+}
+
+.money__who-note {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
+.money__who {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  line-height: 1.3;
+}
+
+.money__legend {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+
+.money__legend > div {
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.money__legend dt {
+  margin: 0;
+}
+
+.money__legend dd {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.money__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.money__list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'chip text amount'
+    'chip text time';
+  column-gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  animation: row-in 0.35s var(--ease-out);
+}
+
+.money__list .state-chip {
+  grid-area: chip;
+  align-self: start;
+  margin-top: 1px;
+}
+
+.money__text {
+  grid-area: text;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.money__amount {
+  grid-area: amount;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.money__time {
+  grid-area: time;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.money__empty {
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Toasts drop in over the top bar, like a notification, so they never cover the map strip. */
+.toasts {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  width: calc(100% - 20px);
+  max-width: 370px;
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.phone .toasts {
+  top: 50px;
+}
+
+@media (max-width: 720px), (max-height: 560px) {
+  .phone .toasts {
+    top: max(10px, env(safe-area-inset-top));
+  }
+}
+
+.toast {
+  pointer-events: auto;
+  text-align: left;
+  border: 0;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: #fff;
+  font: 500 13.5px/1.4 var(--font-money);
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  animation: toast-in 0.4s var(--ease-spring);
+}
+
+.toast.is-money {
+  background: var(--pp);
+}
+
+.toast.is-win {
+  background: linear-gradient(120deg, var(--grape-deep), #7b5cf0);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+}
+
+/* First-run hint. */
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(34px + env(safe-area-inset-bottom));
+  z-index: 4;
+  transform: translate(-50%, 8px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(35, 37, 58, 0.88);
+  color: #fff;
+  font: 500 13.5px/1.3 var(--font-play);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s,
+    transform 0.3s var(--ease-out);
+}
+
+.hint.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.attribution {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  z-index: 3;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #5d6180;
+  font: 500 9.5px/1.4 var(--font-money);
+}
+
+.phone .attribution {
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.attribution a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.attribution a:hover {
+  text-decoration: underline;
+}
+
+/* Loading veil. */
+.veil {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  background: var(--ground);
+  color: var(--ink-2);
+  font: 500 15px/1.4 var(--font-play);
+  text-align: center;
+  padding: 24px;
+  transition:
+    opacity 0.6s var(--ease-out),
+    visibility 0s linear 0.6s;
+}
+
+.veil.is-gone {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.veil__dots {
+  display: flex;
+  gap: 8px;
+}
+
+.veil__dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--grape);
+  animation: hop 0.9s var(--ease-out) infinite;
+}
+
+.veil__dots i:nth-child(2) {
+  background: #ff7bac;
+  animation-delay: 0.12s;
+}
+
+.veil__dots i:nth-child(3) {
+  background: var(--sun);
+  animation-delay: 0.24s;
+}
+
+@keyframes hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ---------------------------------------------------------------- v2: overview, controls, earning */
+
+.sky-haze.is-off {
+  opacity: 0;
+}
+
+/* A task the viewer cannot take: muted, still readable. */
+.tlabel.is-blocked .tlabel__ticket {
+  background: #f1f1f6;
+  box-shadow: inset 0 -3px 0 #c9cbd8;
+}
+.tlabel.is-blocked .tlabel__name,
+.tlabel.is-blocked .tlabel__stats {
+  color: #8a8ea6;
+}
+.tlabel.is-blocked .tlabel__tip {
+  background: #f1f1f6;
+}
+
+/* Round buttons on the right: street view or overview, and back to me. */
+.map-controls {
+  position: absolute;
+  right: 12px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 7;
+  display: grid;
+  gap: 10px;
+  transition:
+    opacity 0.25s,
+    transform 0.3s var(--ease-out);
+}
+.map-controls.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+}
+.map-button {
+  display: grid;
+  place-items: center;
+  gap: 0;
+  width: 50px;
+  height: 50px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--grape-deep);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+}
+.map-button span {
+  font: 650 10.5px/1 var(--font-play);
+  margin-top: -2px;
+}
+.map-button.is-locate {
+  border-radius: 50%;
+  color: #1a73e8;
+}
+.map-button.is-busy svg {
+  animation: locate-pulse 0.9s ease-in-out infinite;
+}
+@keyframes locate-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* The overview layer: dots, the travel ring, the player, filters and the list. */
+.ov {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.ov > * {
+  pointer-events: auto;
+}
+.ov__ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none !important;
+}
+.ov__ring text {
+  font: 600 11.5px/1 var(--font-play);
+  fill: rgba(69, 54, 214, 0.75);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 3px;
+}
+.ov__leader line {
+  stroke: rgba(35, 37, 58, 0.45);
+  stroke-width: 1.5;
+}
+.ov__leader circle {
+  fill: #fff;
+  stroke: rgba(35, 37, 58, 0.55);
+  stroke-width: 1.5;
+}
+.ov__ring > circle {
+  fill: rgba(91, 76, 240, 0.05);
+  stroke: rgba(91, 76, 240, 0.45);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 6;
+}
+.ov-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  animation: ov-in 0.35s var(--ease-spring);
+}
+@keyframes ov-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+.ov-dot__disc {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hue) 34%, white);
+  box-shadow:
+    0 0 0 calc(2px + var(--glow) * 5px) color-mix(in srgb, var(--hue) 35%, transparent),
+    0 0 calc(10px + var(--glow) * 22px) calc(var(--glow) * 6px) color-mix(in srgb, var(--hue) 70%, transparent),
+    0 3px 8px rgba(35, 30, 90, 0.25);
+  cursor: pointer;
+}
+.ov-dot__disc .item-icon {
+  pointer-events: none;
+}
+.ov-chip.is-above {
+  translate: -50% calc(-100% - var(--r, 10px) - 6px);
+}
+.ov-chip.is-below {
+  translate: -50% calc(var(--r, 10px) + 6px);
+}
+.ov-chip.is-right {
+  translate: calc(var(--r, 10px) + 6px) -50%;
+}
+.ov-chip.is-left {
+  translate: calc(-100% - var(--r, 10px) - 6px) -50%;
+}
+.ov-dot.is-cluster .ov-dot__disc {
+  border-color: var(--grape);
+}
+.ov-dot__count {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--grape);
+  color: #fff;
+  font: 700 12px/1 var(--font-play);
+}
+.ov-dot.is-blocked .ov-dot__disc {
+  background: #e6e7ee;
+  box-shadow: 0 2px 6px rgba(35, 30, 90, 0.18);
+  filter: grayscale(1);
+  opacity: 0.85;
+}
+.ov-chip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  gap: 1px;
+  padding: 5px 9px 6px;
+  border: 0;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(35, 30, 90, 0.18);
+  text-align: center;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ov-chip b {
+  font: 650 12px/1.15 var(--font-play);
+}
+.ov-chip span {
+  font: 500 10.5px/1.2 var(--font-money);
+  color: var(--ink-3);
+}
+.ov-dot.is-blocked .ov-chip {
+  background: #f1f1f6;
+}
+.ov-dot.is-blocked .ov-chip b {
+  color: #8a8ea6;
+}
+.ov-me {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  width: 26px;
+  height: 26px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 4px rgba(26, 115, 232, 0.35),
+    0 4px 10px rgba(35, 30, 90, 0.25);
+  pointer-events: none !important;
+}
+.ov-me svg {
+  border-radius: 50%;
+}
+
+.ov-filters {
+  position: absolute;
+  top: 66px;
+  left: 0;
+  right: 0;
+  display: grid;
+  gap: 6px;
+  padding: 2px 0 6px;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.25s,
+    transform 0.3s var(--ease-out);
+  pointer-events: none !important;
+}
+.ov-filters__row {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ov-filters__row::-webkit-scrollbar {
+  display: none;
+}
+/* On a phone too narrow for a whole row, a fade on the right says there is more to scroll to. */
+.ov-filters__row.is-overflowing {
+  mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+}
+.phone .ov-filters {
+  top: 108px;
+}
+@media (max-width: 720px), (max-height: 560px) {
+  .phone .ov-filters {
+    top: 68px;
+  }
+}
+.ov.is-active .ov-filters {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto !important;
+}
+.ov-filters__gap {
+  flex: none;
+  width: 4px;
+}
+.ov-pill {
+  flex: none;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--ink-2);
+  font: 600 12.5px/1 var(--font-play);
+  box-shadow: 0 2px 8px rgba(35, 30, 90, 0.12);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ov-pill.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+
+.ov-listbtn {
+  position: absolute;
+  left: 50%;
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font: 600 14px/1 var(--font-play);
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none !important;
+  transition: opacity 0.25s;
+  z-index: 2;
+}
+.ov.is-active .ov-listbtn {
+  opacity: 1;
+  pointer-events: auto !important;
+}
+.ov-listbtn.is-open {
+  /* Clear of the map credits, which sit just above the list. */
+  bottom: calc(68% + 30px);
+}
+
+.ov-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 68%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 26px 26px 0 0;
+  background: var(--paper);
+  box-shadow: 0 -12px 40px rgba(35, 30, 90, 0.2);
+  transform: translateY(105%);
+  transition: transform 0.45s var(--ease-out);
+  visibility: hidden;
+  z-index: 1;
+}
+.ov-list.is-open {
+  transform: none;
+  visibility: visible;
+}
+.ov-list__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.ov-list__head h2 {
+  display: grid;
+  font: 650 17px/1.15 var(--font-play);
+}
+.ov-list__note {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  font: 500 11.5px/1.35 var(--font-money);
+  color: var(--ink-3);
+}
+.ov-list__head small {
+  font: 500 12px/1.3 var(--font-money);
+  color: var(--ink-3);
+}
+.ov-sort {
+  display: flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--mist);
+}
+.ov-sort button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--ink-2);
+  font: 600 12.5px/1 var(--font-play);
+  cursor: pointer;
+}
+.ov-sort button.is-on {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(35, 30, 90, 0.15);
+}
+.ov-rows {
+  list-style: none;
+  margin: 0;
+  padding: 4px 10px 84px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.ov-rows__empty {
+  padding: 18px 8px;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+.ov-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.ov-row__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--hue) 18%, white);
+}
+.ov-row__main {
+  display: grid;
+  min-width: 0;
+}
+.ov-row__main b {
+  font: 650 14.5px/1.2 var(--font-play);
+}
+.ov-row__main > span {
+  font: 500 12px/1.35 var(--font-money);
+  color: var(--ink-3);
+}
+.ov-row__main .ov-row__facts {
+  color: var(--ink-2);
+}
+.ov-row__why {
+  color: #a3412e !important;
+  font-weight: 600 !important;
+}
+.ov-row__rate {
+  display: grid;
+  justify-items: end;
+}
+.ov-row__rate b {
+  font: 700 17px/1 var(--font-money);
+  color: var(--captured);
+  font-variant-numeric: tabular-nums;
+}
+.ov-row__rate small {
+  font: 500 10.5px/1.4 var(--font-money);
+  color: var(--ink-3);
+}
+.ov-row.is-blocked {
+  opacity: 0.55;
+}
+.ov-row.is-blocked .ov-row__icon {
+  filter: grayscale(1);
+}
+.ov-row.is-blocked .ov-row__rate b {
+  color: var(--ink-3);
+}
+
+/* Simulated PayPal (fake mode): plain, clearly a stand-in. */
+.spp {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  display: grid;
+  place-items: end center;
+  padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(20, 22, 40, 0.42);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s,
+    visibility 0s linear 0.2s;
+}
+.spp.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s;
+}
+.spp__card {
+  width: 100%;
+  max-width: 420px;
+  display: grid;
+  gap: 10px;
+  padding: 18px 18px 12px;
+  border-radius: 22px;
+  background: #fff;
+  font-family: var(--font-money);
+  box-shadow: var(--shadow-2);
+}
+.spp__brand {
+  justify-self: start;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: var(--mist);
+  color: var(--pp);
+  font: 700 12px/1 var(--font-money);
+  letter-spacing: 0.02em;
+}
+.spp__card h2 {
+  font: 700 22px/1.2 var(--font-money);
+  color: var(--pp);
+}
+.spp__what {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.spp__facts {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  display: grid;
+  gap: 3px;
+}
+
+/* Loading: what is happening, never a blank map. */
+.veil__pin {
+  animation: pin-bob 1.4s ease-in-out infinite;
+}
+@keyframes pin-bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.veil__steps {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  font: 500 14px/1.3 var(--font-play);
+  color: var(--ink-3);
+}
+.veil__steps li::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: #d6d3ea;
+  vertical-align: 1px;
+}
+.veil__steps li.is-now {
+  color: var(--ink);
+}
+.veil__steps li.is-now::before {
+  background: var(--grape);
+  box-shadow: 0 0 0 4px rgba(91, 76, 240, 0.2);
+}
+.veil__steps li.is-done {
+  color: var(--ink-2);
+}
+.veil__steps li.is-done::before {
+  background: var(--captured);
+}
+.veil__retry {
+  margin-top: 4px;
+}
+
+.money__status {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--held);
+}
+.money__list li.is-failed .money__amount {
+  text-decoration: line-through;
+  color: var(--ink-3);
+}
+
+/* With the task list open, the map credits sit above it. */
+.map-page.is-list-open .attribution {
+  bottom: calc(68% + 4px);
+}
+
+/* The list covers most of the map, so the price chips step aside and only the dots stay. */
+.map-page.is-list-open .ov-chip {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* One-line chip for dots without room for the full one. */
+.ov-chip.is-compact {
+  padding: 3px 7px 4px;
+  border-radius: 9px;
+}
+.ov-chip.is-compact b {
+  font-size: 11px;
+}

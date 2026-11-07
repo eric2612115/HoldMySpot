@@ -1,0 +1,42 @@
+{
+  "name": "holdmyspot-ops",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "HoldMySpot operator console: the Bryntum queuer board with a synced map, and the AG Studio market dashboard with its own agent.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "shots": "node scripts/shots.mjs",
+    "shots:live": "node scripts/shots-live.mjs"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "dependencies": {
+    "@bryntum/scheduler-community": "8.0.0",
+    "@bryntum/scheduler-react-community": "8.0.0",
+    "@fontsource-variable/figtree": "^5.3.0",
+    "@fontsource-variable/fredoka": "^5.3.0",
+    "@holdmyspot/shared": "file:../shared",
+    "ag-charts-enterprise": "14.3.0",
+    "ag-grid-enterprise": "36.3.0",
+    "ag-studio": "3.1.0",
+    "ag-studio-react": "3.1.0",
+    "maplibre-gl": "^6.16.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "playwright-core": "1.56.1",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.6"
+  }
+}

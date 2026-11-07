@@ -1,0 +1,13 @@
+{
+  "images": [
+    "line.png"
+  ],
+  "outputs": {
+    "check_in_photo": {
+      "lineVisible": true,
+      "peopleAhead": 35,
+      "codeSeen": "P8EM2",
+      "storefrontText": "PAPER MOON TOYS"
+    }
+  }
+}

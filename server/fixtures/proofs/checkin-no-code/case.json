@@ -1,0 +1,29 @@
+{
+  "kind": "check_in",
+  "id": "checkin-no-code",
+  "description": "A line photo without the check-in code: code_visible fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "claim": {
+    "id": "claim-c18",
+    "code": "H9TE4"
+  },
+  "queuer": "Jo",
+  "geofence": {
+    "ok": true,
+    "distanceM": 41,
+    "radiusM": 80
+  },
+  "at": "2026-11-12T10:53:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "code_visible"
+    ],
+    "soft": []
+  },
+  "files": {
+    "line": "line.png"
+  },
+  "reusedPhoto": null
+}

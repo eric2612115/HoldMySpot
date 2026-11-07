@@ -1,0 +1,661 @@
+/* Bottom sheet over the map. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+}
+
+.scrim.is-open {
+  pointer-events: auto;
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9;
+  max-height: 74%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 28px 28px 0 0;
+  background: var(--paper);
+  box-shadow: 0 -12px 40px rgba(35, 30, 90, 0.2);
+  transform: translateY(105%);
+  transition: transform 0.5s var(--ease-out);
+  visibility: hidden;
+}
+
+.sheet.is-open {
+  transform: translateY(0);
+  visibility: visible;
+}
+
+.sheet.is-dragging {
+  transition: none;
+}
+
+.sheet__grip {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 9px 0 5px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet__handle {
+  width: 42px;
+  height: 5px;
+  border-radius: 3px;
+  background: #d8dae8;
+}
+
+.sheet__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 16px calc(22px + env(safe-area-inset-bottom));
+}
+
+/* Task sheet. */
+.task {
+  display: grid;
+  gap: 14px;
+}
+
+.task__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.task__icon {
+  flex: none;
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--hue) 18%, white);
+}
+
+.task__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.task__title h2 {
+  font: 600 19px/1.2 var(--font-play);
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.task__title p {
+  font: 500 13px/1.35 var(--font-money);
+  color: var(--ink-3);
+}
+
+.task__title h2 + p {
+  margin-top: 3px;
+}
+
+.task__title .task__shop {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.tags {
+  list-style: none;
+  margin: -4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tags li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hue) 14%, white);
+  color: color-mix(in srgb, var(--hue) 45%, var(--ink));
+  font: 500 12px/1.2 var(--font-play);
+}
+
+.task__block {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.block-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.block-head h3 {
+  font: 600 16px/1.2 var(--font-play);
+}
+
+.block-head__meta {
+  font: 500 12.5px/1.2 var(--font-money);
+  color: var(--ink-3);
+}
+
+.task__explain {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: -4px;
+}
+
+.task__more {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: -4px;
+}
+
+.line-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.line-info__stat {
+  display: grid;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--mist);
+}
+
+.line-info__big {
+  font: 600 22px/1.1 var(--font-play);
+  font-variant-numeric: tabular-nums;
+}
+
+.line-info__unit {
+  font: 500 12px/1.3 var(--font-money);
+  color: var(--ink-3);
+}
+
+.queuers {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.queuers__faces {
+  display: flex;
+}
+
+.queuers__faces span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font: 600 13px/1 var(--font-play);
+  margin-left: -8px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.queuers__faces span:first-child {
+  margin-left: 0;
+}
+
+.depth {
+  display: grid;
+  gap: 5px;
+}
+
+.depth__row {
+  display: grid;
+  grid-template-columns: 46px 1fr 22px;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px/1 var(--font-play);
+  font-variant-numeric: tabular-nums;
+}
+
+.depth__bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--mist);
+  overflow: hidden;
+}
+
+.depth__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--hue) 70%, white);
+  transition: width 0.4s var(--ease-out);
+}
+
+.depth__count {
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.bids {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bids li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-areas: 'who chip amount' 'when chip amount';
+  column-gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.bids li:last-child {
+  border-bottom: 0;
+}
+
+.bids li.is-mine .bids__who {
+  color: var(--grape-deep);
+}
+
+.bids__who {
+  grid-area: who;
+  font: 600 14px/1.2 var(--font-money);
+}
+
+.bids__when {
+  grid-area: when;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.bids .state-chip {
+  grid-area: chip;
+}
+
+.bids__amount {
+  grid-area: amount;
+  display: grid;
+  justify-items: end;
+  font: 700 15px/1.15 var(--font-money);
+  font-variant-numeric: tabular-nums;
+}
+
+.bids__amount small {
+  font: 500 11px/1.2 var(--font-money);
+  color: var(--ink-3);
+}
+
+/* Step-down card: the centrepiece of the sheet. */
+.auction {
+  display: grid;
+  gap: 10px;
+  padding: 15px 16px 16px;
+  border-radius: 24px;
+  background:
+    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--hue) 22%, white) 0%, transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--hue) 9%, white), #fff 70%);
+  border: 2px solid color-mix(in srgb, var(--hue) 35%, white);
+}
+
+.auction__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.auction__head h3 {
+  font: 600 17px/1.2 var(--font-play);
+}
+
+.supply {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font: 600 12px/1.2 var(--font-play);
+  white-space: nowrap;
+}
+
+.supply.is-out {
+  background: var(--ink-3);
+}
+
+.auction__note {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: -4px;
+}
+
+.auction__numbers {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.auction__price,
+.auction__timer {
+  display: grid;
+}
+
+.auction__timer {
+  justify-items: end;
+  text-align: right;
+}
+
+.auction__big {
+  font: 700 48px/1 var(--font-play);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  animation: price-drop 0.6s var(--ease-spring);
+}
+
+.auction__clock {
+  font: 650 34px/1.05 var(--font-play);
+  font-variant-numeric: tabular-nums;
+  color: var(--hot);
+  min-width: 3.2ch;
+}
+
+.auction__caption {
+  font: 500 12.5px/1.3 var(--font-money);
+  color: var(--ink-3);
+}
+
+@keyframes price-drop {
+  0% {
+    transform: translateY(-38%);
+    opacity: 0.2;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.stairs {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.stairs__base {
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+.stairs__past {
+  fill: none;
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.stairs__future {
+  fill: none;
+  stroke: #c9cbdc;
+  stroke-width: 2.5;
+  stroke-dasharray: 3 6;
+  stroke-linecap: round;
+}
+
+.stairs__dot {
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+
+.stairs__ping {
+  opacity: 0.25;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ping 1.6s var(--ease-out) infinite;
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.stairs__max {
+  stroke: var(--grape);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+}
+
+.stairs__maxlabel {
+  font: 600 10.5px var(--font-play);
+  fill: var(--grape-deep);
+}
+
+.stairs__axis {
+  font: 500 10.5px var(--font-money);
+  fill: var(--ink-3);
+}
+
+.auction__rule {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+.auction__actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.auction__fine {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  line-height: 1.45;
+  padding: 0 8px;
+}
+
+/* The bid and ask forms' required sentences (docs/DOMAIN.md section 9): plain, never hidden. */
+.disclose {
+  display: grid;
+  gap: 4px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: #f5f6fb;
+  font: 500 12px/1.42 var(--font-money);
+  color: var(--ink-2);
+}
+
+.auction__error {
+  font-size: 13px;
+  color: var(--hot);
+}
+
+.auction__done {
+  font-size: 13px;
+  color: var(--released);
+  background: var(--released-bg);
+  border-radius: 12px;
+  padding: 9px 12px;
+}
+
+/* The buyer's own order inside the card. */
+.order {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  font-size: 13.5px;
+  color: var(--ink-2);
+  animation: row-in 0.35s var(--ease-out);
+}
+
+.order.is-busy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pp);
+  font-weight: 600;
+}
+
+.order.is-busy .spinner {
+  border-color: rgba(29, 43, 107, 0.2);
+  border-top-color: var(--pp);
+}
+
+.order.is-filled {
+  border-color: color-mix(in srgb, var(--captured) 35%, white);
+  background: color-mix(in srgb, var(--captured-bg) 45%, white);
+}
+
+.order__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-family: var(--font-money);
+}
+
+.order__row strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.order__muted {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+
+.order .text-button {
+  justify-self: start;
+  font-size: 13.5px;
+}
+
+/* Set-my-max picker. */
+.picker {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px 8px;
+  border-radius: 16px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  animation: row-in 0.3s var(--ease-out);
+}
+
+.picker__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.picker__value {
+  display: grid;
+  justify-items: center;
+}
+
+.picker__big {
+  font: 700 34px/1 var(--font-play);
+  font-variant-numeric: tabular-nums;
+  color: var(--grape-deep);
+}
+
+.picker__range {
+  width: 100%;
+  accent-color: var(--grape);
+}
+
+.picker__explain {
+  font-size: 13px;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+.picker .text-button {
+  justify-self: center;
+}
+
+/* For queuers: what this task pays, how far it is, and whether it can be taken. */
+.earn {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--hue) 10%, #f7f8fd);
+  border: 1.5px solid color-mix(in srgb, var(--hue) 30%, white);
+}
+.earn__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.earn__stats > div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.earn__stats strong {
+  font: 700 16px/1.15 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.earn__stats span {
+  font: 500 11px/1.25 var(--font-money);
+  color: var(--ink-3);
+}
+.earn__rate strong {
+  color: var(--captured);
+}
+.earn__take {
+  display: grid;
+  gap: 6px;
+}
+.earn__take p,
+.earn__why {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+.earn__why {
+  color: #a3412e;
+  font-weight: 600;
+}
+.earn.is-blocked {
+  background: #f3f3f7;
+  border-color: #dedfe9;
+}
+.earn.is-blocked .earn__stats strong {
+  color: #7d8199;
+}
+.take-button {
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--captured);
+  color: #fff;
+  font: 650 15px/1.1 var(--font-play);
+  cursor: pointer;
+}
+.take-button:disabled {
+  background: #9fcfb9;
+  cursor: default;
+}

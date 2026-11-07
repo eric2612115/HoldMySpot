@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-qr-print-mismatch",
+  "description": "The printed receipt number was edited (the QR says PM-1112-0414): qr_matches_print fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c11",
+    "qty": 1,
+    "proofCode": "M5XC6",
+    "feeCents": 1250,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Lin",
+  "requester": "Leo M.",
+  "checkedInAt": "2026-11-12T10:50:00-08:00",
+  "uploadedAt": "2026-11-12T12:15:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "qr_matches_print"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

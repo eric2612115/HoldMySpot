@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "little-lantern-qty-short",
+  "description": "Little Lantern Toys: the job is for 2 Lucky Cat plush but the receipt shows 1: qty_within_limit fails.",
+  "shopId": "little-lantern-toys",
+  "itemId": "plush-little-lantern",
+  "job": {
+    "id": "job-c12",
+    "qty": 2,
+    "proofCode": "A7PN3",
+    "feeCents": 600,
+    "retailCapCentsPerUnit": 2800,
+    "shippingCents": 1300,
+    "mode": "ship"
+  },
+  "queuer": "Jo",
+  "requester": "Noor A.",
+  "checkedInAt": "2026-11-12T11:04:00-08:00",
+  "uploadedAt": "2026-11-12T12:20:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "qty_within_limit"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

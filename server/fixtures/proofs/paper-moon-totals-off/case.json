@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-totals-off",
+  "description": "The line says $34.00 but the printed total (and its QR) say $36.00: totals_add_up fails.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-c5",
+    "qty": 1,
+    "proofCode": "W2CK9",
+    "feeCents": 1200,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Jo",
+  "requester": "Noor A.",
+  "checkedInAt": "2026-11-12T10:49:00-08:00",
+  "uploadedAt": "2026-11-12T11:55:00-08:00",
+  "expect": {
+    "status": "failed",
+    "hard": [
+      "totals_add_up"
+    ],
+    "soft": []
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

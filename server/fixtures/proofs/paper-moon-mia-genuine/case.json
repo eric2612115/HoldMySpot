@@ -1,0 +1,32 @@
+{
+  "kind": "purchase",
+  "id": "paper-moon-mia-genuine",
+  "description": "Hero: Wei's receipt for Mia's plush; passes, $34.00, capture $46.00.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-mia",
+    "qty": 1,
+    "proofCode": "K7MX4",
+    "feeCents": 1200,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Wei",
+  "requester": "Mia R.",
+  "checkedInAt": "2026-11-12T10:50:00-08:00",
+  "uploadedAt": "2026-11-12T11:42:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "retailCents": 3400,
+    "captureCents": 4600
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}

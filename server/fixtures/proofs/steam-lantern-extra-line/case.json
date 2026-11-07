@@ -1,0 +1,34 @@
+{
+  "kind": "purchase",
+  "id": "steam-lantern-extra-line",
+  "description": "Steam Lantern Ramen: two takeout bowls plus an iced tea on the same receipt: item_match needs review.",
+  "shopId": "steam-lantern-ramen",
+  "itemId": "ramen-steam-lantern",
+  "job": {
+    "id": "job-c14",
+    "qty": 2,
+    "proofCode": "Y5NC3",
+    "feeCents": 500,
+    "retailCapCentsPerUnit": 2000,
+    "shippingCents": 0,
+    "mode": "local"
+  },
+  "queuer": "Ava",
+  "requester": "Leo M.",
+  "checkedInAt": "2026-11-12T11:20:00-08:00",
+  "uploadedAt": "2026-11-12T12:08:00-08:00",
+  "expect": {
+    "status": "needs_review",
+    "hard": [],
+    "soft": [
+      "item_match"
+    ],
+    "retailCents": 3800,
+    "captureCents": 4800
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "reusedPhoto": null
+}
