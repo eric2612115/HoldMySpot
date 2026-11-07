@@ -90,6 +90,18 @@ sequenceDiagram
     S->>PP: POST /v1/payments/payouts $42.75 to Wei
 ```
 
+## Paid line-sitting, made fair
+
+Paying someone to stand in line is already a normal, legal service in the US. A New York line-sitting company has charged about $25 an hour since 2012 ([Fortune, 2025](https://www.fortune.com/2025/05/18/gen-x-entrepreneur-line-sitting-business-nyc-diddy-trial-sample-sale)), and TaskRabbit lists [waiting in line](https://www.taskrabbit.com/services/shopping-delivery/waiting-in-line) as a service. HoldMySpot keeps what makes it fair and adds what it lacks:
+
+- **The requester pays the shop's price at cost.** The checked receipt sets the price. Nothing is marked up or resold.
+- **One item for one named requester**, within the shop's own limits. Nobody holds stock.
+- **Only the queuer's time has a price.** It is set by requests and a falling fee, and HoldMySpot keeps 10% of that fee.
+- **Money moves only on proof.** PayPal holds the most it could cost and captures what the receipt shows.
+- **It is not for** event tickets, medical or government queues, or reselling food.
+
+The same pattern of holding the most a job could cost, then capturing only what is proven, fits any errand whose final price is unknown upfront. That runs from a bakery box or a bowl of ramen to a grocery run for a neighbour or a $500 launch-day console. This demo shows one of them end to end.
+
 ## Proof on the real PayPal sandbox
 
 The hero errand ran twice on PayPal's sandbox on 2026-11-07: through the web app on two phones (the screenshots at the top) and through the server's HTTP API alone. After each run, its authorization, order, captures and payout batches were read back from PayPal: every amount, status and PayPal fee matched the server's ledger to the cent.
