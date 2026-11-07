@@ -1,4 +1,4 @@
-# HoldMySpot
+<h1><img src="docs/brand/lockup.svg" alt="HoldMySpot" width="380"></h1>
 
 **Pay someone near the shop to stand in line for you. PayPal holds the most it could cost; you are charged only what an AI-checked receipt proves.**
 
