@@ -417,6 +417,21 @@
   color: #1f5fbf;
 }
 
+/* The person's face badge before "Held for Mia" and "Paid out to Wei". */
+.money__held:has(.person-face) {
+  align-items: center;
+}
+
+.money__whom {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.money__whom .person-face {
+  flex: none;
+}
+
 .money__who-note {
   margin: 0 0 12px;
   font-size: 12.5px;

@@ -10,12 +10,13 @@ import { pinFixtureCode, stageHistory, uploadFixtureOr, uploadHash } from '../fi
 
 /**
  * The hero run (docs/ARCHITECTURE.md section 8, amounts from docs/DOMAIN.md
- * section 7): Mia in New York holds $60.00 for the Mochi Bunny plush from
+ * section 7): Mia in New York holds $63.70 for the Mochi Bunny plush from
  * Paper Moon Toys in San Francisco's Japantown, shipped to her (one per
  * customer). Wei's fee clock steps down from $15 and meets her $12 request;
  * Rex's fake receipt moves $0 and Priya's request goes back to the book,
- * where Lin's $10 offer takes it. Mia is charged $54.75 in two captures (the
- * second after tracking) and $5.25 is released.
+ * where Lin's $10 offer takes it. Mia is charged $58.26 in two captures (the
+ * second after tracking; processing and payouts at cost included, D-105) and
+ * $5.44 is released.
  *
  * Photos: where a rendered fixture exists (server/fixtures/proofs) the queuer
  * uploads it and the script pins the code it shows on the claim or job, so the
@@ -57,7 +58,7 @@ export const heroScript: DemoScript = {
   id: 'hero',
   title: 'A plush drop in Japantown, shipped to New York',
   description:
-    "Mia in New York holds $60.00 for the Mochi Bunny plush from Paper Moon Toys in San Francisco. Wei checks in and his fee clock meets her $12 request. Rex fakes a receipt: $0 moves and Priya's request goes back to the book, where Lin takes it at $10. Mia is charged $54.75; the rest is released.",
+    "Mia in New York holds $63.70 for the Mochi Bunny plush from Paper Moon Toys in San Francisco. Wei checks in and his fee clock meets her $12 request. Rex fakes a receipt: $0 moves and Priya's request goes back to the book, where Lin takes it at $10. Mia is charged $58.26, processing at cost included; the rest is released.",
   startsAt: DEMO_MARKET_START,
   timeZone: DEMO_TIME_ZONE,
   speed: DEMO_SPEED,
@@ -84,7 +85,7 @@ export const heroScript: DemoScript = {
     {
       at: '10:31',
       kind: 'bid.create',
-      label: 'Mia holds $60.00 for one plush, shipped to New York',
+      label: 'Mia holds $63.70 for one plush, shipped to New York',
       async run(ctx) {
         const mia = ctx.user(HERO.requesterId);
         const destination = { mode: 'ship' as const, country: 'US' as const, region: 'NY', city: 'New York', postalCode: '10012' };
@@ -246,7 +247,7 @@ export const heroScript: DemoScript = {
     {
       at: '11:42',
       kind: 'job.proof',
-      label: "Wei uploads Mia's receipt: capture $46.00",
+      label: "Wei uploads Mia's receipt: capture $48.69",
       async run(ctx) {
         await proofFor(ctx, 'wei', HERO.requesterId, 'genuine');
       },
@@ -262,7 +263,7 @@ export const heroScript: DemoScript = {
     {
       at: '11:52',
       kind: 'job.proof',
-      label: "Lin uploads Priya's receipt: capture $44.00",
+      label: "Lin uploads Priya's receipt: capture $46.62",
       async run(ctx) {
         await proofFor(ctx, 'lin', 'priya', 'genuine');
       },
@@ -278,7 +279,7 @@ export const heroScript: DemoScript = {
     {
       at: '14:00',
       kind: 'job.shipment',
-      label: "Wei ships Mia's parcel: final capture $8.75",
+      label: "Wei ships Mia's parcel: final capture $9.57",
       async run(ctx) {
         const job = ctx.job('wei', HERO.requesterId);
         const label = await ctx.upload('wei', 'label', `${job.id}-label`, null);

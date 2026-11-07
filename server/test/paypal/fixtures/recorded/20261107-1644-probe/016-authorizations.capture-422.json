@@ -1,0 +1,25 @@
+{
+  "op": "authorizations.capture",
+  "method": "POST",
+  "path": "/v2/payments/authorizations/6BY23435E1186474T/capture",
+  "status": 422,
+  "debugId": "ca56b0f914ae8",
+  "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "ca56b0f914ae8",
+    "details": [
+      {
+        "issue": "DUPLICATE_TRANSACTION",
+        "description": "Duplicate invoice Id detected."
+      }
+    ],
+    "links": [
+      {
+        "href": "https://developer.paypal.com/docs/api/payments/v2/#error-DUPLICATE_TRANSACTION",
+        "rel": "information_link",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

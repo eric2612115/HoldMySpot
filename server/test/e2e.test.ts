@@ -98,23 +98,24 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
     assert.equal(typeof s.app.ai.dHash, 'function', 'the AI services hash uploads');
   });
 
-  it('Mia in New York holds $60.00 for one plush, shipped to her', async () => {
+  it('Mia in New York holds $63.70 for one plush, shipped to her (the processing reserve included)', async () => {
     await s.at(sf('10:31'));
     const { quote, created, authorized } = await holdBid(s, 'mia', { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination: NY, funding: 'paypal' });
     assert.deepEqual(quote.suggested, { retailCapCents: 3600, maxFeeCents: 1200, shippingBudgetCents: 1200 });
-    assert.equal(quote.limitCents, 6000);
+    assert.equal(quote.limitCents, 6370);
+    assert.equal(quote.processingReserveCents, 370);
     ids.miaBid = created.bid.id;
     ids.miaOrder = created.checkout.orderId;
     assert.equal(authorized.bid.status, 'open');
     assert.equal(authorized.hold.status, 'held');
-    assert.equal(authorized.hold.amount.cents, 6000);
+    assert.equal(authorized.hold.amount.cents, 6370);
     assert.match(authorized.hold.authorizationId, /^FAKE-AUTH-\d{4}$/);
     ids.miaAuth = authorized.hold.authorizationId;
     // What PayPal itself holds: an authorized order carrying our invoice id.
     assert.deepEqual(s.app.fakePayPal.inspectAuthorization(ids.miaAuth)?.status, 'CREATED');
     assert.equal(s.app.fakePayPal.inspectOrder(ids.miaOrder)?.invoiceId, `HMS-${ids.miaBid}`);
     const ledger = await ok(s, 'GET', '/api/ledger?mine=1', { as: 'mia' });
-    assert.deepEqual(ledger.entries.map((e: any) => [e.kind, e.amount.cents, e.status, e.mode]), [['held', 6000, 'succeeded', 'fake']]);
+    assert.deepEqual(ledger.entries.map((e: any) => [e.kind, e.amount.cents, e.status, e.mode]), [['held', 6370, 'succeeded', 'fake']]);
   });
 
   it('Sam in San Francisco holds one plush with Venmo, max fee $10', async () => {
@@ -241,7 +242,7 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
     const miaProof = detail.proofs.find((p: any) => p.kind === 'purchase');
     assert.equal(miaProof.status, 'passed', miaProof.summary);
     assert.match(miaProof.receipt.invoiceNumber, /PM11120412/, 'the receipt number printed on the rendered receipt');
-    assert.deepEqual([miaProof.amounts.retailCents, miaProof.amounts.captureCents], [3400, 4600]);
+    assert.deepEqual([miaProof.amounts.retailCents, miaProof.amounts.captureCents, miaProof.amounts.processingCents], [3400, 4869, 269]);
     assert.equal(detail.job.status, 'verified');
 
     await s.at(sf('11:50'));
@@ -254,17 +255,19 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
     detail = await ok(s, 'GET', `/api/jobs/${ids.samJob}`, { as: 'sam' });
     const samProof = detail.proofs.find((p: any) => p.kind === 'purchase');
     assert.equal(samProof.status, 'passed', samProof.summary);
-    assert.deepEqual([samProof.amounts.retailCents, samProof.amounts.captureCents], [3400, 4400]);
+    assert.deepEqual([samProof.amounts.retailCents, samProof.amounts.captureCents], [3400, 4662]);
   });
 
-  it("captures $46.00 of Mia's hold (not final) and pays Wei $10.80 through Payouts", async () => {
+  it("captures $48.69 of Mia's hold (not final) and pays Wei $10.80 through Payouts", async () => {
     const ledger = (await ok(s, 'GET', '/api/ledger?mine=1', { as: 'mia' })).entries.reverse();
     assert.deepEqual(ledger.map((e: any) => [e.kind, e.amount.cents, e.status]), [
-      ['held', 6000, 'succeeded'],
-      ['captured', 4600, 'succeeded'],
+      ['held', 6370, 'succeeded'],
+      ['captured', 4869, 'succeeded'],
     ]);
+    // PayPal's own fee on the capture, read from its seller_receivable_breakdown, is on the ledger line.
+    assert.equal(ledger[1].paypal.feeCents, 219);
     const pp = s.app.fakePayPal.inspectAuthorization(ids.miaAuth)!;
-    assert.deepEqual([pp.status, pp.capturedCents], ['PARTIALLY_CAPTURED', 4600]);
+    assert.deepEqual([pp.status, pp.capturedCents], ['PARTIALLY_CAPTURED', 4869]);
     const payouts = (await ok(s, 'GET', '/api/payouts?mine=1', { as: 'wei' })).payouts.reverse();
     assert.deepEqual(payouts.map((p: any) => [p.reference, p.purpose, p.amount.cents, p.status]), [[ids.miaJob, 'fee', 1080, 'succeeded']]);
     assert.equal(payouts[0].receiverEmail, null, 'the queuer never sees the payout email');
@@ -274,7 +277,7 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
     assert.deepEqual(s.app.fakePayPal.inspectPayoutItem(ops.paypalItemId), { status: 'SUCCESS', receiver: 'wei@queuers.example', amountCents: 1080 });
   });
 
-  it('Wei ships Mia\'s parcel: tracking goes to PayPal, the final capture is $8.75 and $5.25 is released', async () => {
+  it('Wei ships Mia\'s parcel: tracking goes to PayPal, the final capture is $9.57 ($8.75 shipping, $0.82 processing) and $5.44 is released', async () => {
     await s.at(sf('14:00'));
     const label = await upload(s, 'wei', 'label', placeholderPng('e2e-label-mia'));
     const out = await ok(s, 'POST', `/api/jobs/${ids.miaJob}/shipment`, {
@@ -284,17 +287,17 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
     assert.equal(out.job.status, 'shipped');
     const ledger = (await ok(s, 'GET', '/api/ledger?mine=1', { as: 'mia' })).entries.reverse();
     assert.deepEqual(ledger.map((e: any) => [e.kind, e.amount.cents, e.status]), [
-      ['held', 6000, 'succeeded'],
-      ['captured', 4600, 'succeeded'],
-      ['captured', 875, 'succeeded'],
-      ['released', 525, 'succeeded'],
+      ['held', 6370, 'succeeded'],
+      ['captured', 4869, 'succeeded'],
+      ['captured', 957, 'succeeded'],
+      ['released', 544, 'succeeded'],
     ]);
     const order = s.app.fakePayPal.inspectOrder(ids.miaOrder)!;
     assert.deepEqual(order.trackers.map((t) => [t.trackingNumber, t.carrierNameOther]), [['HPG-2611-1200-0042', 'Harbor Parcel Ground']]);
     const pp = s.app.fakePayPal.inspectAuthorization(ids.miaAuth)!;
-    assert.deepEqual([pp.status, pp.capturedCents], ['CAPTURED', 5475], 'final_capture closed the authorization');
+    assert.deepEqual([pp.status, pp.capturedCents], ['CAPTURED', 5826], 'final_capture closed the authorization');
     const hold = (await ok(s, 'GET', `/api/bids/${ids.miaBid}`, { as: 'mia' })).hold;
-    assert.deepEqual([hold.capturedCents, hold.releasedCents, hold.amount.cents], [5475, 525, 6000]);
+    assert.deepEqual([hold.capturedCents, hold.releasedCents, hold.amount.cents], [5826, 544, 6370]);
     const payouts = (await ok(s, 'GET', '/api/payouts?mine=1', { as: 'wei' })).payouts;
     assert.deepEqual(payouts.filter((p: any) => p.reference === ids.miaJob).map((p: any) => [p.purpose, p.amount.cents, p.status]).reverse(), [
       ['fee', 1080, 'succeeded'],
@@ -310,7 +313,7 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
       body: { carrierName: 'Harbor Parcel Ground', trackingNumber: 'HPG-2611-1200-0043', shippingCostCents: 700, dutyPaidCents: 0, labelFileId: label.id },
     });
     const bid = await ok(s, 'GET', `/api/bids/${ids.samBid}`, { as: 'sam' });
-    assert.equal(bid.hold.capturedCents, 4400 + 700);
+    assert.equal(bid.hold.capturedCents, 4662 + 776, '$34.00 + $10.00 + $2.62 processing, then $7.00 + $0.76 processing');
     assert.equal(bid.hold.capturedCents + bid.hold.releasedCents, bid.hold.amount.cents, 'everything not charged is released');
     assert.equal(s.app.fakePayPal.inspectAuthorization(ids.samAuth)?.status, 'CAPTURED');
     const reimbursement = (await ok(s, 'GET', '/api/payouts?mine=1', { as: 'lin' })).payouts.find((p: any) => p.reference === ids.samJob && p.purpose === 'reimbursement');
@@ -337,11 +340,14 @@ describe('end to end over HTTP: holds, a stepping fee clock, a no-show, AI-read 
     assert.equal(records.proofs.filter((p: any) => p.kind === 'purchase' && p.status === 'passed').length, 2);
     const holds = await ok(s, 'GET', '/api/ops/datasets/holds');
     const mia = holds.rows.find((r: any) => r.bidId === ids.miaBid);
-    assert.deepEqual([mia.shopId, mia.heldUsd, mia.capturedUsd, mia.releasedUsd, mia.openUsd, mia.funding], [HERO.shopId, 60, 54.75, 5.25, 0, 'PayPal']);
+    assert.deepEqual([mia.shopId, mia.heldUsd, mia.capturedUsd, mia.releasedUsd, mia.openUsd, mia.funding], [HERO.shopId, 63.7, 58.26, 5.44, 0, 'PayPal']);
     const books = await ok(s, 'GET', '/api/ops/datasets/books');
     assert.ok(books.fields.some((f: any) => f.name === 'bestAskUsd') && books.fields.some((f: any) => f.name === 'spreadUsd'));
     const jobs = await ok(s, 'GET', '/api/ops/datasets/jobs');
     assert.deepEqual(jobs.rows.find((r: any) => r.jobId === ids.rexJob).payState, 'Nothing (job failed)');
+    const miaJob = jobs.rows.find((r: any) => r.jobId === ids.miaJob);
+    assert.deepEqual([miaJob.capturedUsd, miaJob.paidOutUsd, miaJob.processingUsd, miaJob.paypalFeesUsd, miaJob.platformUsd], [58.26, 53.55, 3.51, 3.51, 1.2]);
+    assert.equal(jobs.rows.find((r: any) => r.jobId === ids.rexJob).platformUsd, 0);
   });
 });
 
@@ -400,11 +406,11 @@ describe('the scripted hero demo with both real services', () => {
   });
   after(() => s.done());
 
-  it('finishes and reproduces the hero ledger: held $60.00, charged $54.75, released $5.25', () => {
+  it('finishes and reproduces the hero ledger: held $63.70, charged $58.26, released $5.44', () => {
     assert.equal(s.director!.state().status, 'finished');
     const bid = s.app.store.bids.first("requester_id = 'mia'")!;
     const hold = s.app.store.holds.must(bid.holdId!);
-    assert.deepEqual([hold.amount.cents, hold.capturedCents, hold.releasedCents], [6000, 5475, 525]);
+    assert.deepEqual([hold.amount.cents, hold.capturedCents, hold.releasedCents], [6370, 5826, 544]);
     const wei = s.app.store.payouts.where("recipient_user_id = 'wei'").filter((p) => s.app.store.jobs.must(p.reference).requesterId === 'mia');
     assert.deepEqual(wei.map((p) => [p.amount.cents, p.status]), [[1080, 'succeeded'], [4275, 'succeeded']]);
   });

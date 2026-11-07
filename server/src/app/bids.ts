@@ -4,12 +4,14 @@ import {
   assertBidMoney,
   assertTransition,
   bidDisclosures,
+  PROCESSING_LABEL,
   bidLimitCents,
   bidStatusForQty,
   formatUsd,
   isTerminal,
   money,
   platformFeeLine,
+  processingReserveCents,
   suggestedRetailCapCents,
 } from '@holdmyspot/shared';
 import type {
@@ -31,8 +33,8 @@ import type {
   User,
 } from '@holdmyspot/shared';
 import type { App, Viewer } from './app.ts';
-import { itemOrThrow, requireRole } from './catalog.ts';
-import { applyFill, backedQty, bidMatchableNow, committedCents, emitBook, latestLinePhoto, runBook } from './market.ts';
+import { itemById, itemOrThrow, requireRole } from './catalog.ts';
+import { applyFill, backedQty, bidMatchableNow, bookState, committedCents, emitBook, latestLinePhoto, runBook } from './market.ts';
 import { authorizeHold, openAuthorizedBid, reconcileBid, voidHold } from './money.ts';
 import { emitBid, emitHold, viewJob } from './views.ts';
 import { assertQueuerMayOffer, createClaimAsk } from './asks.ts';
@@ -55,10 +57,19 @@ function checkDestination(u: User, shop: Shop, item: Item, d: Destination): void
   if (d.mode === 'ship' && d.country !== 'US') throw new ContractError('MODE_NOT_ALLOWED', 'Parcels ship to the US only.');
 }
 
+/**
+ * A sold-out book takes no new request: a hold there could never fill and would only wait for its
+ * deadline. The quote, the bid and the authorization refuse it the way a new offer is refused (D-116).
+ */
+function assertBookOpen(app: App, shop: Shop, item: Item): void {
+  if (bookState(app, item.id).status !== 'open') throw new ContractError('SOLD_OUT', `${item.shortName} is sold out at ${shop.name}.`);
+}
+
 export async function quoteBid(app: App, u: User, req: QuoteRequest): Promise<BidQuote> {
   requireRole(u, 'requester');
   const { shop, item } = itemOrThrow(req.shopId, req.itemId);
   checkDestination(u, shop, item, req.destination);
+  assertBookOpen(app, shop, item);
   if (!Number.isInteger(req.qty) || req.qty < 1) throw new ContractError('BAD_REQUEST', 'Quantity must be a positive whole number.');
   if (req.qty > item.perPersonLimit) throw new ContractError('OVER_STORE_LIMIT', `${shop.name} sells at most ${item.perPersonLimit} per person.`);
   const fee = await app.ai.feeEstimate({ shop, item, at: app.now(), latestLinePhoto: latestLinePhoto(app, shop.id), rules: app.rules });
@@ -72,7 +83,8 @@ export async function quoteBid(app: App, u: User, req: QuoteRequest): Promise<Bi
   return {
     retailCents: item.retailCents,
     suggested,
-    limitCents: bidLimitCents(b),
+    limitCents: bidLimitCents(b, req.destination.mode),
+    processingReserveCents: processingReserveCents(b, req.destination.mode),
     fee,
     shipping,
     platformFee: platformFeeLine(suggested.maxFeeCents, app.rules),
@@ -106,6 +118,7 @@ function validateBid(app: App, u: User, req: CreateBidRequest): { shop: Shop; it
   if (!app.config.funding.includes(req.funding)) {
     throw new ContractError('MODE_NOT_ALLOWED', `The ${req.funding} button is not offered.`, { funding: app.config.funding });
   }
+  assertBookOpen(app, shop, item);
   return { shop, item };
 }
 
@@ -113,7 +126,7 @@ function validateBid(app: App, u: User, req: CreateBidRequest): { shop: Shop; it
 export async function createBid(app: App, u: User, req: CreateBidRequest, opts: { crowd?: boolean } = {}): Promise<CreateBidResponse> {
   const { shop, item } = validateBid(app, u, req);
   const adapter = app.adapterFor({ crowd: opts.crowd ?? false });
-  const limitCents = bidLimitCents(req);
+  const limitCents = bidLimitCents(req, req.destination.mode);
   const { bid, hold } = app.tx(() => {
     const now = app.now();
     const bidId = app.nextId('bid');
@@ -172,7 +185,9 @@ export async function createBid(app: App, u: User, req: CreateBidRequest, opts: 
     return { bid, hold };
   });
 
-  const itemTotal = req.qty * (req.retailCapCents + req.maxFeeCents);
+  // The processing reserve is its own item line, so PayPal's page shows what the hold covers (D-105).
+  const reserveCents = limitCents - req.qty * (req.retailCapCents + req.maxFeeCents) - req.shippingBudgetCents;
+  const itemTotal = limitCents - req.shippingBudgetCents;
   let orderId: string;
   try {
     const order = await app.payments(adapter).createOrder({
@@ -186,6 +201,7 @@ export async function createBid(app: App, u: User, req: CreateBidRequest, opts: 
       items: [
         { name: `${item.name} (shop price, up to)`.slice(0, 127), quantity: req.qty, unitAmountCents: req.retailCapCents, category: 'PHYSICAL_GOODS' },
         { name: 'Queue fee (up to)', quantity: req.qty, unitAmountCents: req.maxFeeCents, category: null },
+        ...(reserveCents > 0 ? [{ name: `${PROCESSING_LABEL}, at cost (up to)`, quantity: 1, unitAmountCents: reserveCents, category: null }] : []),
       ],
       shipping: req.destination.mode === 'ship' ? { type: 'SHIPPING', preference: 'GET_FROM_FILE' } : { type: 'PICKUP_FROM_PERSON', preference: 'NO_SHIPPING' },
       funding: req.funding,
@@ -211,7 +227,7 @@ export async function createBid(app: App, u: User, req: CreateBidRequest, opts: 
   return { ...out, checkout: { orderId, mode: adapter, next: adapter === 'fake' ? 'fake_approve' : 'js_sdk' } };
 }
 
-function failApproval(app: App, bidId: string, reason: 'approval_failed' | 'requester_cancelled'): { bid: BidTask; hold: Hold } {
+function failApproval(app: App, bidId: string, reason: 'approval_failed' | 'requester_cancelled' | 'sold_out'): { bid: BidTask; hold: Hold } {
   const bid = app.store.bids.must(bidId);
   const hold = app.store.holds.must(bid.holdId!);
   if (bid.status === 'awaiting_approval') {
@@ -245,6 +261,12 @@ export async function authorizeBid(app: App, viewer: Viewer, bidId: string, orde
     if (bid.status === 'failed') throw new ContractError('INVALID_TRANSITION', 'This request already failed; create a new one.');
     const hold = app.store.holds.must(bid.holdId!);
     return { bid, hold, matches: app.store.matches.where('bid_id = ?', bid.id) };
+  }
+  // Sold out while PayPal was approving: no authorization, so nothing is held (D-116).
+  if (bookState(app, bid.itemId).status !== 'open') {
+    app.tx(() => failApproval(app, bid.id, 'sold_out'));
+    const { shop, item } = itemById(bid.itemId);
+    throw new ContractError('SOLD_OUT', `${item.shortName} sold out at ${shop.name} while PayPal was approving; nothing was held or charged.`);
   }
   await authorizeHold(app, bid.id, orderId);
   return app.tx(() => {
@@ -313,7 +335,7 @@ export async function amendBid(app: App, viewer: Viewer, bidId: string, req: Ame
   if (!Number.isInteger(qty) || qty < Math.max(1, matchedQty)) throw new ContractError('BAD_REQUEST', `Quantity cannot go below the ${matchedQty} already matched.`);
   if (qty > item.perPersonLimit) throw new ContractError('OVER_STORE_LIMIT', `At most ${item.perPersonLimit} per person.`);
   if (!Number.isInteger(maxFeeCents) || maxFeeCents < item.minFeeCents) throw new ContractError('FEE_BELOW_MINIMUM', 'The fee is below the item minimum.');
-  const limit = bidLimitCents({ qty, retailCapCents: bid.retailCapCents, maxFeeCents, shippingBudgetCents: bid.shippingBudgetCents });
+  const limit = bidLimitCents({ qty, retailCapCents: bid.retailCapCents, maxFeeCents, shippingBudgetCents: bid.shippingBudgetCents }, bid.destination.mode);
   if (limit > hold.amount.cents) {
     throw new ContractError('OVER_LIMIT', `That would need ${formatUsd(limit, { exact: true })}, more than the ${formatUsd(hold.amount.cents, { exact: true })} PayPal holds.`, {
       neededCents: limit,

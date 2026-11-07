@@ -14,8 +14,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5197';
 const OUT = path.resolve(process.env.OUT_DIR ?? path.join(here, '..', '..', 'proto-shots', 'v2', 'final'));
 const DESKTOP = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, timezoneId: 'America/Los_Angeles' };
-// Expected noise: AG Studio's licence banner (no key in the repo, and the AG Grid and AG Charts key
-// does not cover AG Studio) and MapLibre style warnings.
+// Expected noise: AG Studio's trial banner when the dev server has no AG Studio key (README, Licences)
+// and MapLibre style warnings.
 const IGNORE = /\*{10}|License Key Not Found|Incompatible License|studio\/licensing|unlocked for trial|hide the watermark|AG Studio Pro with AI|Expected value to be of type/;
 
 const problems = [];

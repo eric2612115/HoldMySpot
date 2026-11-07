@@ -1,0 +1,14 @@
+{
+  "op": "payouts.item.cancel",
+  "method": "POST",
+  "path": "/v1/payments/payouts-item/WAV227NGAQN44/cancel",
+  "status": 400,
+  "debugId": "ca56b0f020f7a",
+  "body": {
+    "name": "ITEM_INCORRECT_STATUS",
+    "message": "Only items in Unclaimed status can be cancelled.",
+    "debug_id": "ca56b0f020f7a",
+    "information_link": "https://developer.paypal.com/docs/api/payments.payouts-batch/#errors",
+    "links": []
+  }
+}

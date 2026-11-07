@@ -67,10 +67,13 @@ describe('HTTP contract', () => {
   it('runs the whole loop over HTTP: quote, hold, ask, check-in, proof, captures and payouts', async () => {
     const quote = await s.call('POST', '/api/bids/quote', { as: 'mia', body: { shopId: SHOP.id, itemId: ITEM, qty: 2, destination: NY_SHIP } });
     assert.equal(quote.status, 200, JSON.stringify(quote.json));
-    // $26.00 a plush: cap $28; 50 minutes in line: $12 fee; 800 g parcel: $9.50 shipping, $13 budget.
+    // $26.00 a plush: cap $28; 50 minutes in line: $12 fee; 800 g parcel: $9.50 shipping, $13 budget;
+    // plus the processing reserve for two one-plush jobs at their caps ($6.42).
     assert.deepEqual(quote.json.suggested, { retailCapCents: 2800, maxFeeCents: 1200, shippingBudgetCents: 1300 });
-    assert.equal(quote.json.limitCents, 9300);
-    assert.match(quote.json.disclosures[0], /PayPal holds up to \$93\.00/);
+    assert.equal(quote.json.limitCents, 9942);
+    assert.equal(quote.json.processingReserveCents, 642);
+    assert.match(quote.json.disclosures[0], /PayPal holds up to \$99\.42/);
+    assert.match(quote.json.disclosures[2], /^Processing and payouts: up to \$6\.42/);
 
     const body = {
       shopId: SHOP.id,
@@ -100,7 +103,7 @@ describe('HTTP contract', () => {
     const auth = await s.call('POST', `/api/bids/${bidId}/authorize`, { as: 'mia', body: { orderId } });
     assert.equal(auth.status, 200, JSON.stringify(auth.json));
     assert.equal(auth.json.hold.status, 'held');
-    assert.equal(auth.json.hold.amount.cents, 9300);
+    assert.equal(auth.json.hold.amount.cents, 9942);
     assert.equal((await s.call('GET', `/api/bids/${bidId}`, { as: 'jun' })).status, 403);
 
     // Wei posts a fixed $11 offer for 4: Mia's $12 is matched at once (the crowd rests at $8 or below).
@@ -155,8 +158,8 @@ describe('HTTP contract', () => {
     assert.deepEqual(
       ledger.json.entries.map((e: { kind: string; amount: { cents: number } }) => [e.kind, e.amount.cents]),
       [
-        ['captured', 7400],
-        ['held', 9300],
+        ['captured', 7770],
+        ['held', 9942],
       ],
     );
     const shipped = await s.call('POST', `/api/jobs/${job.id}/shipment`, {
@@ -169,8 +172,8 @@ describe('HTTP contract', () => {
     assert.deepEqual(
       shipped.json.ledger.map((e: { kind: string; amount: { cents: number }; userId: string }) => [e.kind, e.amount.cents, e.userId]),
       [
-        ['captured', 1100, 'mia'],
-        ['released', 800, 'mia'],
+        ['captured', 1191, 'mia'],
+        ['released', 981, 'mia'],
         ['paid_out', 6300, 'wei'],
       ],
     );

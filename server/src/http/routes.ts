@@ -12,6 +12,8 @@ import type {
   FakeApproveRequest,
   FeeEstimateRequest,
   FilePurpose,
+  OpsAgentTurnRequest,
+  OpsMovesRequest,
   QuoteRequest,
   ShippingEstimateRequest,
   User,
@@ -26,6 +28,7 @@ import { addShipment, handover, jobDetail, markBought, markDelivered, reportSold
 import { bookSnapshot, latestLinePhoto } from '../app/market.ts';
 import { refundJob, renewHold } from '../app/money.ts';
 import { board, opsDataset, opsRecords } from '../app/ops.ts';
+import { applyOpsMoves, opsAgentTurn } from '../app/opsAgents.ts';
 import { sweepNow } from '../app/scheduler.ts';
 import { emitClock, viewJob, viewPayout, viewUser } from '../app/views.ts';
 import type { Director } from '../demo/director.ts';
@@ -273,6 +276,9 @@ export function buildRoutes({ app, director, resyncAll }: RouteDeps): Partial<Re
     }),
     'POST /api/ops/sweep': read(() => sweepNow(app)),
     'GET /api/ops/disputes': read(() => ({ disputes: app.store.disputes.all().reverse() })),
+    // Ops agents (D-100 to D-102). A model turn is a read: it waits on the model, never on the market's queue.
+    'POST /api/ops/agents/turn': read((ctx) => opsAgentTurn(app, ctx.body as OpsAgentTurnRequest)),
+    'POST /api/ops/moves': write((ctx) => applyOpsMoves(app, ctx.body as OpsMovesRequest)),
 
     // ---- fake PayPal ---------------------------------------------------
     'POST /api/fake/paypal/orders/:orderId/approve': write(async (ctx) => {

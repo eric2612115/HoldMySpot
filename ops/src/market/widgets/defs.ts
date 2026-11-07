@@ -1,6 +1,7 @@
 import { createWidgets } from 'ag-studio-react';
 import type { AgWidgetDefinition } from 'ag-studio-react';
 import { W } from '../../data/vocab.ts';
+import { createCellRenderer } from './cells.tsx';
 import { DepthLadder } from './DepthLadder.tsx';
 import { GapBoard } from './GapBoard.tsx';
 import { GapSpotlight } from './GapSpotlight.tsx';
@@ -113,7 +114,7 @@ const gapSpotlight: AgWidgetDefinition = {
   ai: {
     label: `${W.widestSpread} spotlight`,
     description: `Names the shop with the ${W.widestSpread} between the ${W.bestBid.toLowerCase()} and the ${W.bestAsk.toLowerCase()}, why, and the runners-up.`,
-    usage: `Add it to answer "which shop has the ${W.widestSpread}" questions. It needs no configuration.`,
+    usage: `Add it to answer "which shop has the ${W.widestSpread}" questions, then map shop, ${W.bestBid.toLowerCase()} and ${W.bestAsk.toLowerCase()} from the books table (as the gap board does).`,
   },
 };
 
@@ -121,5 +122,10 @@ export const WIDGETS = createWidgets({
   additionalTypes: [gapBoard, depthLadder, gapSpotlight],
   menu: [
     { label: 'HoldMySpot', widgetIds: [GAP_BOARD, DEPTH_LADDER, GAP_SPOTLIGHT] },
+  ],
+  // AG Grid inside Studio: status pills and PayPal ids in the grid and the pivot table (cells.ts).
+  overrides: [
+    { id: 'grid', options: { createCellRenderer } },
+    { id: 'pivot-grid', options: { createCellRenderer } },
   ],
 } as never);

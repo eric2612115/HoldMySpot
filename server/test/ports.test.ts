@@ -7,6 +7,7 @@ import { resetMarket } from '../src/app/seed.ts';
 import { loadConfig } from '../src/config.ts';
 import { FakeAi } from '../src/fakes/ai.ts';
 import { createFakePayPal } from '../src/paypal/fake.ts';
+import { isDuplicatePayout } from '../src/paypal/errors.ts';
 import { parseInvoiceId } from '../src/paypal/status.ts';
 import { loadAi } from '../src/ports/load.ts';
 import { runScoped } from '../src/ports/runscope.ts';
@@ -149,8 +150,9 @@ describe('sandbox ids per market run (a demo reset must not resend old PayPal ke
     assert.notEqual(b.orderId, a.orderId, "a reset market gets a new order, not the old run's");
     const p2 = await port.createPayout(payout('payout:job_0001:fee'));
     assert.notEqual(p2.batchId, p1.batchId, 'the new run pays its queuer instead of getting the old batch back');
-    const unscoped = await pp.createPayout(payout('payout:job_0001:fee@r1'));
-    assert.equal(unscoped.batchId, p1.batchId, 'without the run, a repeated key returns the first run\'s batch');
+    // Without the run, a repeated key is the first run's batch: PayPal refuses it as a duplicate (sandbox, 11-07).
+    const unscoped = await pp.createPayout(payout('payout:job_0001:fee@r1')).catch((e: unknown) => e);
+    assert.ok(isDuplicatePayout(unscoped), `the first run's batch id is taken (${String(p1.batchId)})`);
     assert.deepEqual(parseInvoiceId('HMS-r2-job_0001-R'), { kind: 'job', jobId: 'job_0001', part: 'receipt', n: null, run: 'r2' });
     assert.deepEqual(parseInvoiceId('HMS-r2-bid_0001'), { kind: 'bid', bidId: 'bid_0001', run: 'r2' });
   });

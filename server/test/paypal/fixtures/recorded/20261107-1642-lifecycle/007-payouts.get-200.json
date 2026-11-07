@@ -1,0 +1,72 @@
+{
+  "op": "payouts.get",
+  "method": "GET",
+  "path": "/v1/payments/payouts/J3793PVGQALCJ",
+  "status": 200,
+  "debugId": "ca56b0ccd38cf",
+  "body": {
+    "batch_header": {
+      "payout_batch_id": "J3793PVGQALCJ",
+      "batch_status": "SUCCESS",
+      "time_created": "2026-11-07T08:42:33Z",
+      "time_completed": "2026-11-07T08:42:57Z",
+      "time_closed": "2026-11-07T08:42:57Z",
+      "sender_batch_header": {
+        "sender_batch_id": "payout:job_0001:fee@mw65nc03",
+        "email_subject": "You have a payout from HoldMySpot",
+        "email_message": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys."
+      },
+      "funding_source": "BALANCE",
+      "amount": {
+        "currency": "USD",
+        "value": "10.80"
+      },
+      "fees": {
+        "currency": "USD",
+        "value": "0.25"
+      }
+    },
+    "items": [
+      {
+        "payout_item_id": "U8CDTZU9Z4QRQ",
+        "transaction_id": "5F00173377893924D",
+        "activity_id": "4JB36160PD5601030",
+        "transaction_status": "SUCCESS",
+        "payout_item_fee": {
+          "currency": "USD",
+          "value": "0.25"
+        },
+        "payout_batch_id": "J3793PVGQALCJ",
+        "payout_item": {
+          "recipient_type": "EMAIL",
+          "amount": {
+            "currency": "USD",
+            "value": "10.80"
+          },
+          "note": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys (Wei)",
+          "receiver": "redacted@example.com",
+          "sender_item_id": "po_0001",
+          "recipient_wallet": "PAYPAL",
+          "purpose": "GOODS"
+        },
+        "time_processed": "2026-11-07T08:42:49Z",
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/U8CDTZU9Z4QRQ",
+            "rel": "item",
+            "method": "GET",
+            "encType": "application/json"
+          }
+        ]
+      }
+    ],
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v1/payments/payouts/J3793PVGQALCJ",
+        "rel": "self",
+        "method": "GET",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

@@ -164,8 +164,8 @@ export async function purchaseProof(input: PurchaseProofInput, provider: AiProvi
     const at = reading.issuedAtLocal?.slice(11, 16) ?? '?';
     const rate = verdict.receiptTotal.currency === 'TWD' && job.fx ? ` at ${job.fx.twdPerUsd} TWD per USD` : '';
     facts.push(`Receipt from ${shop.name} at ${at}, total ${formatLocal(verdict.receiptTotal)}; the ${item.shortName.toLowerCase()} lines come to ${formatCents(verdict.retailCents)}${rate}.`);
-    const cap = receiptCapture(job.caps, verdict.retailCents);
-    facts.push(`Capture ${formatCents(cap.amountCents)}: retail ${formatCents(cap.retailCents)} plus fee ${formatCents(cap.feeCents)}.`);
+    const cap = receiptCapture(job.caps, verdict.retailCents, job.mode);
+    facts.push(`Capture ${formatCents(cap.amountCents)}: retail ${formatCents(cap.retailCents)}, fee ${formatCents(cap.feeCents)} and processing ${formatCents(cap.processingCents)} at cost.`);
   }
   if (receiptQr) facts.push(`Receipt QR ${receiptQr.invoiceNumber} from store ${receiptQr.sellerTaxId} was read from the photo.`);
   return {

@@ -20,12 +20,15 @@ export { PayPalRestClient, OPS } from './client.ts';
 export { BRAND_NAME, INVOICE_PREFIX, SANDBOX_BASE_URL, SANDBOX_SDK_URL, SANDBOX_WEB_URL, SCOPE_CHECKS } from './constants.ts';
 export { loadSandboxEnvFile, maskId, parseDotenv, secretsDir, type SandboxEnvLoad } from './credentials.ts';
 export {
+  captureFeeCents,
   DEFAULT_SHIP_TO,
   FAKE_CLIENT_ID,
   FAKE_SCOPES,
   PayPalEmulator,
   paypalTime,
   parseFailures,
+  PAYOUT_ITEM_FEE_CENTS,
+  SANDBOX_LINK_HOST,
   type EmShipTo,
   type EmulatorOptions,
   type EmulatorState,

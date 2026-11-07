@@ -18,8 +18,8 @@ const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5197';
 const OUT = path.resolve(process.env.OUT_DIR ?? path.join(here, '..', '..', 'proto-shots', 'v2', 'live'));
 const SPEED = Number(process.env.SPEED ?? 60);
 const DESKTOP = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, timezoneId: 'America/Los_Angeles' };
-// Expected noise: AG Studio's licence banner (no key in the repo, and the AG Grid and AG Charts key
-// does not cover AG Studio) and MapLibre style warnings.
+// Expected noise: AG Studio's trial banner when the dev server has no AG Studio key (README, Licences)
+// and MapLibre style warnings.
 const IGNORE = /\*{10}|License Key Not Found|Incompatible License|studio\/licensing|unlocked for trial|hide the watermark|AG Studio Pro with AI|Expected value to be of type/;
 const DAY = '2026-11-12';
 // San Francisco is on standard time (UTC-8) on the hero day.
@@ -34,7 +34,7 @@ const MOMENTS = [
   // The script jumps from 11:53 to 13:58, so this moment sits just before the jump.
   { at: '11:52:45', name: '04-receipts-captured-paid', views: ['board', 'market'], note: 'Wei and Lin uploaded their receipts; captures and payouts are on the ledger' },
   // The script ends with its closing caption at 14:01 and the market holds still there.
-  { at: '14:01', name: '05-shipped-final-capture', views: ['board', 'market'], note: 'Tracking added: final capture $8.75, $5.25 released, $42.75 paid to Wei' },
+  { at: '14:01', name: '05-shipped-final-capture', views: ['board', 'market'], note: 'Tracking added: final capture $9.57 ($8.75 + $0.82 processing), $5.44 released, $42.75 paid to Wei' },
 ];
 
 const problems = [];

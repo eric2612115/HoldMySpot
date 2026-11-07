@@ -1,7 +1,7 @@
 {
   "kind": "purchase",
   "id": "paper-moon-mia-genuine",
-  "description": "Hero: Wei's receipt for Mia's plush; passes, $34.00, capture $46.00.",
+  "description": "Hero: Wei's receipt for Mia's plush; passes, $34.00; shop price and fee $46.00.",
   "shopId": "paper-moon-toys",
   "itemId": "plush-paper-moon",
   "job": {

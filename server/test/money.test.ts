@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ContractError, findShop } from '@holdmyspot/shared';
+import { ContractError, captureCapCents, findShop, jobSettlement } from '@holdmyspot/shared';
 import { cancelBid } from '../src/app/bids.ts';
 import { addShipment, handover, markBought, submitProof } from '../src/app/jobs.ts';
 import { bookSnapshot } from '../src/app/market.ts';
@@ -30,7 +30,7 @@ async function throughProof(s: TestServer, o: { requester?: string; queuer?: str
 const ship = { carrierName: 'Harbor Parcel Ground', trackingNumber: 'HAP-TEST-1', shippingCostCents: 2440, dutyPaidCents: 200, labelFileId: null };
 
 describe('never capture above the user limit', () => {
-  it('captures a shipped two-plush request: $76.00, then $26.40 final, $12.60 released', async () => {
+  it('captures a shipped two-plush request: $79.77, then $27.86 final, $14.59 released (processing at cost included)', async () => {
     const s = await testServer();
     try {
       const { bid, job } = await throughProof(s);
@@ -38,7 +38,8 @@ describe('never capture above the user limit', () => {
       assert.equal(job.amounts.retailCents, 5200); // 2 x $26.00 from the receipt
       const hold1 = s.app.store.holds.must(bid.holdId!);
       assert.equal(hold1.status, 'partially_captured');
-      assert.equal(hold1.capturedCents, 7600);
+      // $52.00 shop price + $24.00 fees + $3.77 processing ($3.27 PayPal fee on $79.77, two $0.25 payouts).
+      assert.equal(hold1.capturedCents, 7977);
       const cap1 = s.app.store.ledger.first("job_id = ? AND kind = 'captured'", job.id)!;
       assert.equal(cap1.idempotencyKey, `cap:${job.id}:receipt`);
       assert.ok(cap1.paypal?.captureId?.startsWith('FAKE-CAP-'));
@@ -46,17 +47,17 @@ describe('never capture above the user limit', () => {
       await s.app.exec(() => addShipment(s.app, persona(s.app, 'wei'), job.id, ship));
       const hold = s.app.store.holds.must(bid.holdId!);
       assert.equal(hold.status, 'captured');
-      assert.equal(hold.capturedCents, 10_240);
-      assert.equal(hold.releasedCents, 1260);
+      assert.equal(hold.capturedCents, 7977 + 2786);
+      assert.equal(hold.releasedCents, 1459);
       assert.equal(s.app.fakePayPal.inspectAuthorization(hold.authorizationId!)?.status, 'CAPTURED');
       const entries = ledgerOf(s.app, bid.id).filter((e) => e.userId === 'mia');
       assert.deepEqual(
         entries.map((e) => [e.kind, e.amount.cents, e.status]),
         [
-          ['held', 11_500, 'succeeded'],
-          ['captured', 7600, 'succeeded'],
-          ['captured', 2640, 'succeeded'],
-          ['released', 1260, 'succeeded'],
+          ['held', 12_222, 'succeeded'],
+          ['captured', 7977, 'succeeded'],
+          ['captured', 2786, 'succeeded'],
+          ['released', 1459, 'succeeded'],
         ],
       );
       const payouts = s.app.store.payouts.where('job_id = ?', job.id);
@@ -67,8 +68,11 @@ describe('never capture above the user limit', () => {
           ['reimbursement', 7840, 0, 'succeeded'],
         ],
       );
-      assert.equal(s.app.store.jobs.must(job.id).status, 'shipped');
-      assert.equal(s.app.store.jobs.must(job.id).amounts.paidOutCents, 10_000);
+      const done = s.app.store.jobs.must(job.id);
+      assert.equal(done.status, 'shipped');
+      assert.equal(done.amounts.paidOutCents, 10_000);
+      // Where the $107.63 went: $100.00 to the queuer, $5.23 to PayPal (fees on both captures and both payouts), $2.40 kept.
+      assert.deepEqual(jobSettlement(done.amounts), { chargedCents: 10_763, processingCents: 523, paidOutCents: 10_000, paypalFeesCents: 523, platformCents: 240, processingVarianceCents: 0 });
     } finally {
       await s.done();
     }
@@ -79,21 +83,21 @@ describe('never capture above the user limit', () => {
     try {
       const { bid, job } = await throughProof(s);
       const hold = s.app.store.holds.must(bid.holdId!);
-      assert.equal(hold.amount.cents - hold.capturedCents, 3900);
+      assert.equal(hold.amount.cents - hold.capturedCents, 4245);
       // Simulate a bug that inflated this job's shipping cap: the hold limit still stops the capture.
       s.app.tx(() => {
         const j = s.app.store.jobs.must(job.id);
         j.caps = { ...j.caps, shippingCents: 9_999 };
         s.app.store.jobs.update(j);
       });
-      const err = await s.app.exec(() => captureForJob(s.app, job.id, 'shipping', 3901, { retailCents: 5200, feeCents: 0, shippingCents: 3901 })).catch((e) => e);
+      const err = await s.app.exec(() => captureForJob(s.app, job.id, 'shipping', 4246, { retailCents: 5200, feeCents: 0, shippingCents: 4100, processingCents: 146 })).catch((e) => e);
       assert.equal(code(err), 'OVER_LIMIT');
       assert.equal(s.app.fakePayPal.captureCount(hold.authorizationId!), 1, 'no second capture reached PayPal');
       assert.equal(s.app.store.ledger.count("job_id = ? AND kind = 'captured'", job.id), 1);
-      // PayPal itself would have taken it: 7600 + 3901 = 11501 is within 115% of 11500.
+      // PayPal itself would have taken it: 7977 + 4246 = 12223 is within 115% of 12222.
       const direct = await s.app.fakePayPal.captureAuthorization(hold.authorizationId!, {
         requestId: 'test-direct-overage',
-        amountCents: 3901,
+        amountCents: 4246,
         finalCapture: false,
         invoiceId: 'HMS-test',
         noteToPayer: 'test',
@@ -105,11 +109,13 @@ describe('never capture above the user limit', () => {
     }
   });
 
-  it('refuses a capture above the job cap', async () => {
+  it('refuses a capture above the job cap (shipping cap plus its processing at cost)', async () => {
     const s = await testServer();
     try {
       const { job } = await throughProof(s);
-      const err = await s.app.exec(() => captureForJob(s.app, job.id, 'shipping', 3501, { retailCents: 0, feeCents: 0, shippingCents: 3501 })).catch((e) => e);
+      const cap = captureCapCents(job.caps, 'ship', 'shipping');
+      assert.equal(cap, 3677, '$35.00 shipping cap plus $1.77 processing');
+      const err = await s.app.exec(() => captureForJob(s.app, job.id, 'shipping', cap + 1, { retailCents: 0, feeCents: 0, shippingCents: 3501 })).catch((e) => e);
       assert.equal(code(err), 'OVER_LIMIT');
     } finally {
       await s.done();
@@ -127,8 +133,8 @@ describe('never capture above the user limit', () => {
       const res = await s.call('POST', `/api/ops/proofs/${proof.id}/review`, { body: { decision: 'pass', note: 'Price rise posted at the counter.' } });
       assert.equal(res.status, 200, JSON.stringify(res.json));
       const cap = s.app.store.ledger.first("job_id = ? AND kind = 'captured'", job.id)!;
-      assert.equal(cap.amount.cents, 5600 + 2400, 'retail capped at 2 x $28.00 plus the fee');
-      assert.equal(s.app.store.holds.must(bid.holdId!).capturedCents, 8000);
+      assert.equal(cap.amount.cents, 5600 + 2400 + 392, 'retail capped at 2 x $28.00 plus the fee plus processing at cost');
+      assert.equal(s.app.store.holds.must(bid.holdId!).capturedCents, 8392);
     } finally {
       await s.done();
     }
@@ -161,9 +167,10 @@ describe('final capture flag', () => {
       await s.app.exec(() => addShipment(s.app, persona(s.app, b!.queuerId), b!.id, { ...ship, trackingNumber: 'HAP-TEST-2', shippingCostCents: 1500, dutyPaidCents: 0 }));
       const hold = s.app.store.holds.must(placed.bid.holdId!);
       assert.equal(hold.status, 'captured');
-      // Receipts: 2600 + 1000 and 2600 + 1100; shipping 1500 + 1500 (each job's cap is 1750).
-      assert.equal(hold.capturedCents, 3600 + 3700 + 3000);
-      assert.equal(hold.releasedCents, 11_500 - hold.capturedCents);
+      // Receipts: 2600 + 1000 and 2600 + 1100; shipping 1500 + 1500 (each job's cap is 1750); each capture
+      // with its processing at cost: $38.33, $39.36, $16.05 and $16.05.
+      assert.equal(hold.capturedCents, 3833 + 3936 + 1605 + 1605);
+      assert.equal(hold.releasedCents, 12_222 - hold.capturedCents);
     } finally {
       await s.done();
     }
@@ -218,8 +225,8 @@ describe('void on failure', () => {
       await s.at(deadline + 1);
       const hold = s.app.store.holds.must(placed.bid.holdId!);
       assert.equal(hold.status, 'released');
-      assert.equal(hold.capturedCents, 3600 + 1200);
-      assert.equal(hold.releasedCents, 11_500 - 4800);
+      assert.equal(hold.capturedCents, 3833 + 1294);
+      assert.equal(hold.releasedCents, 12_222 - 5127);
       assert.equal(s.app.store.bids.must(placed.bid.id).status, 'closing', 'deadline passed while the shipped job is on its way');
       await s.call('POST', `/api/jobs/${good.id}/delivered`, {});
       const b = s.app.store.bids.must(placed.bid.id);
@@ -243,7 +250,7 @@ describe('void on failure', () => {
       const done = s.app.store.ledger.must(entry.id);
       assert.equal(done.status, 'succeeded');
       assert.equal(done.idempotencyKey, `cap:${job.id}:receipt`);
-      assert.equal(s.app.store.holds.must(bid.holdId!).capturedCents, 7600);
+      assert.equal(s.app.store.holds.must(bid.holdId!).capturedCents, 7977);
       assert.deepEqual(s.app.store.payouts.all().map((p) => p.amount.cents), [2160]);
     } finally {
       await s.done();
@@ -349,7 +356,7 @@ describe('hold renewal (reauthorize from day 4 to day 29)', () => {
 });
 
 describe('local errand: one capture at the handover', () => {
-  it('captures $47.00 with the requester code, pays $46.10 and releases $2.00', async () => {
+  it('captures $49.47 with the requester code ($47.00 plus $2.47 processing), pays $46.10, keeps $0.90 and releases $2.07', async () => {
     const s = await testServer({ start: Date.parse('2026-11-12T09:30:00-05:00') });
     try {
       const placed = await placeBid(s.app, 'jun', {
@@ -362,7 +369,7 @@ describe('local errand: one capture at the handover', () => {
         destination: { mode: 'local', cityId: 'nyc' },
         funding: 'venmo',
       });
-      assert.equal(placed.hold.amount.cents, 4900);
+      assert.equal(placed.hold.amount.cents, 5154);
       const dana = persona(s.app, 'dana');
       const { claimBid } = await import('../src/app/bids.ts');
       const out = await s.app.exec(() =>
@@ -382,10 +389,12 @@ describe('local errand: one capture at the handover', () => {
       const res = await s.app.exec(() => handover(s.app, dana, job.id, job.handoverCode!));
       assert.equal(res.job.status, 'delivered');
       const hold = s.app.store.holds.must(placed.bid.holdId!);
-      assert.equal(hold.capturedCents, 4700);
+      assert.equal(hold.capturedCents, 4947);
       assert.equal(hold.status, 'captured');
-      assert.equal(hold.releasedCents, 200);
-      assert.deepEqual(s.app.store.payouts.all().map((x) => [x.purpose, x.amount.cents, x.platformFeeCents]), [['fee_and_reimbursement', 4610, 90]]);
+      assert.equal(hold.releasedCents, 207);
+      assert.deepEqual(s.app.store.payouts.all().map((x) => [x.purpose, x.amount.cents, x.platformFeeCents, x.paypalFeeCents]), [['fee_and_reimbursement', 4610, 90, 25]]);
+      const settled = jobSettlement(s.app.store.jobs.must(job.id).amounts);
+      assert.deepEqual([settled.processingCents, settled.paypalFeesCents, settled.platformCents], [247, 222 + 25, 90]);
       assert.equal(s.app.store.bids.must(placed.bid.id).status, 'settled');
     } finally {
       await s.done();
@@ -403,11 +412,13 @@ describe('refunds and idempotency', () => {
       const j = s.app.store.jobs.must(job.id);
       assert.equal(j.status, 'failed');
       assert.equal(j.failure?.reason, 'not_shipped');
-      assert.equal(j.amounts.refundedCents, 7600);
+      assert.equal(j.amounts.refundedCents, 7977, 'everything the requester paid, processing included');
       const refund = s.app.store.ledger.where("job_id = ? AND kind = 'refunded'", job.id);
-      assert.deepEqual(refund.map((e) => [e.amount.cents, e.status, e.idempotencyKey]), [[7600, 'succeeded', `refund:${job.id}:1`]]);
+      assert.deepEqual(refund.map((e) => [e.amount.cents, e.status, e.idempotencyKey]), [[7977, 'succeeded', `refund:${job.id}:1`]]);
       const hold = s.app.store.holds.must(bid.holdId!);
-      assert.equal(hold.refundedCents, 7600);
+      assert.equal(hold.refundedCents, 7977);
+      // The queuer who never shipped kept the fee payout, and PayPal keeps its capture fee: HoldMySpot absorbs both.
+      assert.equal(jobSettlement(j.amounts).platformCents, -(2160 + 327 + 25));
       assert.equal(hold.status, 'released', 'the rest was voided');
     } finally {
       await s.done();
@@ -419,13 +430,13 @@ describe('refunds and idempotency', () => {
     try {
       const { bid, job } = await throughProof(s);
       const hold = s.app.store.holds.must(bid.holdId!);
-      const again = await s.app.exec(() => captureForJob(s.app, job.id, 'receipt', 7600, { retailCents: 5200, feeCents: 2400, shippingCents: 0 }));
+      const again = await s.app.exec(() => captureForJob(s.app, job.id, 'receipt', 7977, { retailCents: 5200, feeCents: 2400, shippingCents: 0, processingCents: 377 }));
       assert.equal(again.completed, true);
       assert.equal(s.app.fakePayPal.captureCount(hold.authorizationId!), 1);
-      assert.equal(s.app.store.holds.must(hold.id).capturedCents, 7600);
+      assert.equal(s.app.store.holds.must(hold.id).capturedCents, 7977);
       const keys = s.app.store.ledger.all().map((e) => e.idempotencyKey);
       assert.equal(new Set(keys).size, keys.length, 'idempotency keys are unique');
-      assert.equal(sum(s.app.store.ledger.where("kind = 'captured' AND status = 'succeeded'").map((e) => e.amount.cents)), 7600);
+      assert.equal(sum(s.app.store.ledger.where("kind = 'captured' AND status = 'succeeded'").map((e) => e.amount.cents)), 7977);
     } finally {
       await s.done();
     }

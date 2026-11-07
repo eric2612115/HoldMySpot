@@ -1,0 +1,19 @@
+{
+  "op": "disputes.adjudicate",
+  "method": "POST",
+  "path": "/v1/customer/disputes/PP-R-UEL-10196964/adjudicate",
+  "status": 400,
+  "debugId": "ca56b1154efb1",
+  "body": {
+    "name": "INVALID_REQUEST",
+    "message": "Request is not well-formed, syntactically incorrect, or violates schema.",
+    "debug_id": "ca56b1154efb1",
+    "information_link": "https://developer.paypal.com/docs/api/customer-disputes/v1/#errors",
+    "details": [
+      {
+        "issue": "ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE"
+      }
+    ],
+    "links": []
+  }
+}

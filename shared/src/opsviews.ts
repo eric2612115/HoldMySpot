@@ -14,7 +14,7 @@ import type {
   Shop,
   UserId,
 } from './contract.ts';
-import { platformFeeCents } from './money.ts';
+import { jobSettlement, platformFeeCents } from './money.ts';
 import { epochToZonedLocal } from './proofs.ts';
 import { DEMO_TIME_ZONE, SEED_CITIES, SEED_SHOPS } from './seed.ts';
 import { askFeeAt, askNextDropAt } from './stepdown.ts';
@@ -291,12 +291,18 @@ export function opsDatasets(input: OpsViewInput, t: MarketMs, opts: OpsViewOptio
         f('earningsUsd', 'number', 'Queuer earnings'),
         f('capturedUsd', 'number', 'Captured'),
         f('paidOutUsd', 'number', 'Paid out'),
+        f('processingUsd', 'number', 'Processing and payouts (charged at cost)'),
+        f('paypalFeesUsd', 'number', "PayPal's fees (as reported)"),
+        f('platformUsd', 'number', 'HoldMySpot keeps'),
         f('failure', 'string', 'Failure'),
       ],
       input.jobs.map((j) => {
         const fee = j.feeCents * j.qty;
         const earnings = j.status === 'failed' ? 0 : fee - platformFeeCents(fee);
         const payState = j.status === 'failed' ? 'Nothing (job failed)' : j.amounts.paidOutCents > 0 ? 'Paid out' : 'On its way';
+        const money = jobSettlement(j.amounts);
+        // Final only when nothing more moves: the job ended, and no payout is still on its way.
+        const settled = ['shipped', 'delivered', 'failed', 'refunded'].includes(j.status) && !input.payouts.some((p) => p.reference === j.id && p.status === 'pending');
         return {
           jobId: j.id,
           shopId: j.shopId,
@@ -310,6 +316,9 @@ export function opsDatasets(input: OpsViewInput, t: MarketMs, opts: OpsViewOptio
           earningsUsd: dollars(earnings),
           capturedUsd: dollars(j.amounts.capturedCents),
           paidOutUsd: dollars(j.amounts.paidOutCents),
+          processingUsd: dollars(money.processingCents),
+          paypalFeesUsd: dollars(money.paypalFeesCents),
+          platformUsd: settled ? dollars(money.platformCents) : null,
           failure: j.failure?.reason ?? null,
         };
       }),
@@ -389,6 +398,7 @@ export function opsDatasets(input: OpsViewInput, t: MarketMs, opts: OpsViewOptio
         f('queuer', 'string', 'Queuer'),
         f('amountUsd', 'number', 'Paid out'),
         f('platformFeeUsd', 'number', 'Platform fee'),
+        f('paypalFeeUsd', 'number', "PayPal's Payouts fee"),
         f('purpose', 'string', 'For'),
         f('status', 'string', 'Status'),
       ],
@@ -399,6 +409,7 @@ export function opsDatasets(input: OpsViewInput, t: MarketMs, opts: OpsViewOptio
         queuer: p.recipient,
         amountUsd: dollars(p.amount.cents),
         platformFeeUsd: dollars(p.platformFeeCents),
+        paypalFeeUsd: dollars(p.paypalFeeCents),
         purpose: p.purpose === 'fee' ? 'Queue fee' : p.purpose === 'reimbursement' ? 'Shop price and shipping' : 'Everything',
         status: p.status,
       })),

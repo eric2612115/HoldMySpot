@@ -1,0 +1,25 @@
+{
+  "op": "authorizations.capture",
+  "method": "POST",
+  "path": "/v2/payments/authorizations/7A67222576480453H/capture",
+  "status": 422,
+  "debugId": "ca56b0edfeee9",
+  "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "ca56b0edfeee9",
+    "details": [
+      {
+        "issue": "AUTHORIZATION_VOIDED",
+        "description": "Authorization has been voided."
+      }
+    ],
+    "links": [
+      {
+        "href": "https://developer.paypal.com/docs/api/payments/v2/#error-AUTHORIZATION_VOIDED",
+        "rel": "information_link",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

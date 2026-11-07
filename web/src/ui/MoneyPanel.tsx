@@ -1,15 +1,17 @@
+import { DEFAULT_RULES, PROCESSING_LABEL, processingScheduleText } from '@holdmyspot/shared';
 import type { LedgerKind } from '@holdmyspot/shared';
 import { formatUsd } from '../domain/money';
 import { useMarket } from '../state/market';
 import { params } from '../state/services';
+import { PersonaFace } from './queuer/faces';
 
 /** The money states people see, in plain words. Same kinds as the server's ledger. */
 export const STATE_WORDS: Record<LedgerKind, { label: string; plain: string }> = {
-  held: { label: 'Held', plain: 'Reserved on your PayPal. Not charged.' },
+  held: { label: 'Held', plain: 'PayPal holds it on your account. Not charged yet.' },
   renewed: { label: 'Renewed', plain: 'A hold PayPal renewed after 3 days, same amount.' },
-  captured: { label: 'Captured', plain: 'Charged: the receipt price, the fee, or shipping at cost.' },
+  captured: { label: 'Captured', plain: 'Charged: the receipt price and fee, or shipping, plus processing at cost. It lands in HoldMySpot’s PayPal balance.' },
   released: { label: 'Released', plain: 'Back to you: the part of a hold you did not need.' },
-  paid_out: { label: 'Paid out', plain: 'Sent to the queuer through PayPal Payouts.' },
+  paid_out: { label: 'Paid out', plain: 'Sent from HoldMySpot’s PayPal balance to the queuer by PayPal Payouts.' },
   refunded: { label: 'Refunded', plain: 'Returned to you after a capture.' },
 };
 
@@ -74,12 +76,18 @@ export function MoneyPanel({ open, onClose }: { open: boolean; onClose: () => vo
       </header>
       <div className="money__totals">
         <div className="money__held">
-          <span>{persona ? `Held for ${persona.requesterName} right now` : 'Held right now'}</span>
+          <span className="money__whom">
+            {persona && <PersonaFace id={persona.requesterId} size={24} />}
+            {persona ? `Held for ${persona.requesterName} right now` : 'Held right now'}
+          </span>
           <strong>{formatUsd(held, { exact: true })}</strong>
         </div>
         {persona && (
           <div className="money__held is-paid">
-            <span>{`Paid out to ${persona.queuerName}`}</span>
+            <span className="money__whom">
+              <PersonaFace id={persona.queuerId} size={24} />
+              {`Paid out to ${persona.queuerName}`}
+            </span>
             <strong>{formatUsd(paidOut, { exact: true })}</strong>
           </div>
         )}
@@ -99,6 +107,10 @@ export function MoneyPanel({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
         ))}
       </dl>
+      <p className="money__who-note" data-processing-note>
+        {PROCESSING_LABEL}: what taking the payment and paying the queuer costs ({processingScheduleText()}), passed through at cost. HoldMySpot keeps{' '}
+        {DEFAULT_RULES.platformFeeBps / 100}% of the queue fee and nothing else.
+      </p>
       {activity.length === 0 ? (
         <p className="money__empty">Nothing yet. When you ask for something, the hold shows up here.</p>
       ) : (

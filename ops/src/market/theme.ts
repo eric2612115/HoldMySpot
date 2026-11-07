@@ -1,6 +1,6 @@
 import { studioTheme } from 'ag-studio';
 
-/** AG Studio themed to the HoldMySpot palette: grape accent, mint canvas, rounded widgets, Fredoka titles. */
+/** AG Studio themed to the HoldMySpot palette: grape accent, mint canvas, rounded widgets, Fredoka titles, and its grids in the same colours. */
 const PALETTE = ['#5B4CF0', '#FFC53D', '#2FB37A', '#F0476A', '#4CC9F0', '#A78BFA', '#FFA94D', '#7E839D'];
 
 export const hmsStudioTheme = studioTheme.withParams({
@@ -29,7 +29,23 @@ export const hmsStudioTheme = studioTheme.withParams({
   studioWidgetBorder: { color: '#E6E7F1', width: 1 },
   studioWidgetShadow: '0 1px 2px rgba(35, 30, 90, 0.05), 0 4px 14px rgba(35, 30, 90, 0.06)',
   studioPanelHeaderFontFamily: "'Fredoka Variable', system-ui, sans-serif",
-  studioAiPanelWidth: 372,
+  studioAiPanelWidth: 344,
+  // AG Grid inside Studio (the ledger, the holds pivot, the payouts grid).
+  gridAccentColor: '#5B4CF0',
+  gridFontFamily: "'Figtree Variable', system-ui, sans-serif",
+  gridDataFontSize: 12.5,
+  gridHeaderFontFamily: "'Figtree Variable', system-ui, sans-serif",
+  gridHeaderFontSize: 11.5,
+  gridHeaderFontWeight: 700,
+  gridHeaderBackgroundColor: '#F6F4FF',
+  gridHeaderTextColor: '#4A4E68',
+  gridCellTextColor: '#23253A',
+  gridOddRowBackgroundColor: '#FBFBFE',
+  gridRowHoverColor: '#F1EEFF',
+  gridRowBorder: { color: '#EEF0F6', width: 1 },
+  gridPinnedRowBorder: { color: '#CFC8FD', width: 2 },
+  gridWrapperBorder: false,
+  gridWrapperBorderRadius: 12,
   chartFontFamily: "'Figtree Variable', system-ui, sans-serif",
   chartTitleFontFamily: "'Fredoka Variable', system-ui, sans-serif",
   ...Object.fromEntries(PALETTE.flatMap((c, i) => [[`chartPaletteFills${i + 1}Color`, c], [`chartPaletteStrokes${i + 1}Color`, c]])),

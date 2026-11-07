@@ -39,6 +39,12 @@ export interface PayPalSettings {
 export interface ServerConfig {
   mode: RuntimeMode;
   modeReason: string;
+  /**
+   * HMS_SANDBOX_FALLBACK=fake: an explicit opt-in to run the simulated PayPal
+   * when HMS_MODE=sandbox cannot start (tests and the launcher's settings
+   * probe). Without it, a sandbox request with missing settings fails (D-108).
+   */
+  sandboxFallback: boolean;
   host: string;
   port: number;
   dbPath: string;
@@ -65,7 +71,7 @@ export interface ServerConfig {
   funding: CheckoutFunding[];
   fakeFail: string[];
   ai: {
-    provider: 'auto' | 'anthropic' | 'muse' | 'fake';
+    provider: 'auto' | 'anthropic' | 'muse' | 'openai' | 'fake';
     mode: AiMode;
     timeoutMs: number;
     fixturesDir: string;
@@ -132,6 +138,31 @@ function loadPayPal(env: Env, secretsDir: string): { settings: PayPalSettings | 
   };
 }
 
+/**
+ * HMS_MODE=sandbox was asked for, but the PayPal sandbox settings are not all
+ * there. The server refuses to start rather than quietly simulating PayPal
+ * (D-108). Names only: never a value.
+ */
+export class SandboxConfigError extends Error {
+  readonly missing: string[];
+  readonly source: string;
+
+  constructor(missing: string[], source: string) {
+    const where =
+      source === 'sandbox.env'
+        ? 'sandbox.env in the secrets folder (HMS_SECRETS_DIR) is missing'
+        : 'there is no sandbox.env in the secrets folder (HMS_SECRETS_DIR), and the environment is missing';
+    super(
+      `HMS_MODE=sandbox needs the PayPal sandbox settings, but ${where} ${missing.join(', ')}. ` +
+        'Nothing was started. Run npm run keys (or npm run keys -- --from-env), or leave HMS_MODE unset for the simulated PayPal. ' +
+        'Tests that want the simulated PayPal instead set HMS_SANDBOX_FALLBACK=fake.',
+    );
+    this.name = 'SandboxConfigError';
+    this.missing = missing;
+    this.source = source;
+  }
+}
+
 const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
 export const isLoopback = (host: string) => LOOPBACK.has(host);
 
@@ -143,14 +174,17 @@ export function loadConfig(env: Env = process.env, overrides: Partial<ServerConf
   let mode: RuntimeMode = 'fake';
   let modeReason = 'HMS_MODE=fake: simulated PayPal, no network.';
   let paypal: PayPalSettings | null = null;
+  const sandboxFallback = env.HMS_SANDBOX_FALLBACK === 'fake';
   if (requested === 'sandbox') {
     const loaded = loadPayPal(env, secretsDir);
     if (loaded.settings) {
       mode = 'sandbox';
       paypal = loaded.settings;
       modeReason = `HMS_MODE=sandbox: PayPal sandbox credentials found (${loaded.source}).`;
-    } else {
+    } else if (sandboxFallback) {
       modeReason = `HMS_MODE=sandbox but ${loaded.source} is missing ${loaded.missing.join(', ')}: running fake.`;
+    } else {
+      throw new SandboxConfigError(loaded.missing, loaded.source);
     }
   }
 
@@ -171,6 +205,7 @@ export function loadConfig(env: Env = process.env, overrides: Partial<ServerConf
   const config: ServerConfig = {
     mode,
     modeReason,
+    sandboxFallback,
     host: env.HMS_HOST ?? '127.0.0.1',
     port: num(env, 'HMS_PORT', 8796, 0, 65535),
     dbPath: env.HMS_DB_PATH ?? join(SERVER_ROOT, 'data', 'holdmyspot.sqlite'),

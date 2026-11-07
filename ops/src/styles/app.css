@@ -76,6 +76,7 @@
 .views a {
   display: flex;
   align-items: center;
+  white-space: nowrap;
   gap: 7px;
   padding: 7px 15px;
   border-radius: var(--radius-pill);
@@ -131,6 +132,7 @@
 .clock-time span {
   font-size: 11.5px;
   color: var(--ink-3);
+  white-space: nowrap;
 }
 
 .moments {
@@ -205,6 +207,49 @@
 .mode-banner[data-mode='sandbox'] {
   background: var(--paid-bg);
   color: var(--paid);
+}
+
+/* PayPal mode and where the two agents think (a model on the server's AI port, or offline), stacked. */
+.status-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.status-pills .mode-banner,
+.status-pills .agents-pill {
+  padding: 4px 11px;
+  font-size: 11.5px;
+}
+
+.agents-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 13px;
+  border-radius: var(--radius-pill);
+  background: var(--grape-soft);
+  color: var(--grape-deep);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.agents-pill span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(91, 76, 240, 0.18);
+}
+
+.agents-pill[data-kind='offline'] {
+  background: var(--released-bg);
+  color: var(--released);
+}
+
+.agents-pill[data-kind='offline'] span {
+  box-shadow: none;
 }
 
 .view {

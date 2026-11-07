@@ -1,0 +1,69 @@
+{
+  "op": "captures.get",
+  "method": "GET",
+  "path": "/v2/payments/captures/7RU11396ML001835N",
+  "status": 200,
+  "debugId": "ca56b0cc59d5e",
+  "body": {
+    "id": "7RU11396ML001835N",
+    "amount": {
+      "currency_code": "USD",
+      "value": "46.00"
+    },
+    "final_capture": true,
+    "seller_protection": {
+      "status": "ELIGIBLE",
+      "dispute_categories": [
+        "ITEM_NOT_RECEIVED",
+        "UNAUTHORIZED_TRANSACTION"
+      ]
+    },
+    "disbursement_mode": "INSTANT",
+    "seller_receivable_breakdown": {
+      "gross_amount": {
+        "currency_code": "USD",
+        "value": "46.00"
+      },
+      "paypal_fee": {
+        "currency_code": "USD",
+        "value": "2.10"
+      },
+      "net_amount": {
+        "currency_code": "USD",
+        "value": "43.90"
+      }
+    },
+    "invoice_id": "HMS-mw65nc03-job_0001-R",
+    "custom_id": "bid_0001",
+    "status": "COMPLETED",
+    "supplementary_data": {
+      "related_ids": {
+        "order_id": "37U93450B4252724X",
+        "authorization_id": "1E796973JR5822318"
+      }
+    },
+    "payee": {
+      "email_address": "redacted@example.com",
+      "merchant_id": "REDACTEDID"
+    },
+    "create_time": "2026-11-07T08:42:32Z",
+    "update_time": "2026-11-07T08:43:18Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/captures/7RU11396ML001835N",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/captures/7RU11396ML001835N/refund",
+        "rel": "refund",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/1E796973JR5822318",
+        "rel": "up",
+        "method": "GET"
+      }
+    ]
+  }
+}

@@ -18,8 +18,10 @@ import {
 
 /**
  * Real sandbox responses saved (sanitized) by scripts/sandbox-gates.mjs under
- * fixtures/recorded/<run>/. Each one must map without errors, so a change in
- * PayPal's shapes shows up here. Skipped until the gates have run once.
+ * fixtures/recorded/<run>/ (run, probe, lifecycle, disputes). Each one must
+ * map without errors, so a change in PayPal's shapes shows up here, and none
+ * may carry an email, a payer or merchant id, a token or a non-English
+ * character. Skipped until the gates have run once.
  */
 
 interface Recorded {
@@ -39,6 +41,18 @@ function files(dir: string): string[] {
     const p = join(dir, name);
     return statSync(p).isDirectory() ? files(p) : name.endsWith('.json') ? [p] : [];
   });
+}
+
+const EMAIL = /[^\s"@<>]+@[^\s"@<>]+\.[A-Za-z]{2,}/g;
+const CJK = /[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef\uac00-\ud7af]/;
+
+/** The sanitizer's promises (scripts/lib/sanitize.mjs), checked on the saved text. */
+function clean(text: string, file: string): void {
+  const emails = (text.match(EMAIL) ?? []).filter((e) => e !== 'redacted@example.com');
+  assert.deepEqual(emails, [], `${file}: an email address`);
+  assert.doesNotMatch(text, /token=|access_token|"nonce"/, `${file}: a token`);
+  assert.doesNotMatch(text, /"(payer_id|account_id|merchant_id)": "(?!REDACTEDID")/, `${file}: a payer or merchant id`);
+  assert.doesNotMatch(text, CJK, `${file}: a non-English character`);
 }
 
 function check(r: Recorded): void {
@@ -93,7 +107,9 @@ describe('recorded sandbox responses', () => {
   }
   for (const file of all) {
     it(`maps ${file.slice(ROOT.length)}`, () => {
-      check(JSON.parse(readFileSync(file, 'utf8')) as Recorded);
+      const text = readFileSync(file, 'utf8');
+      clean(text, file.slice(ROOT.length));
+      check(JSON.parse(text) as Recorded);
     });
   }
 });

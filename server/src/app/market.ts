@@ -80,26 +80,27 @@ export function jobMayCaptureAgain(job: Job): boolean {
 
 /**
  * What a bid's jobs have taken from its hold: everything captured, plus the
- * full caps of every job that may still capture (PayPal never gives captured
- * money back to an authorization, refunds included).
+ * full caps (processing included, D-105) of every job that may still capture
+ * (PayPal never gives captured money back to an authorization, refunds included).
  */
 export function committedCents(app: App, bidId: string): number {
   let total = 0;
   for (const j of app.store.jobs.where('bid_id = ?', bidId)) {
-    const caps = j.caps.retailCents + j.caps.feeCents + j.caps.shippingCents;
+    const caps = j.caps.retailCents + j.caps.feeCents + j.caps.shippingCents + (j.caps.processingCents ?? 0);
     total += jobMayCaptureAgain(j) ? Math.max(j.amounts.capturedCents, caps) : j.amounts.capturedCents;
   }
   return total;
 }
 
 /**
- * How many more units the hold can back, each at the retail cap plus
- * `maxFeeCents` plus its share of the shipping budget. A fill beyond this
+ * How many more units the hold can back, each as its own job at the retail
+ * cap plus `maxFeeCents` plus its share of the shipping budget plus that
+ * job's processing at its caps (the worst case, D-105). A fill beyond this
  * would give a queuer a job whose capture the user's limit refuses.
  */
 export function backedQty(
   app: App,
-  bid: Pick<BidTask, 'id' | 'qty' | 'retailCapCents' | 'maxFeeCents' | 'shippingBudgetCents'>,
+  bid: Pick<BidTask, 'id' | 'qty' | 'retailCapCents' | 'maxFeeCents' | 'shippingBudgetCents' | 'destination'>,
   hold: Pick<Hold, 'amount'>,
   o: { qty?: number; maxFeeCents?: number } = {},
 ): number {
@@ -107,7 +108,8 @@ export function backedQty(
   const fee = o.maxFeeCents ?? bid.maxFeeCents;
   const headroom = hold.amount.cents - committedCents(app, bid.id);
   if (headroom <= 0 || qty <= 0) return 0;
-  return Math.floor((headroom * qty) / (qty * (bid.retailCapCents + fee) + bid.shippingBudgetCents));
+  const unit = jobCaps({ qty, retailCapCents: bid.retailCapCents, shippingBudgetCents: bid.shippingBudgetCents }, { qty: 1, feeCents: fee }, bid.destination.mode);
+  return Math.floor(headroom / (unit.retailCents + unit.feeCents + unit.shippingCents + unit.processingCents));
 }
 
 /** Units the book may fill now: what is left, but never more than the hold can back. */
@@ -204,8 +206,8 @@ export function applyFill(app: App, fill: Fill, trigger: MatchTrigger): Match {
     proofCode: app.code('proof', jobId, `${bid.requesterId}>${ask.queuerId}@${bid.shopId}`),
     handoverCode: mode === 'local' ? app.digits('handover', jobId) : null,
     fx: item.retail.currency === 'TWD' ? { twdPerUsd: app.rules.fxTwdPerUsd, lockedAt: at } : null,
-    caps: jobCaps(bid, { qty: fill.qty, feeCents: fill.feeCents }),
-    amounts: { retailCents: null, shippingCents: null, capturedCents: 0, refundedCents: 0, paidOutCents: 0 },
+    caps: jobCaps(bid, { qty: fill.qty, feeCents: fill.feeCents }, mode),
+    amounts: { retailCents: null, shippingCents: null, capturedCents: 0, refundedCents: 0, paidOutCents: 0, processingCents: 0, paypalFeesCents: 0 },
     shipment: null,
     history: statuses.map((status) => ({ status, at })),
     disputed: false,
@@ -262,6 +264,12 @@ export function latestLinePhoto(app: App, shopId: string): { peopleAhead: number
   return best;
 }
 
+/** What PayPal still holds for a bid: its hold less what was captured or released. */
+function stillHeldCents(app: App, bid: BidTask): number {
+  const hold = bid.holdId ? app.store.holds.get(bid.holdId) : null;
+  return hold ? Math.max(0, hold.amount.cents - hold.capturedCents - hold.releasedCents) : 0;
+}
+
 /** What the public map shows for one book. No positions, no single bids. */
 export function bookSnapshot(app: App, itemId: string): BookSnapshot {
   const { shop, item } = itemById(itemId);
@@ -269,9 +277,10 @@ export function bookSnapshot(app: App, itemId: string): BookSnapshot {
   const resting = app.store.bids
     .where("item_id = ? AND status IN ('open', 'partially_matched')", itemId)
     .filter((b) => b.remainingQty > 0)
-    .map((b) => ({ maxFeeCents: b.maxFeeCents, remainingQty: fillableQty(app, b), matchable: bidMatchableNow(app, b), deadlineAt: b.deadlineAt }));
+    .map((b) => ({ maxFeeCents: b.maxFeeCents, remainingQty: fillableQty(app, b), matchable: bidMatchableNow(app, b), deadlineAt: b.deadlineAt, heldCents: stillHeldCents(app, b) }));
   const live = resting.filter((b) => b.matchable && b.remainingQty > 0);
-  const levels = bidDepth(live, 5);
+  // Each level also says what PayPal holds behind it (D-111): the book view shows requests as money, not likes.
+  const levels = bidDepth(live, 5).map((l) => ({ ...l, heldCents: live.filter((b) => b.maxFeeCents === l.feeCents).reduce((sum, b) => sum + b.heldCents, 0) }));
   const quotes: AskQuote[] = [];
   for (const ask of app.store.asks.where("item_id = ? AND status = 'open'", itemId)) {
     const claim = app.store.claims.get(ask.claimId);

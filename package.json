@@ -1,0 +1,22 @@
+{
+  "name": "holdmyspot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HoldMySpot: a walking order book on the queue fee, with PayPal holds. One command installs the four packages, one starts the whole product.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "demo": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs",
+    "dev:sandbox": "node scripts/dev.mjs --mode sandbox",
+    "keys": "node scripts/setup-keys.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "test": "node scripts/test-all.mjs",
+    "gates": "node scripts/dev.mjs gates",
+    "ai:eval": "node scripts/dev.mjs ai-eval"
+  }
+}

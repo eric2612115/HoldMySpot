@@ -1,0 +1,27 @@
+{
+  "op": "orders.track",
+  "method": "POST",
+  "path": "/v2/checkout/orders/4YN92854KP1948610/track",
+  "status": 422,
+  "debugId": "ca56b0efe8ef9",
+  "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "details": [
+      {
+        "field": "/capture_id",
+        "location": "body",
+        "issue": "CAPTURE_ID_NOT_FOUND",
+        "description": "Specified capture ID does not exist. Check the capture ID and try again."
+      }
+    ],
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "ca56b0efe8ef9",
+    "links": [
+      {
+        "href": "https://developer.paypal.com/api/rest/reference/orders/v2/errors/#CAPTURE_ID_NOT_FOUND",
+        "rel": "information_link",
+        "method": "GET"
+      }
+    ]
+  }
+}

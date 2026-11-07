@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { receiptCapture } from '@holdmyspot/shared';
+import { grossUpCapture, payoutItemsCovered, receiptCapture } from '@holdmyspot/shared';
 import { AiError } from '../../src/ai/errors.ts';
 import { encodePng } from '../../src/ai/image.ts';
 import { buildAiPort } from '../../src/ai/index.ts';
@@ -65,19 +65,22 @@ describe('proof pipeline on the rendered fixtures (rules-only reader)', async ()
       if (c.kind === 'purchase' && 'retailCents' in v && c.expect.retailCents !== undefined) {
         const input = await purchaseInput(lc, prior);
         assert.equal(v.retailCents, c.expect.retailCents);
-        assert.equal(receiptCapture(input.job.caps, v.retailCents ?? 0).amountCents, c.expect.captureCents);
+        // The fixture's capture is shop price plus fee; PayPal captures it with processing at cost on top (D-105).
+        const cap = receiptCapture(input.job.caps, v.retailCents ?? 0, input.job.mode);
+        assert.equal(cap.retailCents + cap.feeCents, c.expect.captureCents);
+        assert.equal(cap.amountCents, grossUpCapture(c.expect.captureCents ?? 0, payoutItemsCovered(input.job.mode, input.job.mode === 'ship' ? 'receipt' : 'handover')).amountCents);
       }
     });
   }
 });
 
 describe('hero proofs', () => {
-  it("Mia's receipt passes with the receipt QR read from the photo and a $46.00 capture", async () => {
+  it("Mia's receipt passes with the receipt QR read from the photo and a $48.69 capture ($46.00 plus processing at cost)", async () => {
     const v = await rulesOnly().purchaseProof(await purchaseInput(byId('paper-moon-mia-genuine'), await loadHistory()));
     assert.equal(v.status, 'passed');
     assert.equal(v.qr?.receiptQr?.invoiceNumber, 'PM11120412');
     assert.equal(v.retailCents, 3400);
-    assert.ok(v.reasons.some((r) => r.includes('Capture $46.00')), v.reasons.join(' / '));
+    assert.ok(v.reasons.some((r) => r.includes('Capture $48.69: retail $34.00, fee $12.00 and processing $2.69 at cost.')), v.reasons.join(' / '));
     assert.equal(v.photos.length, 2);
   });
 

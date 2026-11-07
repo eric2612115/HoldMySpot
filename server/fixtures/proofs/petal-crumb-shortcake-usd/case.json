@@ -1,7 +1,7 @@
 {
   "kind": "purchase",
   "id": "petal-crumb-shortcake-usd",
-  "description": "New York errand: receipt without a QR, printed name matches; capture $47.00.",
+  "description": "New York errand: receipt without a QR, printed name matches; shop price and fee $47.00.",
   "shopId": "petal-crumb-bakery",
   "itemId": "cake-petal-crumb",
   "job": {

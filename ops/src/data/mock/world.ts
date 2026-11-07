@@ -18,12 +18,15 @@ import {
   matchBook,
   money,
   nextClockStepAt,
+  PAYPAL_PRICING,
+  paypalCaptureFeeCents,
   payoutsForCapture,
   receiptCapture,
   shippingCapture,
 } from '@holdmyspot/shared';
 import type {
   AgentAction,
+  AiStamp,
   AskTask,
   BidTask,
   BookAsk,
@@ -45,6 +48,7 @@ import type {
   MarketMs,
   Match,
   MatchTrigger,
+  OpsMove,
   Payout,
   Reliability,
   Shop,
@@ -609,7 +613,7 @@ const clockFmt = new Intl.DateTimeFormat('en-GB', { timeZone: DEMO_TIME_ZONE, ho
 export const clockOf = (t: MarketMs) => clockFmt.format(t);
 
 /** One plain sentence for the board after a rule moved quantity (AI-SERVICES.md 4.6, fake template). */
-export function noteRequeue(w: World, failed: Job[], at: MarketMs, cause: string): void {
+export function noteRequeue(w: World, failed: Job[], at: MarketMs, cause: string, ai: AiStamp = RULES_STAMP): void {
   for (const job of failed) {
     const next = w.matches.find((m) => m.bidId === job.bidId && m.at === at && m.trigger === 'requeue');
     const item = itemById(job.itemId);
@@ -629,7 +633,7 @@ export function noteRequeue(w: World, failed: Job[], at: MarketMs, cause: string
       fromFeeCents: job.feeCents,
       toFeeCents: next?.feeCents ?? null,
       reason,
-      ai: { provider: 'fake', model: 'rules', mode: 'fake', latencyMs: 0 },
+      ai,
     });
   }
 }
@@ -700,6 +704,8 @@ function capture(
   amountCents: Cents,
   textParts: string,
   payoutParts: ReturnType<typeof payoutsForCapture>,
+  /** The capture's processing and payouts at cost (D-105), part of amountCents. */
+  processingCents = 0,
 ): void {
   const bid = getBid(w, job.bidId);
   const hold = getHold(w, bid.holdId ?? '');
@@ -717,6 +723,9 @@ function capture(
   hold.status = final ? 'captured' : 'partially_captured';
   hold.updatedAt = at;
   job.amounts.capturedCents += amountCents;
+  // PayPal's fee on this capture, as the emulator charges it; the processing line pays it (D-105).
+  job.amounts.processingCents = (job.amounts.processingCents ?? 0) + processingCents;
+  job.amounts.paypalFeesCents = (job.amounts.paypalFeesCents ?? 0) + paypalCaptureFeeCents(amountCents);
   const captureId = nextId(w, 'FAKE-CAP', 4);
   addLedger(w, {
     kind: 'captured',
@@ -743,6 +752,8 @@ function capture(
         key: `void:${hold.id}:final`,
         holdId: hold.id,
         bidId: bid.id,
+        // As on the server: the final capture released the rest, so the release names that capture.
+        paypal: { authorizationId: hold.authorizationId ?? undefined, captureId },
       });
     }
     bid.status = 'settled';
@@ -770,13 +781,16 @@ function capture(
       purpose: p.purpose,
       platformFeeCents: p.platformFeeCents,
       status: 'succeeded',
-      paypalBatchId: `FAKE-BATCH-${payoutId}`,
-      paypalItemId: `FAKE-ITEM-${payoutId}`,
+      // The emulator's id format (FAKE-BATCH-0001, FAKE-ITEM-0001), as the live server shows them.
+      paypalBatchId: nextId(w, 'FAKE-BATCH', 4),
+      paypalItemId: nextId(w, 'FAKE-ITEM', 4),
+      paypalFeeCents: PAYPAL_PRICING.payoutItemCents,
       createdAt: at,
       updatedAt: at,
     };
     w.payouts.push(payout);
     job.amounts.paidOutCents += p.amountCents;
+    job.amounts.paypalFeesCents = (job.amounts.paypalFeesCents ?? 0) + PAYPAL_PRICING.payoutItemCents;
     addLedger(w, {
       kind: 'paid_out',
       cents: p.amountCents,
@@ -818,7 +832,7 @@ export function passProof(w: World, jobId: string, submittedAt: MarketMs, verifi
     failJob(w, jobId, verifiedAt, 'payment_failed', 'PayPal declined the receipt capture (hold renewal required).', { requeue: false });
     return;
   }
-  const rc = receiptCapture(job.caps, retailUsd);
+  const rc = receiptCapture(job.caps, retailUsd, job.mode);
   job.amounts.retailCents = rc.retailCents;
   pushHistory(job, 'verified', verifiedAt);
   const parts = payoutsForCapture(job.mode, job.mode === 'ship' ? 'receipt' : 'handover', {
@@ -827,7 +841,8 @@ export function passProof(w: World, jobId: string, submittedAt: MarketMs, verifi
     shippingCents: 0,
   });
   const fees = job.qty === 1 ? `a fee of ${usd(job.feeCents)}` : `${job.qty} fees of ${usd(job.feeCents)}`;
-  capture(w, job, verifiedAt, 'receipt', rc.amountCents, `receipt ${usd(rc.retailCents)} plus ${fees}`, parts);
+  const processing = `processing ${usd(rc.processingCents)} at cost`;
+  capture(w, job, verifiedAt, 'receipt', rc.amountCents, `receipt ${usd(rc.retailCents)} plus ${fees} plus ${processing}`, parts, rc.processingCents);
   const rel = w.reliability.get(job.queuerId);
   if (rel && w.jobs.filter((j) => j.claimId === job.claimId && j.status !== 'verified').length === 0) {
     rel.claimsCompleted += 1;
@@ -847,7 +862,7 @@ export function shipJob(w: World, jobId: string, at: MarketMs, labelCents: Cents
     feeCents: job.caps.feeCents,
     shippingCents: sc.shippingCents,
   });
-  capture(w, job, at, 'shipping', sc.shippingCents, `shipping and duty ${usd(sc.shippingCents)} at cost`, parts);
+  capture(w, job, at, 'shipping', sc.amountCents, `shipping and duty ${usd(sc.shippingCents)} plus processing ${usd(sc.processingCents)}, at cost`, parts, sc.processingCents);
 }
 
 export function feeNow(ask: AskTask, at: MarketMs): Cents {
@@ -901,11 +916,12 @@ export function moveProblem(w: World, job: Job, toQueuerId: UserId, at: MarketMs
 }
 
 /** Moves a job to another queuer's offer at that offer's current fee (the match price rule). */
-export function moveJob(w: World, move: ManualMove): boolean {
+export function moveJob(w: World, move: ManualMove, meta: { reason: string; ai: AiStamp } | null = null): boolean {
   const job = w.jobs.find((j) => j.bidId === move.bidId && j.askId === move.fromAskId && j.status !== 'failed');
   const target = w.asks.find((a) => a.id === move.toAskId);
   if (!job || !target || moveProblem(w, job, target.queuerId, move.at) !== null) return false;
-  failJob(w, job.id, move.at, 'queuer_withdrew', `Moved by ops to ${target.queuerName}.`, { requeue: false, freeCapacity: true });
+  // As on the server (failJob, queuer side): the units go back to the request, not to the old offer.
+  failJob(w, job.id, move.at, 'queuer_withdrew', `Moved by ops to ${target.queuerName}.`, { requeue: false });
   const bid = getBid(w, job.bidId);
   const fee = askFeeAt(target, move.at);
   const claim = getClaim(w, target.claimId);
@@ -944,9 +960,121 @@ export function moveJob(w: World, move: ManualMove): boolean {
     kind: 'reassign',
     fromFeeCents: job.feeCents,
     toFeeCents: fee,
-    reason: `Ops moved ${bid.requesterName}'s job from ${job.queuerName} to ${target.queuerName} at ${usd(fee)} (the offer's current fee).`,
-    ai: { provider: 'fake', model: 'rules', mode: 'fake', latencyMs: 0 },
+    reason: `Ops moved ${bid.requesterName}'s job from ${job.queuerName} to ${target.queuerName} at ${usd(fee)} (the offer's current fee).${meta?.reason ? ` ${meta.reason}` : ''}`,
+    ai: meta?.ai ?? RULES_STAMP,
   });
   match(w, job.shopId, job.itemId, move.at, 'requeue');
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// The rescheduler's moves (D-101): the same four the server applies through
+// POST /api/ops/moves (server/src/app/opsAgents.ts), with the same checks.
+// ---------------------------------------------------------------------------
+
+/** One approved move, replayed at its market time. `proposalId` is null for a drag. */
+export interface OpsAction {
+  at: MarketMs;
+  proposalId: string | null;
+  move: OpsMove;
+  /** Why, in one sentence: what the board's notes and the server's log say. */
+  reason: string;
+  /** What was approved, for the closed card: "Jo will miss check-in: move to Ava at $8.00". */
+  label: string;
+  ai: AiStamp;
+}
+
+export const RULES_STAMP: AiStamp = { provider: 'fake', model: 'rules', mode: 'fake', latencyMs: 0 };
+export const MAX_SHIFT_MINUTES = 30;
+
+const LIVE_CLAIM = ['awaiting_arrival', 'arrived'];
+
+/** Why the rules refuse a move now, in one plain sentence, or null. */
+export function opsMoveProblem(w: World, move: OpsMove, at: MarketMs): string | null {
+  if (move.kind === 'reassign') {
+    const job = w.jobs.find((j) => j.id === move.jobId);
+    const ask = w.asks.find((a) => a.id === move.toAskId);
+    if (!job || job.status === 'failed') return 'This job is no longer on the board.';
+    if (!ask) return 'That offer is gone.';
+    if (ask.queuerId === job.queuerId) return `The job is already with ${job.queuerName}.`;
+    const problem = moveProblem(w, job, ask.queuerId, at);
+    if (problem) return problem;
+    return targetAsk(w, job, ask.queuerId)?.id === ask.id ? null : `${ask.queuerName}'s offer is not open now.`;
+  }
+  if (move.kind === 'extend') {
+    const claim = w.claims.find((c) => c.id === move.claimId);
+    if (!claim || !LIVE_CLAIM.includes(claim.status)) return 'That queuer is not on the way any more.';
+    if (!(move.minutes >= 1 && move.minutes <= MAX_SHIFT_MINUTES)) return `A window moves by 1 to ${MAX_SHIFT_MINUTES} minutes.`;
+    const end = claim.windowEndsAt + move.minutes * MINUTE;
+    if (end <= at) return 'The shifted window would already be over.';
+    for (const job of w.jobs.filter((j) => j.claimId === claim.id && JOB_BEFORE_PURCHASE.includes(j.status))) {
+      const bid = getBid(w, job.bidId);
+      if (end > bid.deadlineAt) return `${bid.requesterName}'s request ends before the shifted window.`;
+    }
+    return null;
+  }
+  if (move.kind === 'release') {
+    const claim = w.claims.find((c) => c.id === move.claimId);
+    return claim && LIVE_CLAIM.includes(claim.status) ? null : 'That queuer is not on the way any more.';
+  }
+  const job = w.jobs.find((j) => j.id === move.jobId);
+  if (!job || !JOB_BEFORE_PURCHASE.includes(job.status)) return 'This job is no longer waiting to be bought.';
+  return holdUsable(w, getBid(w, job.bidId)) ? `${job.requesterName}'s hold can still pay, so the job stays.` : null;
+}
+
+/** Applies one approved move to the world at its time; false when the rules refuse it now. */
+export function applyOpsMove(w: World, a: OpsAction): boolean {
+  if (opsMoveProblem(w, a.move, a.at) !== null) return false;
+  const m = a.move;
+  if (m.kind === 'reassign') {
+    const job = getJob(w, m.jobId);
+    return moveJob(w, { bidId: job.bidId, fromAskId: job.askId, toAskId: m.toAskId, at: a.at }, { reason: a.reason, ai: a.ai });
+  }
+  if (m.kind === 'extend') {
+    const claim = getClaim(w, m.claimId);
+    const ask = getAsk(w, claim.askId);
+    claim.windowEndsAt += m.minutes * MINUTE;
+    claim.updatedAt = a.at;
+    ask.etaAt += m.minutes * MINUTE;
+    ask.updatedAt = a.at;
+    const bids = new Set(w.jobs.filter((j) => j.claimId === claim.id && JOB_BEFORE_PURCHASE.includes(j.status)).map((j) => j.bidId));
+    for (const bidId of bids) {
+      w.notes.push({
+        id: nextId(w, 'agent'),
+        bidId,
+        at: a.at,
+        kind: 'note',
+        fromFeeCents: null,
+        toFeeCents: null,
+        reason: `Ops gave ${claim.queuerName} ${m.minutes} more minutes to reach ${shopById(claim.shopId).name}: check in by ${clockOf(claim.windowEndsAt)}. ${a.reason}`.trim(),
+        ai: a.ai,
+      });
+    }
+    return true;
+  }
+  if (m.kind === 'release') {
+    const claim = getClaim(w, m.claimId);
+    const failed = lapseClaim(w, claim.id, a.at);
+    noteRequeue(w, failed, a.at, `Ops released ${claim.queuerName} before the window closed at ${clockOf(claim.windowEndsAt)}`, a.ai);
+    return true;
+  }
+  const job = getJob(w, m.jobId);
+  failJob(w, job.id, a.at, 'hold_unavailable', `${job.requesterName}'s PayPal hold cannot pay; ops freed ${job.queuerName}'s units for the next requests.`, { requeue: true, freeCapacity: true });
+  const taken = w.matches.filter((x) => x.askId === job.askId && x.at === a.at && x.trigger === 'requeue');
+  const names = taken.map((x) => w.bids.find((b) => b.id === x.bidId)?.requesterName ?? x.bidId);
+  const what = unitWord(itemById(job.itemId), job.qty).replace(/^1 /, '');
+  w.notes.push({
+    id: nextId(w, 'agent'),
+    bidId: job.bidId,
+    at: a.at,
+    kind: 'reassign',
+    fromFeeCents: job.feeCents,
+    toFeeCents: taken[0]?.feeCents ?? null,
+    reason:
+      (names.length > 0
+        ? `${job.requesterName}'s hold could not pay, so ${job.queuerName}'s ${what} went to ${names.join(' and ')} at ${usd(taken[0]?.feeCents ?? job.feeCents)} each (approved by ops). ${job.requesterName.split(' ')[0]} keeps the place in line once a new hold is approved.`
+        : `${job.requesterName}'s hold could not pay; ${job.queuerName}'s ${what} went back to the line-up (approved by ops).`) + (a.reason ? ` ${a.reason}` : ''),
+    ai: a.ai,
+  });
   return true;
 }

@@ -145,12 +145,12 @@ describe('adversarial: payouts never exceed captures', () => {
       trip(s, 'captureAuthorization', 'outage');
       const first = await s.app.exec(() => addShipment(s.app, wei, job.id, { ...ship, shippingCostCents: 500, dutyPaidCents: 0 })).catch((e: unknown) => e);
       assert.equal(code(first), 'PAYPAL_UNAVAILABLE');
-      // The retry asks for $26.40, but the capture already in flight is for $5.00.
+      // The retry asks for $26.40, but the capture already in flight is for $5.00 (plus its $0.69 processing).
       await s.app.exec(() => addShipment(s.app, wei, job.id, { ...ship, shippingCostCents: 2440, dutyPaidCents: 200 }));
 
       const captured = sum(s.app.store.ledger.where("job_id = ? AND kind = 'captured' AND status = 'succeeded'", job.id).map((e) => e.amount.cents));
-      assert.equal(captured, 7600 + 500);
-      assert.equal(s.app.store.holds.must(bid.holdId!).capturedCents, 8100);
+      assert.equal(captured, 7977 + 569);
+      assert.equal(s.app.store.holds.must(bid.holdId!).capturedCents, 8546);
       const payouts = s.app.store.payouts.where('job_id = ?', job.id);
       assert.deepEqual(
         payouts.map((p) => [p.purpose, p.amount.cents]),
@@ -171,21 +171,21 @@ describe('adversarial: every job fits inside the hold', () => {
   it('refuses a quantity raise that would create jobs the hold cannot back', async () => {
     const s = await testServer();
     try {
-      // One unit, up to $60 for the queue: $28 + $60 + $10 shipping = $98 held.
+      // One unit, up to $60 for the queue: $28 + $60 + $10 shipping + $5.08 processing reserve = $103.08 held.
       const placed = await placeBid(s.app, 'mia', { qty: 1, retailCapCents: 2800, maxFeeCents: 6000, shippingBudgetCents: 1000 });
       const hold = s.app.store.holds.must(placed.bid.holdId!);
-      assert.equal(hold.amount.cents, 9800);
+      assert.equal(hold.amount.cents, 10_308);
       await postAsk(s.app, 'wei', { capacity: 1, feeCents: 6000, etaInMin: 10 });
-      assert.equal(s.app.store.jobs.where('bid_id = ?', placed.bid.id).length, 1, "Wei's job uses the whole $98");
+      assert.equal(s.app.store.jobs.where('bid_id = ?', placed.bid.id).length, 1, "Wei's job uses the whole $103.08");
 
-      // 2 x ($28 + $5) + $10 = $76 fits the formula, but Wei's job already committed all of the hold.
+      // 2 x ($28 + $5) + $10 + processing = $81.82 fits the formula, but Wei's job already committed all of the hold.
       const amended = await s.app
         .exec(() => amendBid(s.app, { userId: 'mia', ops: false }, placed.bid.id, { qty: 2, maxFeeCents: 500 }))
         .catch((e: unknown) => e);
       await postAsk(s.app, 'lin', { capacity: 1, feeCents: 500, etaInMin: 10 });
 
       const live = s.app.store.jobs.where('bid_id = ?', placed.bid.id).filter((j) => j.status !== 'failed');
-      const committed = sum(live.map((j) => j.caps.retailCents + j.caps.feeCents + j.caps.shippingCents));
+      const committed = sum(live.map((j) => j.caps.retailCents + j.caps.feeCents + j.caps.shippingCents + (j.caps.processingCents ?? 0)));
       assert.ok(committed <= hold.amount.cents, `jobs may capture $${committed / 100} but PayPal holds $${hold.amount.cents / 100}`);
       assert.equal(code(amended), 'OVER_LIMIT');
     } finally {
@@ -384,7 +384,7 @@ describe('adversarial: an unreadable PayPal answer never leads to a second charg
       assert.equal(res.job.status, 'delivered');
       const hold = s.app.store.holds.must(placed.bid.holdId!);
       assert.equal(s.app.fakePayPal.captureCount(hold.authorizationId!), 1, 'charged once');
-      assert.equal(hold.capturedCents, 4700);
+      assert.equal(hold.capturedCents, 4947);
       assert.deepEqual(s.app.store.payouts.all().map((x) => x.amount.cents), [4610]);
     } finally {
       await s.done();

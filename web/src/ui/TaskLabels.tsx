@@ -5,6 +5,7 @@ import { formatUsd } from '../domain/money';
 import type { LabelSink, MapScene, ScreenRect } from '../map/mapScene';
 import { useMarket } from '../state/market';
 import { usePosition } from '../state/position';
+import { BookGlyph } from './book/BookStrip';
 import { useNow } from './hooks';
 
 /** Height of the little tip under a ticket, in CSS pixels. */
@@ -31,7 +32,18 @@ function clamp(v: number, lo: number, hi: number) {
  * - while a sheet is open no labels show: the strip of map is short and the sheet
  *   already shows the same numbers.
  */
-export function TaskLabels({ scene, onSelect, sheetPx }: { scene: MapScene | null; onSelect: (id: string) => void; sheetPx: number }) {
+export function TaskLabels({
+  scene,
+  onSelect,
+  onBook,
+  sheetPx,
+}: {
+  scene: MapScene | null;
+  onSelect: (id: string) => void;
+  /** When set, each ticket carries a small badge that opens the item's order book. */
+  onBook?: (id: string) => void;
+  sheetPx: number;
+}) {
   const points = useMarket((s) => s.points);
   const bumps = useMarket((s) => s.bumps);
   const selectedId = useMarket((s) => s.selectedId);
@@ -168,16 +180,13 @@ export function TaskLabels({ scene, onSelect, sheetPx }: { scene: MapScene | nul
         const selected = p.id === selectedId;
         const top = p.bestFeeCents;
         return (
-          <button
-            key={p.id}
-            ref={ref(p.id)}
-            type="button"
-            className={`tlabel${selected ? ' is-selected' : ''}${r.claimable ? '' : ' is-blocked'}`}
-            style={{ ['--hue' as string]: p.hue }}
-            onClick={() => onSelect(p.id)}
-            aria-label={`${p.itemShort}: ${p.bidCount} requests, top fee ${top !== null ? formatUsd(top) : 'none'}, ${rateText(r.centsPerHour)}`}
-          >
-            <span className="tlabel__ticket">
+          <div key={p.id} ref={ref(p.id)} className={`tlabel${selected ? ' is-selected' : ''}${r.claimable ? '' : ' is-blocked'}`} style={{ ['--hue' as string]: p.hue }}>
+            <button
+              type="button"
+              className="tlabel__ticket"
+              onClick={() => onSelect(p.id)}
+              aria-label={`${p.itemShort}: ${p.bidCount} requests, top fee ${top !== null ? formatUsd(top) : 'none'}, ${rateText(r.centsPerHour)}`}
+            >
               <span className="tlabel__name">{p.itemShort}</span>
               <span className="tlabel__stats">
                 <b key={bumps[p.id] ?? 0} className="tlabel__count">
@@ -191,10 +200,15 @@ export function TaskLabels({ scene, onSelect, sheetPx }: { scene: MapScene | nul
                   </>
                 )}
               </span>
-            </span>
+            </button>
+            {onBook && (
+              <button type="button" className="tlabel__book" onClick={() => onBook(p.id)} aria-label={`Order book of ${p.itemShort}`} title="Order book">
+                <BookGlyph size={12} />
+              </button>
+            )}
             <span className="tlabel__tip" aria-hidden="true" />
             <span className="tlabel__stem" aria-hidden="true" />
-          </button>
+          </div>
         );
       })}
       {points

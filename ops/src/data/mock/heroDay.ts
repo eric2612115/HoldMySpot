@@ -1,19 +1,15 @@
-import { CROWD_NAMES, formatUsd, usd } from '@holdmyspot/shared';
+import { CROWD_NAMES, usd } from '@holdmyspot/shared';
 import type { MarketMs, UserId } from '@holdmyspot/shared';
 import { MINUTE, sf } from '../time.ts';
 import {
+  applyOpsMove,
   checkIn,
   claimBid,
   createWorld,
   endVisit,
-  failJob,
-  getAsk,
-  lapseClaim,
   markBought,
   markRenewalRequired,
-  moveJob,
   nextRuleTime,
-  noteRequeue,
   passProof,
   placeBid,
   postAsk,
@@ -21,18 +17,18 @@ import {
   runRulesAt,
   shipJob,
 } from './world.ts';
-import type { BidSpec, CrowdPerson, ManualMove, World } from './world.ts';
+import type { BidSpec, CrowdPerson, OpsAction, World } from './world.ts';
 
 /**
  * The hero day (docs/ARCHITECTURE.md section 8) as seen from the ops console:
  * San Francisco's Japantown, Thursday 2026-11-12, with every San Francisco
  * queuer at work. The Paper Moon part follows the hero script exactly (Mia's
- * hold $60.00, capture $46.00, payout $10.80, final capture $8.75, $5.25
- * released, payout $42.75; Rex's fake receipt moves $0 and Priya's plush goes
+ * hold $63.70, capture $48.69, payout $10.80, final capture $9.57, $5.44
+ * released, payout $42.75, processing at cost included; Rex's fake receipt moves $0 and Priya's plush goes
  * to Lin at $10). Around it: Jo will miss his Little Lantern check-in and
- * Noor's Venmo hold at Sugar Cloud cannot be renewed. Those two are the
- * rescheduler's proposals; an operator approves them (or the rules act later
- * on their own).
+ * Noor's Venmo hold at Sugar Cloud cannot be renewed. The rescheduler
+ * (src/agents/rescheduler.ts) finds both and proposes moves; an operator
+ * approves one (or the rules act later on their own).
  */
 
 export const DAY_START = sf('10:00');
@@ -49,9 +45,9 @@ export const MOMENTS: { id: string; label: string; at: MarketMs }[] = [
 
 export const DEFAULT_MOMENT = sf('11:21');
 
-/** Proposal ids the rescheduler can raise; approving one applies it at the approval time. */
-export const PROPOSAL_JO = 'reschedule-jo-little-lantern';
-export const PROPOSAL_NOOR = 'reschedule-noor-sugar-cloud';
+/** The hero day's two rescheduler proposals, by the ids the rescheduler gives them (issue kind and record). */
+export const PROPOSAL_JO = 'late:claim-jo-ll';
+export const PROPOSAL_NOOR = 'hold:bid-sc-noor';
 
 const CROWD_CITIES: [string, string][] = [
   ['Chicago', 'IL'],
@@ -212,55 +208,17 @@ function script(): Step[] {
   return steps;
 }
 
-/** Jo's approved reschedule: lapse his claim now and let the rules re-offer Leo's plush. */
-function approveJo(w: World, at: MarketMs): void {
-  const claim = w.claims.find((c) => c.id === 'claim-jo-ll');
-  if (!claim || claim.status !== 'awaiting_arrival') return;
-  const failed = lapseClaim(w, claim.id, at);
-  noteRequeue(w, failed, at, 'Jo could not reach Little Lantern Toys before his window closed (approved early by ops)');
-}
-
-/** Noor's approved reschedule: release Rin's two cakes from Noor's unusable hold to the next requests. */
-function approveNoor(w: World, at: MarketMs): void {
-  const job = w.jobs.find((j) => j.bidId === 'bid-sc-noor' && j.status !== 'failed');
-  if (!job || !['claimed', 'checked_in', 'queueing'].includes(job.status)) return;
-  failJob(w, job.id, at, 'hold_unavailable', "Noor's hold needs a new approval before Rin can buy.", { requeue: true, freeCapacity: true });
-  const taken = w.matches.filter((m) => m.askId === job.askId && m.at === at && m.trigger === 'requeue');
-  const ask = getAsk(w, job.askId);
-  const names = taken.map((m) => w.bids.find((b) => b.id === m.bidId)?.requesterName ?? m.bidId);
-  const fee = taken[0]?.feeCents ?? ask.feeCents;
-  w.notes.push({
-    id: `agent-noor-${at}`,
-    bidId: job.bidId,
-    at,
-    kind: 'reassign',
-    fromFeeCents: job.feeCents,
-    toFeeCents: taken[0]?.feeCents ?? null,
-    reason:
-      names.length > 0
-        ? `Noor A.'s Venmo hold could not be renewed, so ${ask.queuerName}'s ${job.qty} cakes went to ${names.join(' and ')} at ${formatUsd(fee, { exact: true })} each (approved by ops). Noor keeps her place once she approves a new hold.`
-        : `Noor A.'s Venmo hold could not be renewed; ${ask.queuerName}'s ${job.qty} cakes went back to the line-up (approved by ops).`,
-    ai: { provider: 'fake', model: 'rules', mode: 'fake', latencyMs: 0 },
-  });
-}
-
-export interface Approvals {
-  [proposalId: string]: MarketMs;
-}
-
 /**
- * The world at market time `t`. Deterministic: the same time and approvals
- * always give the same records, ids included.
+ * The world at market time `t`, with the moves ops approved or dragged
+ * replayed at their times. Deterministic: the same time and moves always give
+ * the same records, ids included.
  */
-export function worldAt(t: MarketMs, approvals: Approvals = {}, moves: readonly ManualMove[] = []): World {
+export function worldAt(t: MarketMs, actions: readonly OpsAction[] = []): World {
   const w = createWorld(DAY_START, CROWD, ['claim-jo-ll']);
   for (const spec of seedBids()) placeBid(w, spec);
   const steps = script();
-  for (const move of moves) steps.push({ at: move.at, run: (x) => void moveJob(x, move) });
-  const jo = approvals[PROPOSAL_JO];
-  if (jo !== undefined) steps.push({ at: jo, run: (x) => approveJo(x, jo) });
-  const noor = approvals[PROPOSAL_NOOR];
-  if (noor !== undefined) steps.push({ at: noor, run: (x) => approveNoor(x, noor) });
+  for (const action of actions) steps.push({ at: action.at, run: (x) => void applyOpsMove(x, action) });
+  // Stable: scripted steps first at the same minute, then the moves in the order they were made.
   steps.sort((a, b) => a.at - b.at);
 
   for (const step of steps) {

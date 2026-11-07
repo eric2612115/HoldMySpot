@@ -1,13 +1,15 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { HERO, zonedLocalToEpoch } from '@holdmyspot/shared';
+import { HERO, jobSettlement, zonedLocalToEpoch } from '@holdmyspot/shared';
 import type { DemoCue } from '@holdmyspot/shared';
 import { testServer, type TestServer } from './helpers.ts';
 
 /**
  * The hero script end to end (docs/ARCHITECTURE.md section 8): the ledger
- * must show held $60.00, captures $46.00 and $8.75, $5.25 released, payouts
- * $10.80 and $42.75, and $0 moved for Rex's fake receipt.
+ * must show held $63.70, captures $48.69 and $9.57 (processing at cost
+ * included, D-105), $5.44 released, payouts $10.80 and $42.75, PayPal's fees
+ * $3.51 paid to the cent by the processing line, HoldMySpot keeping $1.20,
+ * and $0 moved for Rex's fake receipt.
  */
 
 const sf = (hhmm: string) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles')!;
@@ -61,21 +63,21 @@ describe('hero script', () => {
     assert.equal(proof.summary, 'Receipt failed 4 checks: shop, printed time, totals, recycled photo.');
   });
 
-  it('charges Mia $54.75 of the $60.00 held and pays Wei $10.80 then $42.75', () => {
+  it('charges Mia $58.26 of the $63.70 held and pays Wei $10.80 then $42.75', () => {
     const bid = s.app.store.bids.first("requester_id = 'mia'")!;
     const hold = s.app.store.holds.must(bid.holdId!);
-    assert.equal(hold.amount.cents, 6000);
-    assert.equal(hold.capturedCents, 5475);
-    assert.equal(hold.releasedCents, 525);
+    assert.equal(hold.amount.cents, 6370);
+    assert.equal(hold.capturedCents, 5826);
+    assert.equal(hold.releasedCents, 544);
     assert.equal(hold.status, 'captured');
     const mine = s.app.store.ledger.where('bid_id = ? AND user_id = ?', bid.id, 'mia');
     assert.deepEqual(
       mine.map((e) => [e.kind, e.amount.cents, e.status]),
       [
-        ['held', 6000, 'succeeded'],
-        ['captured', 4600, 'succeeded'],
-        ['captured', 875, 'succeeded'],
-        ['released', 525, 'succeeded'],
+        ['held', 6370, 'succeeded'],
+        ['captured', 4869, 'succeeded'],
+        ['captured', 957, 'succeeded'],
+        ['released', 544, 'succeeded'],
       ],
     );
     const job = s.app.store.jobs.first("bid_id = ? AND queuer_id = 'wei'", bid.id)!;
@@ -91,17 +93,34 @@ describe('hero script', () => {
     assert.deepEqual(captureTimes, [sf('11:42'), sf('14:00')]);
   });
 
-  it("captures $44.00 for Priya's plush from Lin's receipt", () => {
+  it("explains Mia's charge to the cent: PayPal's fees are exactly the processing line and HoldMySpot keeps $1.20", () => {
+    const bid = s.app.store.bids.first("requester_id = 'mia'")!;
+    const job = s.app.store.jobs.first("bid_id = ? AND queuer_id = 'wei'", bid.id)!;
+    const captures = s.app.store.ledger.where("job_id = ? AND kind = 'captured'", job.id);
+    assert.deepEqual(
+      captures.map((e) => [e.amount.cents, e.paypal?.feeCents, e.text]),
+      [
+        [4869, 219, 'Charged $48.69: shop price $34.00 at cost, queue fee 1 x $12.00 for Mochi Bunny plush, and processing $2.69 at cost ($2.19 to take this payment, $0.50 for 2 payouts).'],
+        [957, 82, 'Charged $9.57: shipping $8.75 at cost and processing $0.82 at cost (taking this payment).'],
+      ],
+    );
+    assert.deepEqual(s.app.store.payouts.where('job_id = ?', job.id).map((p) => p.paypalFeeCents), [25, 25]);
+    assert.deepEqual(jobSettlement(job.amounts), { chargedCents: 5826, processingCents: 351, paidOutCents: 5355, paypalFeesCents: 351, platformCents: 120, processingVarianceCents: 0 });
+    assert.equal(5826, 3400 + 1200 + 875 + 351, 'shop price, fee, shipping and processing');
+  });
+
+  it("captures $46.62 for Priya's plush from Lin's receipt ($34.00 + $10.00 + $2.62 processing)", () => {
     const job = s.app.store.jobs.first("queuer_id = 'lin'")!;
     assert.equal(job.requesterId, 'priya');
     assert.equal(job.status, 'verified');
-    assert.equal(job.amounts.capturedCents, 4400);
+    assert.equal(job.amounts.capturedCents, 4662);
+    assert.equal(job.amounts.processingCents, 262);
     assert.deepEqual(s.app.store.payouts.where('job_id = ?', job.id).map((p) => [p.amount.cents, p.status]), [[900, 'succeeded']]);
   });
 
   it('ends with the closing caption built from the ledger', () => {
     const cues = s.app.bus.after(0).filter((e) => e.type === 'demo.cue').map((e) => e.data as DemoCue);
-    assert.equal(cues.at(-1)?.text, 'Held $60.00. Charged $54.75. Fake receipt: $0.');
+    assert.equal(cues.at(-1)?.text, 'Held $63.70. Charged $58.26. Fake receipt: $0.');
   });
 
   it("Wei's visit is done and the plush he bought passed", () => {

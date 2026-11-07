@@ -1,4 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import type { Brain } from './agents/brain.ts';
+import { useBrain } from './agents/useBrain.ts';
 import { BoardView } from './board/BoardView.tsx';
 import { useMarket } from './data/useMarket.ts';
 import type { Market } from './data/useMarket.ts';
@@ -15,6 +17,7 @@ function viewFromHash(): ViewId {
 
 export function App() {
   const market = useMarket();
+  const brain = useBrain(market && !('error' in market) ? market.backend.kind : undefined);
   const [view, setView] = useState<ViewId>(viewFromHash);
 
   useEffect(() => {
@@ -25,16 +28,17 @@ export function App() {
 
   if (market === null) return <div className="boot">Opening the console</div>;
   if ('error' in market) return <div className="boot">The console could not load its data: {market.error}</div>;
+  if (brain === null) return <div className="boot">Opening the console</div>;
 
   return (
     <div className="shell">
-      <TopBar market={market} view={view} />
+      <TopBar market={market} view={view} brain={brain} />
       <main className="view">
         {view === 'board' ? (
-          <BoardView market={market} />
+          <BoardView market={market} brain={brain} />
         ) : (
           <Suspense fallback={<div className="boot">Loading the market dashboard</div>}>
-            <MarketView market={market} />
+            <MarketView market={market} brain={brain} />
           </Suspense>
         )}
       </main>
@@ -42,7 +46,7 @@ export function App() {
   );
 }
 
-function TopBar({ market, view }: { market: Market; view: ViewId }) {
+function TopBar({ market, view, brain }: { market: Market; view: ViewId; brain: Brain }) {
   const { snapshot, at, backend } = market;
   const mode = snapshot.config.mode;
   return (
@@ -113,8 +117,14 @@ function TopBar({ market, view }: { market: Market; view: ViewId }) {
           )}
         </button>
       </div>
-      <div className="mode-banner" data-mode={mode} title={snapshot.config.modeReason}>
-        {mode === 'sandbox' ? 'PayPal sandbox: no real money' : 'Simulated PayPal'}
+      <div className="status-pills">
+        <div className="mode-banner" data-mode={mode} title={snapshot.config.modeReason}>
+          {mode === 'sandbox' ? 'PayPal sandbox: no real money' : 'Simulated PayPal'}
+        </div>
+        <div className="agents-pill" data-kind={brain.kind} title={brain.reason || `Each agent turn is answered by ${brain.label}.`}>
+          <span aria-hidden="true" />
+          {brain.kind === 'model' ? `Agents: ${brain.label.replace(/ on the server$/, '')}` : 'Agents: offline'}
+        </div>
       </div>
     </header>
   );

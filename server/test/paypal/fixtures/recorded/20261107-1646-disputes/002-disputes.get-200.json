@@ -1,0 +1,111 @@
+{
+  "op": "disputes.get",
+  "method": "GET",
+  "path": "/v1/customer/disputes/PP-R-UEL-10196964",
+  "status": 200,
+  "debugId": "ca56b11521da3",
+  "body": {
+    "dispute_id": "PP-R-UEL-10196964",
+    "create_time": "2026-11-07T08:38:08.524Z",
+    "update_time": "2026-11-07T08:41:33.817Z",
+    "disputed_transactions": [
+      {
+        "buyer_transaction_id": "7EU524993K045830W",
+        "seller_transaction_id": "1M687255LP844644Y",
+        "create_time": "2026-11-07T08:15:08.000Z",
+        "transaction_status": "HELD",
+        "gross_amount": {
+          "currency_code": "USD",
+          "value": "76.01"
+        },
+        "invoice_number": "HMS-GATE-20261107-1614-A-R",
+        "custom": "gate_20261107-1614_A",
+        "buyer": {
+          "email": "redacted@example.com",
+          "payer_id": "REDACTEDID",
+          "name": "Redacted"
+        },
+        "seller": {
+          "email": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "name": "Redacted"
+        },
+        "items": [
+          {
+            "item_name": "Lucky Cat plush, launch-day drop (shop price, up to)",
+            "item_description": "Lucky Cat plush, launch-day drop (shop price, up to)",
+            "item_quantity": "2",
+            "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+            "item_type": "PRODUCT"
+          },
+          {
+            "item_name": "Queue fee (up to)",
+            "item_description": "Queue fee (up to)",
+            "item_quantity": "2",
+            "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+            "item_type": "SERVICE"
+          }
+        ],
+        "seller_protection_eligible": true,
+        "seller_protection_type": "EXPANDED_SELLER_PROTECTION"
+      }
+    ],
+    "reason": "MERCHANDISE_OR_SERVICE_NOT_RECEIVED",
+    "status": "UNDER_REVIEW",
+    "dispute_amount": {
+      "currency_code": "USD",
+      "value": "76.01"
+    },
+    "dispute_state": "UNDER_PAYPAL_REVIEW",
+    "fund_movements": [
+      {
+        "party": "RECEIVER",
+        "amount": {
+          "currency_code": "USD",
+          "value": "72.87"
+        },
+        "initiated_time": "2026-11-07T08:41:34.000Z",
+        "type": "DEBIT",
+        "reason": "HOLD_PLACED"
+      }
+    ],
+    "dispute_life_cycle_stage": "CHARGEBACK",
+    "dispute_channel": "INTERNAL",
+    "extensions": {
+      "buyer_contacted_time": "2026-11-07T08:38:07.371Z"
+    },
+    "evidences": [
+      {
+        "evidence_type": "CREATE",
+        "notes": "The parcel never arrived. HoldMySpot sandbox gate G7 (invoice HMS-GATE-20261107-1614-A-R).",
+        "source": "SUBMITTED_BY_BUYER",
+        "date": "2026-11-07T08:38:08.524Z",
+        "dispute_life_cycle_stage": "INQUIRY"
+      }
+    ],
+    "offer": {
+      "buyer_requested_amount": {
+        "currency_code": "USD",
+        "value": "76.01"
+      }
+    },
+    "refund_details": {
+      "allowed_refund_amount": {
+        "currency_code": "USD",
+        "value": "76.01"
+      }
+    },
+    "links": [
+      {
+        "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-R-UEL-10196964",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-R-UEL-10196964/provide-supporting-info",
+        "rel": "provide_supporting_info",
+        "method": "POST"
+      }
+    ]
+  }
+}

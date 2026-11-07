@@ -73,6 +73,12 @@ const DAY = 24 * 60 * 60 * 1000;
 const CACHE_LIMIT = 5000;
 const enc = encodeURIComponent;
 
+/** True when a dispute list item's transactions name an invoice (else the dispute must be read in full). */
+function summaryHasInvoices(summary: Record<string, unknown>): boolean {
+  const txns = arr(summary.disputed_transactions);
+  return txns.length > 0 && txns.every((t) => str(obj(t).invoice_number) !== null);
+}
+
 /** Our name for each PayPal call, used in logs and errors. */
 export const OPS = {
   createOrder: 'orders.create',
@@ -302,7 +308,10 @@ export class PayPalRestClient implements HmsPayPal {
         const summary = obj(item);
         const id = str(summary.dispute_id);
         if (!id) continue;
-        const dispute = Array.isArray(summary.disputed_transactions) ? mapDispute(summary, this.#now(), OPS.listDisputes) : await this.getDispute(id);
+        // The sandbox's list items carry only buyer_transaction_id and the parties' ids in
+        // disputed_transactions (seen 11-07): no invoice_number, no seller_transaction_id. Only a
+        // summary that names our invoice can be used as is; anything else is read in full.
+        const dispute = summaryHasInvoices(summary) ? mapDispute(summary, this.#now(), OPS.listDisputes) : await this.getDispute(id);
         if (dispute.invoiceIds.some((inv) => inv.startsWith(this.#prefix))) out.push(dispute);
       }
       path = this.#nextPage(data.links);

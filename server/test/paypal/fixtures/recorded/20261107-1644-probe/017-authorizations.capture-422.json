@@ -1,0 +1,25 @@
+{
+  "op": "authorizations.capture",
+  "method": "POST",
+  "path": "/v2/payments/authorizations/6BY23435E1186474T/capture",
+  "status": 422,
+  "debugId": "ca56b0f9b0c06",
+  "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "ca56b0f9b0c06",
+    "details": [
+      {
+        "issue": "MAX_CAPTURE_AMOUNT_EXCEEDED",
+        "description": "Capture amount exceeds allowable limit. Please contact customer service or your account manager to request the change to your overage limit. The default overage limit is 115%, which allows the sum of all captures to be up to 115% of the order amount."
+      }
+    ],
+    "links": [
+      {
+        "href": "https://developer.paypal.com/docs/api/payments/v2/#error-MAX_CAPTURE_AMOUNT_EXCEEDED",
+        "rel": "information_link",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

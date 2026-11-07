@@ -1,0 +1,194 @@
+{
+  "op": "orders.get",
+  "method": "GET",
+  "path": "/v2/checkout/orders/6CV525564A353843W",
+  "status": 200,
+  "debugId": "ca56b0ef16816",
+  "body": {
+    "id": "6CV525564A353843W",
+    "intent": "AUTHORIZE",
+    "status": "COMPLETED",
+    "payment_source": {
+      "paypal": {
+        "email_address": "redacted@example.com",
+        "account_id": "REDACTEDID",
+        "account_status": "VERIFIED",
+        "name": {
+          "full_name": "Test Buyer"
+        },
+        "address": {
+          "country_code": "US"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "reference_id": "gate_20261107-1614_B",
+        "amount": {
+          "currency_code": "USD",
+          "value": "20.00",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "20.00"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "display_data": {
+            "brand_name": "HoldMySpot"
+          }
+        },
+        "description": "HoldMySpot sandbox gate B: hold up to $20.00",
+        "custom_id": "gate_20261107-1614_B",
+        "invoice_id": "HMS-GATE-20261107-1614-B",
+        "soft_descriptor": "HOLDMYSPOT",
+        "items": [
+          {
+            "name": "Strawberry shortcake (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "15.00"
+            },
+            "quantity": "1",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "5.00"
+            },
+            "quantity": "1"
+          }
+        ],
+        "payments": {
+          "authorizations": [
+            {
+              "status": "CAPTURED",
+              "id": "36T66660LS1622440",
+              "amount": {
+                "currency_code": "USD",
+                "value": "20.00"
+              },
+              "invoice_id": "HMS-GATE-20261107-1614-B",
+              "custom_id": "gate_20261107-1614_B",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "expiration_time": "2026-12-06T08:15:23Z",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/36T66660LS1622440",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/36T66660LS1622440/capture",
+                  "rel": "capture",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/36T66660LS1622440/void",
+                  "rel": "void",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/36T66660LS1622440/reauthorize",
+                  "rel": "reauthorize",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6CV525564A353843W",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T08:15:23Z",
+              "update_time": "2026-11-07T08:15:25Z"
+            }
+          ],
+          "captures": [
+            {
+              "id": "3WA301417J8474513",
+              "status": "COMPLETED",
+              "amount": {
+                "currency_code": "USD",
+                "value": "12.00"
+              },
+              "final_capture": true,
+              "disbursement_mode": "INSTANT",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "seller_receivable_breakdown": {
+                "gross_amount": {
+                  "currency_code": "USD",
+                  "value": "12.00"
+                },
+                "paypal_fee": {
+                  "currency_code": "USD",
+                  "value": "0.91"
+                },
+                "net_amount": {
+                  "currency_code": "USD",
+                  "value": "11.09"
+                }
+              },
+              "invoice_id": "HMS-GATE-20261107-1614-B-H",
+              "custom_id": "gate_20261107-1614_B",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/captures/3WA301417J8474513",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/captures/3WA301417J8474513/refund",
+                  "rel": "refund",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/36T66660LS1622440",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T08:15:25Z",
+              "update_time": "2026-11-07T08:15:25Z"
+            }
+          ]
+        }
+      }
+    ],
+    "payer": {
+      "name": {
+        "full_name": "Test Buyer"
+      },
+      "email_address": "redacted@example.com",
+      "payer_id": "REDACTEDID",
+      "address": {
+        "country_code": "US"
+      }
+    },
+    "create_time": "2026-11-07T08:15:23Z",
+    "update_time": "2026-11-07T08:15:25Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6CV525564A353843W",
+        "rel": "self",
+        "method": "GET"
+      }
+    ]
+  }
+}

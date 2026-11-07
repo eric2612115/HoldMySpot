@@ -1,7 +1,7 @@
 {
   "kind": "purchase",
   "id": "sugar-cloud-cake-genuine",
-  "description": "Sugar Cloud Bakery errand in San Francisco: receipt without a QR; passes, capture $47.00.",
+  "description": "Sugar Cloud Bakery errand in San Francisco: receipt without a QR; passes; shop price and fee $47.00.",
   "shopId": "sugar-cloud-bakery",
   "itemId": "cake-sugar-cloud",
   "job": {

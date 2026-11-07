@@ -1,0 +1,87 @@
+/*
+ * Sandbox mode: PayPal's own buttons (JS SDK v6 web components). PayPal draws
+ * them; here they only get the full width and the app's corner radius through
+ * PayPal's own custom property. Fake mode keeps .pp-button and the Simulated
+ * PayPal sheet.
+ */
+.ppx {
+  display: grid;
+  gap: 8px;
+}
+
+.ppx__lead {
+  margin: 0;
+  font: 700 14px/1.3 var(--font-money);
+  color: var(--ink);
+  text-align: center;
+}
+
+.ppx__button paypal-button,
+.ppx__button venmo-button,
+.ppx__button paypal-pay-later-button {
+  display: block;
+  width: 100%;
+  height: 48px;
+  --paypal-button-border-radius: 12px;
+  --venmo-button-border-radius: 12px;
+}
+
+.ppx__note {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.ppx.is-loading,
+.ppx.is-waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--mist);
+  color: var(--pp);
+  font: 600 14px/1.3 var(--font-money);
+}
+
+.ppx.is-loading {
+  justify-content: center;
+}
+
+.ppx.is-loading .spinner,
+.ppx.is-waiting .spinner {
+  border-color: rgba(29, 43, 107, 0.2);
+  border-top-color: var(--pp);
+}
+
+.ppx__wait {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+}
+
+.ppx__wait span {
+  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.ppx.is-waiting .text-button {
+  flex: none;
+}
+
+.ppx.is-failed {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--hot) 8%, white);
+  font-size: 13px;
+  color: var(--ink-2);
+  justify-items: center;
+  text-align: center;
+}
+
+.ppx.is-failed p {
+  margin: 0;
+}

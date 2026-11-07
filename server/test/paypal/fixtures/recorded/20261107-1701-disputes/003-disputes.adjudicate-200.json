@@ -1,0 +1,12 @@
+{
+  "op": "disputes.adjudicate",
+  "method": "POST",
+  "path": "/v1/customer/disputes/PP-R-UEL-10196964/adjudicate",
+  "status": 200,
+  "debugId": "f435565a81410",
+  "body": {
+    "href": "https://api-m.sandbox.paypal.com/v1/customer/disputes/PP-R-UEL-10196964",
+    "rel": "self",
+    "method": "GET"
+  }
+}

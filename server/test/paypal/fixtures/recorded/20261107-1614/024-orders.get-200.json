@@ -1,0 +1,98 @@
+{
+  "op": "orders.get",
+  "method": "GET",
+  "path": "/v2/checkout/orders/2XN447558U665280L",
+  "status": 200,
+  "debugId": "f770662cb2612",
+  "body": {
+    "id": "2XN447558U665280L",
+    "intent": "AUTHORIZE",
+    "status": "APPROVED",
+    "payment_source": {
+      "paypal": {
+        "email_address": "redacted@example.com",
+        "account_id": "REDACTEDID",
+        "account_status": "VERIFIED",
+        "name": {
+          "full_name": "Test Buyer"
+        },
+        "address": {
+          "country_code": "US"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "reference_id": "gate_20261107-1614_C",
+        "amount": {
+          "currency_code": "USD",
+          "value": "30.00",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "30.00"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "display_data": {
+            "brand_name": "HoldMySpot"
+          }
+        },
+        "description": "HoldMySpot sandbox gate C: hold up to $30.00",
+        "custom_id": "gate_20261107-1614_C",
+        "invoice_id": "HMS-GATE-20261107-1614-C",
+        "soft_descriptor": "HOLDMYSPOT",
+        "items": [
+          {
+            "name": "Lucky Cat plush (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "10.00"
+            },
+            "quantity": "2",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "5.00"
+            },
+            "quantity": "2"
+          }
+        ]
+      }
+    ],
+    "payer": {
+      "name": {
+        "full_name": "Test Buyer"
+      },
+      "email_address": "redacted@example.com",
+      "payer_id": "REDACTEDID",
+      "address": {
+        "country_code": "US"
+      }
+    },
+    "create_time": "2026-11-07T08:14:06Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/2XN447558U665280L",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/2XN447558U665280L",
+        "rel": "update",
+        "method": "PATCH"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/2XN447558U665280L/authorize",
+        "rel": "authorize",
+        "method": "POST"
+      }
+    ]
+  }
+}

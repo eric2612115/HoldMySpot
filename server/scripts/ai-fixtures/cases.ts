@@ -103,6 +103,7 @@ export interface Expectation {
   /** Soft checks that must fail (exactly these). */
   soft: ProofCheckCode[];
   retailCents?: number;
+  /** Shop price after the cap plus the matched fee; PayPal captures it with processing at cost on top (D-105). */
   captureCents?: number;
   peopleAhead?: number;
 }
@@ -265,7 +266,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
   {
     kind: 'purchase',
     id: 'paper-moon-mia-genuine',
-    description: "Hero: Wei's receipt for Mia's plush; passes, $34.00, capture $46.00.",
+    description: "Hero: Wei's receipt for Mia's plush; passes, $34.00; shop price and fee $46.00.",
     ...PM,
     job: shipJob('job-mia', 'K7MX4', 1200),
     queuer: 'Wei',
@@ -279,7 +280,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
   {
     kind: 'purchase',
     id: 'paper-moon-priya-genuine',
-    description: "Hero: Lin's receipt for Priya's re-offered plush at $10; passes, capture $44.00.",
+    description: "Hero: Lin's receipt for Priya's re-offered plush at $10; passes; shop price and fee $44.00.",
     ...PM,
     job: shipJob('job-priya', 'T3HW8', 1000),
     queuer: 'Lin',
@@ -363,7 +364,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
   {
     kind: 'purchase',
     id: 'petal-crumb-shortcake-usd',
-    description: 'New York errand: receipt without a QR, printed name matches; capture $47.00.',
+    description: 'New York errand: receipt without a QR, printed name matches; shop price and fee $47.00.',
     shopId: 'petal-crumb-bakery',
     itemId: 'cake-petal-crumb',
     job: { id: 'job-dana', qty: 1, proofCode: 'X4KE7', feeCents: 900, retailCapCentsPerUnit: 4000, shippingCents: 0, mode: 'local' },
@@ -470,7 +471,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
   {
     kind: 'purchase',
     id: 'little-lantern-2plush-genuine',
-    description: 'Little Lantern Toys, two Lucky Cat plush at the shop price; passes, $52.00, capture $64.00.',
+    description: 'Little Lantern Toys, two Lucky Cat plush at the shop price; passes, $52.00; shop price and fees $64.00.',
     shopId: 'little-lantern-toys',
     itemId: 'plush-little-lantern',
     job: { id: 'job-c13', qty: 2, proofCode: 'A9HT6', feeCents: 600, retailCapCentsPerUnit: 2800, shippingCents: 1300, mode: 'ship' },
@@ -531,7 +532,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
   {
     kind: 'purchase',
     id: 'sugar-cloud-cake-genuine',
-    description: 'Sugar Cloud Bakery errand in San Francisco: receipt without a QR; passes, capture $47.00.',
+    description: 'Sugar Cloud Bakery errand in San Francisco: receipt without a QR; passes; shop price and fee $47.00.',
     shopId: 'sugar-cloud-bakery',
     itemId: 'cake-sugar-cloud',
     job: { id: 'job-c16', qty: 1, proofCode: 'P3WN7', feeCents: 900, retailCapCentsPerUnit: 4000, shippingCents: 0, mode: 'local' },

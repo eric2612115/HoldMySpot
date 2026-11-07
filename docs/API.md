@@ -82,13 +82,13 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 
 | Endpoint | P | Auth | Request | Response | Rules |
 |---|---|---|---|---|---|
-| `POST /api/bids/quote` | P0 | per | `QuoteRequest` | `BidQuote` | AI-SERVICES 4.3 and 4.4; suggested retail cap = shop price + 5%, rounded up to a dollar |
-| `POST /api/bids` * | P0 | per | `CreateBidRequest` | `CreateBidResponse` | Requester in the US; item exists; mode allowed (local only in the requester's own city); qty within the per-person limit; retail cap at least the shop price; max fee at least the item minimum; deadline within 10 days; button allowed. Creates the PayPal order |
-| `POST /api/bids/:bidId/authorize` * | P0 | per | `{ orderId }` | `BidResult` | Authorizes; bid `open`; matching runs; `matches` may already contain fills |
+| `POST /api/bids/quote` | P0 | per | `QuoteRequest` | `BidQuote` | AI-SERVICES 4.3 and 4.4; suggested retail cap = shop price + 5%, rounded up to a dollar; 409 `SOLD_OUT` once the item sold out (D-116) |
+| `POST /api/bids` * | P0 | per | `CreateBidRequest` | `CreateBidResponse` | Requester in the US; item exists; mode allowed (local only in the requester's own city); qty within the per-person limit; retail cap at least the shop price; max fee at least the item minimum; deadline within 10 days; button allowed; the item not sold out (409 `SOLD_OUT`, D-116). Creates the PayPal order |
+| `POST /api/bids/:bidId/authorize` * | P0 | per | `{ orderId }` | `BidResult` | Authorizes; bid `open`; matching runs; `matches` may already contain fills. After a sell-out nothing is authorized: bid `failed` (close reason `sold_out`), 409 `SOLD_OUT`, nothing held (D-116) |
 | `POST /api/bids/:bidId/approval-failed` * | P0 | per | `{ reason, detail }` | `{ bid, hold }` | Bid `failed` |
 | `GET /api/bids` | P0 | per | `?mine=1&status=&shopId=` | `{ bids }` | Own bids only |
 | `GET /api/bids/:bidId` | P0 | per | | `BidDetail` | Owner and ops |
-| `PATCH /api/bids/:bidId` * | P1 | per | `AmendBidRequest` | `{ bid, matches }` | New `qty * (retailCap + maxFee) + shippingBudget` must stay within `limitCents` (`OVER_LIMIT`); qty not below matched qty; a new max fee resets time priority |
+| `PATCH /api/bids/:bidId` * | P1 | per | `AmendBidRequest` | `{ bid, matches }` | New `bidLimitCents` (qty x (retailCap + maxFee) + shippingBudget + the processing reserve, D-105) must stay within `limitCents` (`OVER_LIMIT`); qty not below matched qty; a new max fee resets time priority |
 | `POST /api/bids/:bidId/cancel` * | P0 | per | `{ reason }` | `{ bid, hold }` | Cancels the unmatched remainder; voids when nothing was captured and no job is active, else `closing` |
 | `POST /api/bids/:bidId/claim` * | P0 | per (queuer) | `ClaimBidRequest` | `ClaimBidResponse` | Same queuer rules as asks; fee = the bid's max fee; qty within the bid's remainder |
 | `GET /api/bids/:bidId/agent-actions` | P1 | per | | `{ actions }` | |
@@ -140,6 +140,8 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `POST /api/ops/disputes/:disputeId/evidence` * | P2 | `{ note, includeTracking }` | `{ dispute }` |
 | `POST /api/ops/disputes/:disputeId/accept` * | P2 | `{ note }` | `{ dispute }` |
 | `POST /api/ops/disputes/:disputeId/adjudicate` * | P2 | `{ outcome }` (sandbox only) | `{ dispute }` |
+| `POST /api/ops/agents/turn` | P1 | `{ agent, instructions, messages, tools, toolChoice }`: the conversation so far and the tools the console runs | `{ say, calls, ai }`: one turn of the ops console's agents (the market desk, the AG Studio agents it delegates to, the rescheduler) from the server's AI port. Live model only, never recorded or replayed; without one `503 AI_UNAVAILABLE` and the console uses its offline planner and rules (D-100, D-103) |
+| `POST /api/ops/moves` * | P1 | `{ moves, reason, proposalId, ai }`, each move `reassign { jobId, toAskId }`, `extend { claimId, minutes }`, `release { claimId }` or `release_job { jobId }` | `{ applied, skipped, actions }`: each move checked again with the market rules, in its own transaction; a refused move or one naming an unknown record is skipped with its reason; a move that touches a request is logged as an agent action on it, every applied move in the server log; `409` when none applies (D-102, D-117) |
 
 ### Demo (`HMS_DEMO=1`)
 
@@ -155,15 +157,15 @@ Integrated in fake mode (2026-11-07, D-47 to D-52): the PayPal port is the sandb
 
 | Who | Call | Result |
 |---|---|---|
-| web (Mia) | `POST /api/bids/quote` | one Mochi Bunny plush shipped to New York: suggested retail cap $36, fee $12, shipping budget $12; limit $60.00 |
+| web (Mia) | `POST /api/bids/quote` | one Mochi Bunny plush shipped to New York: suggested retail cap $36, fee $12, shipping budget $12, processing reserve $3.70; limit $63.70 |
 | web (Mia) | `POST /api/bids` | `{ bid: awaiting_approval, checkout: { orderId, next } }` |
 | browser | PayPal v6 session `start` with that order id (or the fake approve route) | buyer approves |
-| web (Mia) | `POST /api/bids/:bidId/authorize` | hold `held` $60.00; ledger `held`; `book.updated` |
+| web (Mia) | `POST /api/bids/:bidId/authorize` | hold `held` $63.70; ledger `held`; `book.updated` |
 | web (Wei) | `POST /api/asks` with a clock | ask `open`, claim `awaiting_arrival` |
 | web (Wei) | `POST /api/files?purpose=line_photo`, then `POST /api/claims/:id/check-in` | claim `arrived`, then `checked_in` on `proof.updated`; clock starts |
 | server | clock step at 11:05 | `match.created` (1 at $12), `job.updated` (claimed then queueing), `bid.updated` (matched) |
-| web (Wei) | `POST /api/jobs/:id/bought`, two uploads, `POST /api/jobs/:id/proof` | proof `verifying`, then `passed`; job `verified`; ledger `captured` $46.00; payout $10.80 |
-| web (Wei) | `POST /api/jobs/:id/shipment` | ledger `captured` $8.75 and `released` $5.25; job `shipped`; payout $42.75 |
+| web (Wei) | `POST /api/jobs/:id/bought`, two uploads, `POST /api/jobs/:id/proof` | proof `verifying`, then `passed`; job `verified`; ledger `captured` $48.69 ($34.00 + $12.00 + $2.69 processing at cost, PayPal's fee on it in `paypal.feeCents`); payout $10.80 |
+| web (Wei) | `POST /api/jobs/:id/shipment` | ledger `captured` $9.57 ($8.75 + $0.82 processing) and `released` $5.44; job `shipped`; payout $42.75 |
 
 ## 5. Server-sent events
 

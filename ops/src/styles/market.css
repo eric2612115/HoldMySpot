@@ -456,3 +456,114 @@
 .hms-spot-others b {
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- AG Grid inside Studio: status pills and PayPal ids (widgets/cells.ts) ---- */
+
+.hms-cell-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 18px;
+  white-space: nowrap;
+  background: var(--mist);
+  color: var(--ink-2);
+}
+
+.hms-cell-pill.tone-held {
+  background: var(--held-bg);
+  color: var(--held);
+}
+.hms-cell-pill.tone-captured {
+  background: var(--captured-bg);
+  color: var(--captured);
+}
+.hms-cell-pill.tone-paid {
+  background: var(--paid-bg);
+  color: var(--paid);
+}
+.hms-cell-pill.tone-released {
+  background: var(--released-bg);
+  color: var(--released);
+}
+.hms-cell-pill.tone-hot {
+  background: var(--hot-soft);
+  color: var(--hot-deep);
+}
+.hms-cell-pill.tone-grape {
+  background: var(--grape-soft);
+  color: var(--grape-deep);
+}
+.hms-cell-pill.tone-sky {
+  background: var(--sky-soft);
+  color: #106c8a;
+}
+
+.hms-cell-paypal {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  color: var(--ink-2);
+}
+
+.hms-cell-none {
+  color: var(--ink-3);
+}
+
+/* ---- The market desk's strip above Studio: who answers ---- */
+
+.market {
+  display: flex;
+  flex-direction: column;
+}
+
+.desk-strip {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--grape-mist);
+  color: var(--grape-deep);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.desk-strip.is-offline {
+  background: var(--mist);
+  color: var(--released);
+}
+
+.desk-strip b {
+  font-family: var(--font-play);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.desk-strip .desk-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(91, 76, 240, 0.16);
+}
+
+.desk-strip.is-offline .desk-dot {
+  box-shadow: none;
+}
+
+.desk-strip .desk-turns {
+  margin-left: auto;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+.market-studio-wrap {
+  flex: 1;
+  min-height: 0;
+}

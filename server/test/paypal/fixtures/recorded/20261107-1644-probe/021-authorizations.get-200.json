@@ -1,0 +1,63 @@
+{
+  "op": "authorizations.get",
+  "method": "GET",
+  "path": "/v2/payments/authorizations/6BY23435E1186474T",
+  "status": 200,
+  "debugId": "ca56b0fb59de7",
+  "body": {
+    "id": "6BY23435E1186474T",
+    "status": "CAPTURED",
+    "amount": {
+      "currency_code": "USD",
+      "value": "10.00"
+    },
+    "invoice_id": "HMS-GATE-20261107-1644-E",
+    "custom_id": "gate_20261107-1644_E",
+    "seller_protection": {
+      "status": "ELIGIBLE",
+      "dispute_categories": [
+        "ITEM_NOT_RECEIVED",
+        "UNAUTHORIZED_TRANSACTION"
+      ]
+    },
+    "supplementary_data": {
+      "related_ids": {
+        "order_id": "7EW40822311629340"
+      }
+    },
+    "payee": {
+      "email_address": "redacted@example.com",
+      "merchant_id": "REDACTEDID"
+    },
+    "expiration_time": "2026-12-06T08:45:11Z",
+    "create_time": "2026-11-07T08:45:11Z",
+    "update_time": "2026-11-07T08:45:21Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T/capture",
+        "rel": "capture",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T/void",
+        "rel": "void",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T/reauthorize",
+        "rel": "reauthorize",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/7EW40822311629340",
+        "rel": "up",
+        "method": "GET"
+      }
+    ]
+  }
+}

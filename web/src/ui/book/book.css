@@ -1,0 +1,969 @@
+/*
+ * The order book view. Requests (bids) are money on hold, so they wear the
+ * "held" amber of the money panel; offers (asks) wear the app's grape; a match
+ * flashes sun-yellow where the two meet. Numbers use the money voice
+ * (Figtree, tabular figures, exact cents).
+ */
+
+.obook {
+  --mid: 74px;
+  outline: none;
+  --bid: var(--held);
+  --bid-bg: var(--held-bg);
+  --bid-strong: #ffd27a;
+  --ask: var(--grape);
+  --ask-bg: var(--grape-soft);
+  position: absolute;
+  inset: 0;
+  /* Over everything on the map page, the loading screen (20) included: a `?book=` link needs no map. */
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  animation: obook-in 0.34s var(--ease-out);
+}
+
+/* On the desktop stage the phone frame draws a notch over the top of the screen (app.css shows it from 721 x 561). */
+@media (min-width: 721px) and (min-height: 561px) {
+  .phone__screen .obook__head {
+    padding-top: 50px;
+  }
+}
+
+@keyframes obook-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+
+.obook__head {
+  flex: none;
+  display: grid;
+  grid-template-columns: 30px 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: max(14px, env(safe-area-inset-top)) 14px 8px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.obook__back {
+  width: 30px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.obook__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--hue, var(--grape)) 18%, white);
+}
+
+.obook__title {
+  min-width: 0;
+  display: grid;
+  line-height: 1.15;
+}
+
+.obook__kicker {
+  font: 600 10.5px/1.2 var(--font-money);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--grape);
+}
+
+.obook__title h2 {
+  font: 650 16px/1.2 var(--font-play);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.obook__title p {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.obook__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 14px 16px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.obook__lede {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+/* Best request | spread | best offer. */
+.obook-sum {
+  display: grid;
+  grid-template-columns: 1fr 0.82fr 1fr;
+  gap: 6px;
+}
+
+.obook-sum__cell {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 8px 6px 9px;
+  border-radius: 14px;
+  text-align: center;
+  min-width: 0;
+}
+
+.obook-sum__cell.is-bid {
+  background: var(--bid-bg);
+  color: var(--bid);
+}
+
+.obook-sum__cell.is-ask {
+  background: var(--ask-bg);
+  color: var(--ask);
+}
+
+.obook-sum__cell.is-mid {
+  background: var(--mist);
+  color: var(--ink-2);
+}
+
+.obook-sum__cell.is-crossed {
+  background: #fff4c7;
+  color: var(--ink);
+}
+
+.obook-sum__label {
+  font: 600 10px/1.2 var(--font-money);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.obook-sum__cell strong {
+  font: 750 20px/1.15 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  animation: obook-pop 0.45s var(--ease-spring);
+}
+
+.obook-sum__cell.is-mid strong {
+  font-size: 17px;
+}
+
+.obook-sum__sub {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--ink-2);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes obook-pop {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.4;
+  }
+}
+
+/* Column heads, lined up with the ladder. */
+.obook-cols {
+  display: grid;
+  grid-template-columns: 1fr var(--mid) 1fr;
+  font: 600 10px/1.2 var(--font-money);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.obook-cols span:first-child {
+  text-align: right;
+  padding-right: 8px;
+  color: var(--bid);
+}
+
+.obook-cols span:nth-child(2) {
+  text-align: center;
+}
+
+.obook-cols span:last-child {
+  padding-left: 8px;
+  color: var(--ask);
+}
+
+/* The ladder: one row per fee, requests on the left, offers walking down on the right. */
+.obook-ladder {
+  --lane-w: calc((50% - var(--mid) / 2 - 6px) / var(--lanes, 1));
+  --lane-x: calc(50% + var(--mid) / 2 + 6px + var(--lane, 0) * var(--lane-w));
+  position: relative;
+  transition: height 0.5s var(--ease-out);
+}
+
+.obook-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34px;
+  z-index: 1;
+  pointer-events: none;
+  transition: transform 0.6s var(--ease-out);
+  animation: obook-fade 0.4s ease;
+}
+
+.obook-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #eceef6;
+}
+
+.obook-row__price {
+  position: absolute;
+  left: calc(50% - var(--mid) / 2 + 4px);
+  width: calc(var(--mid) - 8px);
+  top: 5px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--paper);
+  font: 650 13px/1 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+.obook-row.is-bid .obook-row__price {
+  background: var(--bid-strong);
+  color: #5c3700;
+}
+
+.obook-row.is-ask .obook-row__price {
+  background: var(--ask);
+  color: #fff;
+}
+
+@keyframes obook-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* The gap between the best offer and the best request. */
+.obook-spread {
+  position: absolute;
+  left: calc(50% - var(--mid) / 2 + 10px);
+  width: calc(var(--mid) - 20px);
+  z-index: 0;
+  border-radius: 6px;
+  background: repeating-linear-gradient(-45deg, rgba(91, 76, 240, 0.09) 0 5px, rgba(91, 76, 240, 0.02) 5px 10px);
+  border-left: 2px solid rgba(91, 76, 240, 0.25);
+  border-right: 2px solid rgba(154, 90, 0, 0.25);
+  transition:
+    top 0.6s var(--ease-out),
+    height 0.6s var(--ease-out);
+}
+
+.obook-spread__tag {
+  position: absolute;
+  top: 0;
+  right: calc(50% + var(--mid) / 2 + 6px);
+  z-index: 3;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+  transition: transform 0.6s var(--ease-out);
+}
+
+.obook-spread__tag::before {
+  content: '';
+  position: absolute;
+  inset: 5px -9px 5px -9px;
+  z-index: -1;
+  border-radius: 999px;
+  background: var(--mist);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.obook-spread__tag {
+  gap: 5px;
+  padding: 0 9px;
+  color: var(--ink-2);
+  font: 650 11.5px/1 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A request level: the bar grows from the fee column; the text says what PayPal holds. */
+.obook-bid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(50% - var(--mid) / 2 - 2px);
+  height: 34px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transition: transform 0.6s var(--ease-out);
+  animation: obook-fade 0.4s ease;
+}
+
+.obook-bid__bar {
+  position: relative;
+  min-width: var(--w, 50%);
+  height: 28px;
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  padding: 0 8px 0 10px;
+  border-radius: 10px 5px 5px 10px;
+  background: var(--bid-bg);
+  color: #6b4100;
+  line-height: 1.1;
+  white-space: nowrap;
+  transition:
+    min-width 0.5s var(--ease-out),
+    background 0.3s ease;
+  transform-origin: 100% 50%;
+  animation: obook-grow 0.5s var(--ease-out);
+}
+
+@keyframes obook-grow {
+  from {
+    transform: scaleX(0.3);
+    opacity: 0;
+  }
+}
+
+.obook-bid.is-best .obook-bid__bar {
+  background: var(--bid-strong);
+  box-shadow: 0 0 0 2px rgba(255, 197, 61, 0.35);
+}
+
+.obook-bid.is-mine .obook-bid__bar {
+  box-shadow:
+    inset 0 0 0 2px var(--bid),
+    0 0 0 2px rgba(255, 197, 61, 0.35);
+}
+
+.obook-bid__bar b {
+  font: 700 12.5px/1.15 var(--font-money);
+  font-variant-numeric: tabular-nums;
+}
+
+.obook-bid__bar small {
+  font-size: 10.5px;
+  color: #8a6a3a;
+}
+
+/* An offer's path down its clock: steps already taken, the next ones, the floor. */
+.obook-path {
+  position: absolute;
+  left: calc(var(--lane-x) + 13px);
+  width: 0;
+  z-index: 2;
+  border-left: 2px dotted rgba(91, 76, 240, 0.35);
+  transition:
+    top 0.6s var(--ease-out),
+    height 0.6s var(--ease-out);
+}
+
+.obook-path__done {
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 2px;
+  background: var(--ask);
+  opacity: 0.55;
+  transition: height 0.7s var(--ease-out);
+}
+
+.obook-step {
+  position: absolute;
+  left: calc(var(--lane-x) + 9px);
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  z-index: 2;
+  border-radius: 50%;
+  transition: top 0.6s var(--ease-out);
+}
+
+.obook-step.is-past {
+  background: rgba(91, 76, 240, 0.45);
+  transform: scale(0.7);
+}
+
+.obook-step.is-next {
+  background: var(--paper);
+  border: 2px solid rgba(91, 76, 240, 0.55);
+}
+
+.obook-step.is-floor {
+  border-radius: 3px;
+  border-color: var(--ask);
+}
+
+.obook-step em {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 600 10.5px/1 var(--font-money);
+  font-style: normal;
+  color: var(--ask);
+  white-space: nowrap;
+}
+
+.obook-ask {
+  position: absolute;
+  top: 0;
+  left: var(--lane-x);
+  width: calc(var(--lane-w) - 4px);
+  height: 34px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  /* A step down: the chip slides to its new fee with a small bounce. */
+  transition: transform 0.75s cubic-bezier(0.34, 1.32, 0.64, 1);
+}
+
+.obook-ask__chip {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 4px;
+  border-radius: 11px;
+  background: var(--ask-bg);
+  color: var(--ask);
+  box-shadow: 0 2px 8px rgba(91, 76, 240, 0.16);
+  min-width: 0;
+}
+
+.obook-ask.is-best .obook-ask__chip {
+  background: var(--ask);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(91, 76, 240, 0.35);
+}
+
+.obook-ask.is-you .obook-ask__chip {
+  outline: 2px solid var(--sun);
+  outline-offset: 1px;
+}
+
+.obook-ask__ring {
+  flex: none;
+}
+
+.obook-ask__ring-bg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  opacity: 0.22;
+}
+
+.obook-ask__ring-fg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.22s linear;
+}
+
+.obook-ask__text {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  line-height: 1.1;
+}
+
+.obook-ask__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.obook-ask__line b {
+  font: 650 11.5px/1.15 var(--font-play);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.obook-ask__line strong {
+  font: 750 13.5px/1.1 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  animation: obook-pop 0.5s var(--ease-spring);
+}
+
+.obook-ask__text small {
+  font: 500 10.5px/1.15 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+}
+
+/* Two offers side by side: the chips drop the ring. */
+.obook-ladder.is-lanes .obook-ask__ring {
+  display: none;
+}
+
+/* A match: both sides light up where they met, then leave the book. */
+.obook-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.obook-flash__band {
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  border-radius: 13px;
+  background: linear-gradient(90deg, rgba(255, 197, 61, 0.5), rgba(255, 233, 160, 0.45) 50%, rgba(91, 76, 240, 0.28));
+  box-shadow:
+    0 0 0 2px rgba(255, 197, 61, 0.95),
+    0 0 26px rgba(255, 197, 61, 0.65);
+  transform-origin: 50% 50%;
+  animation: obook-band 2.5s var(--ease-out) var(--delay, 0s) both;
+}
+
+@keyframes obook-band {
+  0% {
+    transform: scaleX(0.15);
+    opacity: 0;
+  }
+  14% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.6);
+    opacity: 0;
+  }
+}
+
+.obook-flash__pill {
+  position: absolute;
+  left: 50%;
+  margin-top: 3px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px 6px 9px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font: 700 13px/1 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(35, 30, 90, 0.35);
+  /* Sits on the band's top edge, above the two sides it joins. */
+  transform: translate(-50%, -100%);
+  animation: obook-pill 2.5s var(--ease-spring) var(--delay, 0s) both;
+}
+
+.obook-flash__pill svg {
+  color: var(--sun);
+}
+
+@keyframes obook-pill {
+  0% {
+    transform: translate(-50%, -100%) scale(0.4);
+    opacity: 0;
+  }
+  12% {
+    transform: translate(-50%, -100%) scale(1.08);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(-50%, -100%) scale(1);
+  }
+  78% {
+    transform: translate(-50%, -100%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -150%) scale(0.92);
+    opacity: 0;
+  }
+}
+
+.obook-bid.is-ghost {
+  z-index: 1;
+  animation: none;
+}
+
+.obook-bid.is-ghost .obook-bid__bar {
+  background: var(--bid-strong);
+  box-shadow:
+    0 0 0 2px rgba(255, 197, 61, 0.9),
+    0 0 18px rgba(255, 197, 61, 0.55);
+  animation: obook-leave-bid 2.5s var(--ease-out) var(--delay, 0s) both;
+}
+
+.obook-ask.is-ghost {
+  z-index: 1;
+  transition: none;
+  /* Lands on the matched fee from the row it was last drawn on. */
+  animation: obook-land 0.55s cubic-bezier(0.34, 1.32, 0.64, 1) both;
+}
+
+@keyframes obook-land {
+  from {
+    translate: 0 var(--from, 0px);
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+.obook-ask.is-ghost .obook-ask__chip {
+  background: var(--ask);
+  color: #fff;
+  animation: obook-leave-ask 2.5s var(--ease-out) var(--delay, 0s) both;
+}
+
+@keyframes obook-leave-bid {
+  0%,
+  45% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(26px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@keyframes obook-leave-ask {
+  0%,
+  45% {
+    transform: none;
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-26px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.obook__more,
+.obook__empty {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.obook__empty {
+  padding: 24px 12px;
+}
+
+.obook-note {
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: var(--mist);
+  font-size: 12.5px;
+  line-height: 1.42;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.obook-note b {
+  color: var(--grape-deep);
+  font-weight: 700;
+}
+
+/* Recent matches. */
+.obook-tape h3 {
+  font: 600 10.5px/1.2 var(--font-money);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+}
+
+.obook-tape ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.obook-tape li {
+  display: grid;
+  grid-template-columns: 62px 58px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.obook-tape li:nth-child(odd) {
+  background: var(--mist);
+}
+
+.obook-tape li.is-new {
+  animation: obook-new 2.4s ease;
+}
+
+@keyframes obook-new {
+  0%,
+  40% {
+    background: #fff1bf;
+  }
+}
+
+.obook-tape__time {
+  color: var(--ink-3);
+}
+
+.obook-tape__fee {
+  font-weight: 750;
+  color: var(--captured);
+}
+
+.obook-tape__what {
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.obook-tape__what b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.obook-tape__none {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* Demo mode: the market clock, Run or Pause, and Next step. */
+.obook-demo {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--ink);
+  color: #fff;
+}
+
+.obook-demo__time {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  line-height: 1.15;
+}
+
+.obook-demo__label {
+  font: 600 9.5px/1.2 var(--font-money);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #b7bbdf;
+}
+
+.obook-demo__now {
+  font: 700 15px/1.2 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.obook-demo__now small {
+  margin-left: 6px;
+  font-weight: 500;
+  font-size: 11px;
+  color: #b7bbdf;
+}
+
+.obook-demo__btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff;
+  font: 650 13px/1.1 var(--font-money);
+  cursor: pointer;
+}
+
+.obook-demo__btn span {
+  display: grid;
+  text-align: left;
+}
+
+.obook-demo__btn small {
+  font-size: 10.5px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.obook-demo__btn.is-primary {
+  background: var(--sun);
+  color: var(--ink);
+}
+
+.obook-demo__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* The way in from a sheet or a task card. */
+.obook-strip {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 8px 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--mist);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.obook-strip__cell {
+  display: grid;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.obook-strip__cell small {
+  font-size: 10px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.obook-strip__cell b {
+  font: 750 14px/1.2 var(--font-money);
+  font-variant-numeric: tabular-nums;
+}
+
+.obook-strip__cell.is-bid b {
+  color: var(--held);
+}
+
+.obook-strip__cell.is-ask b {
+  color: var(--grape);
+}
+
+.obook-strip__cell.is-mid {
+  text-align: center;
+  padding: 0 6px;
+}
+
+.obook-strip__cell.is-mid b {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.obook-strip__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font: 650 12px/1 var(--font-money);
+  white-space: nowrap;
+}
+
+/* The map label: its ticket is the button, the round badge opens the book. */
+.tlabel > button.tlabel__ticket {
+  border: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.tlabel__book {
+  position: absolute;
+  top: -8px;
+  right: -9px;
+  width: 23px;
+  height: 23px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--paper);
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(35, 30, 90, 0.25);
+}
+
+.tlabel.is-selected .tlabel__book {
+  background: var(--hue, var(--grape));
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The step-down card's link into the book (OfferCard). */
+.auction__book {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -4px;
+  font-size: 13px;
+}

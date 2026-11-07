@@ -220,7 +220,7 @@ export async function decidePurchase(
     const job = app.store.jobs.must(proof.jobId!);
     const now = app.now();
     const retail = verdict.retailCents;
-    const capture = retail === null ? null : receiptCapture(job.caps, retail);
+    const capture = retail === null ? null : receiptCapture(job.caps, retail, job.mode);
     assertTransition('proof', proof.status, verdict.status);
     proof.status = verdict.status;
     if (verdict.checks.length > 0) proof.checks = verdict.checks;
@@ -230,6 +230,7 @@ export async function decidePurchase(
       fxTwdPerUsd: job.fx?.twdPerUsd ?? null,
       retailCents: retail,
       captureCents: capture?.amountCents ?? null,
+      processingCents: capture?.processingCents ?? null,
     };
     proof.summary = verdict.summary;
     proof.ai = verdict.ai;
@@ -260,11 +261,11 @@ export async function decidePurchase(
   return [];
 }
 
-/** Ship mode, capture #1: retail at cost (capped) plus the matched fee, then the fee payout. */
+/** Ship mode, capture #1: retail at cost (capped), the matched fee and processing at cost, then the fee payout. */
 async function captureReceiptAndPay(app: App, jobId: string): Promise<LedgerEntry[]> {
   const job = app.store.jobs.must(jobId);
-  const cap = receiptCapture(job.caps, job.amounts.retailCents ?? 0);
-  const parts = { retailCents: cap.retailCents, feeCents: cap.feeCents, shippingCents: 0 };
+  const cap = receiptCapture(job.caps, job.amounts.retailCents ?? 0, job.mode);
+  const parts = { retailCents: cap.retailCents, feeCents: cap.feeCents, shippingCents: 0, processingCents: cap.processingCents, captureFeeCents: cap.captureFeeCents, payoutFeesCents: cap.payoutFeesCents };
   try {
     const out = await captureForJob(app, jobId, 'receipt', cap.amountCents, parts);
     const ledger = [...out.entries];
@@ -340,15 +341,19 @@ export async function addShipment(app: App, u: User, jobId: string, req: AddShip
   const sent = liveCaptureRequest(app, job.id, 'shipping');
   let shippingCents = sent ? sent.parts.shippingCents : ship.shippingCents;
   if (shippingCents > 0) {
+    // Shipping at cost plus this capture's own PayPal fee at cost (D-105); a resend keeps what was sent.
     const out = await captureForJob(
       app,
       job.id,
       'shipping',
-      shippingCents,
+      sent ? sent.amountCents : ship.amountCents,
       {
         retailCents: job.amounts.retailCents ?? 0,
         feeCents: 0,
         shippingCents,
+        processingCents: ship.processingCents,
+        captureFeeCents: ship.captureFeeCents,
+        payoutFeesCents: ship.payoutFeesCents,
       },
       sent ? 0 : Math.min(req.dutyPaidCents, shippingCents),
     );
@@ -392,8 +397,8 @@ export async function handover(app: App, u: User, jobId: string, code: string): 
     app.db.setMeta(`handover-misses:${job.id}`, JSON.stringify([...misses, app.now()]));
     throw new ContractError('WRONG_CODE', 'That is not the requester\'s handover code.', { attemptsLeft: Math.max(0, HANDOVER_MAX_MISSES - misses.length - 1) });
   }
-  const cap = receiptCapture(job.caps, job.amounts.retailCents ?? 0);
-  const parts = { retailCents: cap.retailCents, feeCents: cap.feeCents, shippingCents: 0 };
+  const cap = receiptCapture(job.caps, job.amounts.retailCents ?? 0, job.mode);
+  const parts = { retailCents: cap.retailCents, feeCents: cap.feeCents, shippingCents: 0, processingCents: cap.processingCents, captureFeeCents: cap.captureFeeCents, payoutFeesCents: cap.payoutFeesCents };
   const out = await captureForJob(app, job.id, 'handover', cap.amountCents, parts);
   const ledger = [...out.entries];
   if (declined(out)) {

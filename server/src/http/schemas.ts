@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CITY_IDS, ContractError, FULFILMENT_MODES } from '@holdmyspot/shared';
+import { AI_MODES, AI_PROVIDERS, CITY_IDS, ContractError, FULFILMENT_MODES } from '@holdmyspot/shared';
 import type { ApiKey } from '@holdmyspot/shared';
 
 /** Request bodies validated at the edge (zod), mirroring the contract types. */
@@ -71,6 +71,45 @@ export const BODY_SCHEMAS: Partial<Record<ApiKey, z.ZodType>> = {
   'POST /api/estimates/shipping': z.object({ itemId: id, qty, destination }),
   'POST /api/ops/proofs/:proofId/review': z.object({ decision: z.enum(['pass', 'fail']), note: z.string().max(1000).default('') }),
   'POST /api/ops/jobs/:jobId/refund': z.object({ amountCents: cents, reason: z.string().min(1).max(200) }),
+  'POST /api/ops/agents/turn': z.object({
+    agent: z.string().min(1).max(64),
+    instructions: z.string().max(80_000).default(''),
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(['system', 'user', 'assistant', 'tool']),
+          text: z.string().max(60_000).default(''),
+          callId: z.string().max(200).optional(),
+          calls: z.array(z.object({ id: z.string().max(200), name: z.string().min(1).max(128), arguments: z.string().max(60_000) })).max(16).optional(),
+        }),
+      )
+      .min(1)
+      .max(200),
+    tools: z
+      .array(z.object({ name: z.string().min(1).max(128), description: z.string().max(20_000).default(''), parameters: z.record(z.string(), z.unknown()).default({}) }))
+      .max(48)
+      .default([]),
+    toolChoice: z.union([z.enum(['auto', 'none', 'required']), z.object({ name: z.string().min(1).max(128) })]).default('auto'),
+  }),
+  'POST /api/ops/moves': z.object({
+    moves: z
+      .array(
+        z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('reassign'), jobId: id, toAskId: id }),
+          z.object({ kind: z.literal('extend'), claimId: id, minutes: z.number().int().min(1).max(30) }),
+          z.object({ kind: z.literal('release'), claimId: id }),
+          z.object({ kind: z.literal('release_job'), jobId: id }),
+        ]),
+      )
+      .min(1)
+      .max(12),
+    reason: z.string().min(1).max(800),
+    proposalId: z.string().max(200).nullable().default(null),
+    ai: z
+      .object({ provider: z.enum(AI_PROVIDERS), model: z.string().min(1).max(128), mode: z.enum(AI_MODES), latencyMs: z.number().int().min(0).max(3_600_000) })
+      .nullable()
+      .default(null),
+  }),
   'POST /api/fake/paypal/orders/:orderId/approve': z.object({
     funding: funding.default('paypal'),
     outcome: z.enum(['approve', 'cancel', 'decline']).default('approve'),

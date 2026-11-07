@@ -26,7 +26,7 @@ flowchart LR
     RULES["@holdmyspot/shared rules"]
     DB[("SQLite (node:sqlite)")]
     PP["PayPalPort: fake or sandbox"]
-    AIP["AiProvider: anthropic, muse or fake"]
+    AIP["AiProvider: anthropic, muse, openai or fake"]
     WK["workers: matcher timer, sweeper,<br/>PayPal poller, AI queue, agent, demo director"]
   end
   W -->|contract| API
@@ -44,7 +44,7 @@ flowchart LR
 ## 3. Repo layout
 
 ```
-HoldMySpot/                    (folder QueueMarket today; renamed later)
+HoldMySpot/
   docs/                        this documentation
   shared/                      @holdmyspot/shared: contract + pure rules, TypeScript source, no build
     src/contract.ts            REST + SSE contract, records, errors, endpoint table, default rules
@@ -69,13 +69,16 @@ HoldMySpot/                    (folder QueueMarket today; renamed later)
                                (purchase, proof, shipment, handover, sold out), money.ts (ledger outbox, captures,
                                voids, renewals, payouts, refunds, bid settlement), scheduler.ts (due-time loop,
                                sweeper), sync.ts (PayPal status poll), agent.ts (bidding agent loop), seed.ts,
-                               files.ts, ops.ts (board, datasets), views.ts (redaction, event audiences)
+                               files.ts, ops.ts (board, datasets), views.ts (redaction, event audiences),
+                               opsAgents.ts (the ops agents' turn route and their moves: POST /api/ops/agents/turn,
+                               POST /api/ops/moves, D-100 to D-102)
     src/ports/                 payments.ts (PaymentsPort = PayPalPort), ai.ts (AiPort), load.ts (loads paypal/, ai/),
                                runscope.ts (sandbox run id on PayPal keys and invoice ids, D-50)
     src/fakes/                 paypal.ts (fake mode's PayPal: the sandbox REST client on the in-process emulator,
                                saved in SQLite, D-47), ai.ts + scenarios.ts (rules-only AI for simulated scenarios)
     src/paypal/                REST client, sandbox adapter, emulator (fake), webhook helpers, status mappers
-    src/ai/                    providers (anthropic, muse, fake, replay), proof pipeline, estimates, agent, phash, qr
+    src/ai/                    providers (anthropic, muse, openai-compatible, fake, replay), proof pipeline, estimates, agent, phash, qr,
+                               opsTurn.ts (one live model turn for the ops console's agents, D-103)
     src/realtime/bus.ts        event outbox (delivered to SSE after commit)
     src/http/                  server.ts (a route for every ENDPOINTS key, idempotency, SSE), routes.ts, schemas.ts
     src/demo/                  director.ts, fixtures.ts (rendered photos and pinned codes, D-48),
@@ -107,7 +110,7 @@ Package wiring: `server`, `web` and `ops` depend on `"@holdmyspot/shared": "file
 | PayPal time | Honor period and validity on the market clock (a renewal can be demoed) | Real time |
 | Banner | "Simulated PayPal" | "PayPal sandbox: no real money" |
 
-If `HMS_MODE=sandbox` but `~/.config/paypal-hackathon/sandbox.env` is missing or incomplete, the server starts in fake mode and `GET /api/config` says why in `modeReason` (names of missing variables only). The server never talks to PayPal's live environment.
+If `HMS_MODE=sandbox` but `~/.config/paypal-hackathon/sandbox.env` is missing or incomplete, the server refuses to start: it prints one line naming the missing variables (never a value) and exits with code 2, and it also refuses when the sandbox adapter cannot be built (D-108). Only the explicit opt-in `HMS_SANDBOX_FALLBACK=fake` (tests, and the settings probe behind `npm run doctor` and the launcher) runs the simulated PayPal instead, with the reason in `GET /api/config` `modeReason`. The server never talks to PayPal's live environment.
 
 ## 5. Server internals
 
@@ -155,7 +158,7 @@ One stream per client: `GET /api/events?as=<userId>&since=<seq>` (EventSource ca
 - **Demo mode** (`HMS_DEMO=1`): `/api/demo/*` routes and the director. Scripts are code in `server/src/demo/scripts/`: an ordered list of steps at market times, each acting through the same commands as a persona would (never writing rows directly). Step types: `bid.create`, `bid.approve` (fake approval), `wait_for` (an event, for example a bid authorized by a real sandbox approval), `ask.create`, `bid.claim`, `move` (synthetic avatar path, `queuer.moved`), `claim.checkIn` (fixture photo), `job.bought`, `job.proof` (fixture photos), `job.shipment`, `job.handover`, `clock.jump`, `cue`.
 - **Determinism.** Seed `20261112`, market start `2026-11-12T10:30:00-08:00` (San Francisco), speed 60, sequential ids, fake PayPal ids, AI in `replay`. The same script gives the same screens every run, also for a second take in the same server process (the scheduler forgets a market's finished work at a reset). `npm run demo` starts every boot from a fresh market at the script's start (`HMS_DEMO_RESET=1`). When a script finishes, the market clock pauses on the closing numbers; `POST /api/demo/resume` leaves a finished script there, and `POST /api/demo/clock {"paused": false}` runs the market on (D-65).
 - **Photos.** The hero uploads the rendered photos in `server/fixtures/proofs` for Wei's and Rex's check-ins and for Mia's, Priya's and Rex's receipts, with the codes they show pinned on the records (D-48). In `replay` the AI services answer with Muse Spark's recorded reading of each photo (`server/fixtures/ai`, made by `npm run ai:eval -- --record`), offline; the rules decide as in a live run (D-66). Other uploads are placeholders with a simulated scenario.
-- **Scripts.** `hero` (below), `renewal` (a hold created three market days earlier is reauthorized on day 4), `local-errand` (New York shortcake: claim, check-in, USD receipt, handover code, one capture of $47.00, payout of $46.10), `ambient` (crowd bids and walking avatars for B-roll).
+- **Scripts.** `hero` (below), `renewal` (a hold created three market days earlier is reauthorized on day 4), `local-errand` (New York shortcake: claim, check-in, USD receipt, handover code, hold $51.54, one capture of $49.47 with $2.47 processing at cost, payout of $46.10, HoldMySpot keeps $0.90), `ambient` (crowd bids and walking avatars for B-roll).
 - **Filming.** Takes use fake mode or replay so nothing slow or flaky runs live in a take. A sandbox run of the same script (with `wait_for` steps where the owner approves in PayPal's window) is recorded separately to show real sandbox ids. The real reauthorization is filmed on 11-11 or 11-12 from holds created on 11-08.
 
 Hero script (market time, San Francisco, 2026-11-12; amounts from DOMAIN.md section 7):
@@ -163,7 +166,7 @@ Hero script (market time, San Francisco, 2026-11-12; amounts from DOMAIN.md sect
 | Time | Step |
 |---|---|
 | 10:30 | Reset. Seeded crowd requests light up the San Francisco books (Paper Moon Toys in Japantown: a dozen requests for the one-per-customer Mochi Bunny plush, the top at $11). |
-| 10:31 | Mia (New York, 1:31 pm there) quotes and posts one plush shipped to her: retail cap $36, max fee $12, shipping budget $12. Hold $60.00. |
+| 10:31 | Mia (New York, 1:31 pm there) quotes and posts one plush shipped to her: retail cap $36, max fee $12, shipping budget $12, processing and payouts up to $3.70 at cost. Hold $63.70. |
 | 10:33 | Rex takes Priya's request at its $11 max fee; ETA 10:55. |
 | 10:35 | Wei offers to queue: one spot, fee $15, clock $1 every 5 minutes to $8, ETA 10:50. His avatar walks over. |
 | 10:50 | Wei checks in (line photo read by the AI services); his clock starts at $15. |
@@ -172,10 +175,10 @@ Hero script (market time, San Francisco, 2026-11-12; amounts from DOMAIN.md sect
 | 11:05 | The clock reaches $12 and meets Mia's request: Wei's one spot fills. |
 | 11:16, 11:18 | Rex says he bought the plush; his receipt fails four checks (shop, printed time, totals, recycled photo): "$0 moved", and Priya's request goes back to the book. |
 | 11:20 | Lin offers to queue at $10: Priya's $11 request fills at once at $10. |
-| 11:38 to 11:52 | Wei buys and uploads Mia's receipt: capture $46.00 (shop price $34.00 plus the $12.00 fee), payout $10.80. Lin does the same for Priya: capture $44.00, payout $9.00. |
+| 11:38 to 11:52 | Wei buys and uploads Mia's receipt: capture $48.69 (shop price $34.00, the $12.00 fee and $2.69 processing at cost: PayPal's $2.19 fee on this capture and $0.25 for each of the job's two payouts), payout $10.80. Lin does the same for Priya: capture $46.62, payout $9.00. |
 | jump to 13:58 | |
-| 14:00 | Wei ships Mia's parcel to New York: tracking added, final capture $8.75 (shipping at cost), $5.25 released, payout $42.75 (the shop price and shipping he paid). |
-| 14:01 | Closing cue: "Held $60.00. Charged $54.75. Fake receipt: $0." |
+| 14:00 | Wei ships Mia's parcel to New York: tracking added, final capture $9.57 (shipping $8.75 and PayPal's $0.82 fee on this capture, at cost), $5.44 released, payout $42.75 (the shop price and shipping he paid). PayPal's fees on the errand ($3.51) equal the processing line; HoldMySpot keeps $1.20. |
+| 14:01 | Closing cue: "Held $63.70. Charged $58.26. Fake receipt: $0." |
 
 With the jump, the run takes about 3 minutes at speed 60.
 
@@ -196,17 +199,20 @@ With the jump, the run takes about 3 minutes at speed 60.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `HMS_MODE` | `fake` | `fake` or `sandbox` |
+| `HMS_MODE` | `fake` | `fake` or `sandbox`; `sandbox` with missing settings refuses to start (D-108) |
+| `HMS_SANDBOX_FALLBACK` | empty | `fake`: the explicit opt-in to run simulated PayPal when `HMS_MODE=sandbox` cannot start (tests and the settings probe) |
 | `HMS_HOST` / `HMS_PORT` | `127.0.0.1` / `8796` | 8795 was taken by another local server |
 | `HMS_DB_PATH` | `server/data/holdmyspot.sqlite` | `:memory:` in tests |
 | `HMS_UPLOAD_DIR` | `server/data/uploads` | |
 | `HMS_SECRETS_DIR` | `~/.config/paypal-hackathon` | reads `sandbox.env` and `ai.env` |
-| `HMS_AI_KEY_FILES` | empty | extra dotenv files, comma separated; only `ANTHROPIC_API_KEY` and `MODEL_API_KEY` are read from them, and `path#MODEL_API_KEY` narrows a file to that one name. `server/.env.local` (git-ignored, `HMS_*` names only) can set it |
-| `HMS_AI_PROVIDER` | `auto` | `auto`, `anthropic`, `muse`, `fake` |
+| `HMS_AI_KEY_FILES` | empty | extra dotenv files, comma separated; only `ANTHROPIC_API_KEY`, `MODEL_API_KEY` and `OPENAI_API_KEY` are read from them, and `path#MODEL_API_KEY` narrows a file to that one name. `server/.env.local` (git-ignored, `HMS_*` names only) can set it |
+| `HMS_AI_PROVIDER` | `auto` | `auto` (Anthropic, else Muse, else OpenAI-compatible with its own key, else rules only), `anthropic`, `muse`, `openai`, `fake` |
 | `HMS_AI_MODE` | `replay` (fake mode), `live` (sandbox mode) | `live`, `record`, `replay`, `fake` |
 | `HMS_AI_FIXTURES_DIR` | `server/fixtures/ai` | replay answers; the test suites point it at an empty folder except `test/replay.test.ts` |
 | `HMS_ANTHROPIC_MODEL` | `claude-opus-5-5` | |
 | `HMS_MUSE_MODEL` / `HMS_MUSE_URL` | `muse-spark-1.3` / `https://api.meta.ai/v1/chat/completions` | |
+| `HMS_AI_BASE_URL` / `HMS_AI_MODEL` | `https://api.openai.com/v1` / `gpt-6.1-sol` | the `openai` provider: any OpenAI-compatible Chat Completions endpoint (`/chat/completions` is added to a base URL), key `OPENAI_API_KEY`; `MODEL_API_KEY` is used only when the base URL is Meta's own host. Not yet called with a real OpenAI key |
+| `HMS_AI_AGENT_TIMEOUT_MS` | `30000` | one bidding-agent run |
 | `HMS_AI_TIMEOUT_MS` | `60000` | |
 | `HMS_DEMO` | `0` | `1` enables demo routes and the director |
 | `HMS_DEMO_SCRIPT` | `hero` | |
@@ -230,11 +236,11 @@ With the jump, the run takes about 3 minutes at speed 60.
 
 **`~/.config/paypal-hackathon/sandbox.env`** (written by `scripts/setup-sandbox-secrets.mjs`, mode 600): `PAYPAL_ENV` (must be `sandbox`), `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID`, `PAYPAL_BUYER_EMAIL`, `PAYPAL_TW_PAYOUT_EMAIL`; optional `PAYPAL_WEBHOOK_ID` (only with a public URL).
 
-**`~/.config/paypal-hackathon/ai.env`**: optional `ANTHROPIC_API_KEY`, optional `MODEL_API_KEY`.
+**`~/.config/paypal-hackathon/ai.env`**: optional `ANTHROPIC_API_KEY`, optional `MODEL_API_KEY`, optional `OPENAI_API_KEY`.
 
 **web/**: `VITE_HMS_API` (default empty: same origin through the Vite proxy to `http://127.0.0.1:8796`); a switch between the in-browser mock and the server (the web agent names it; `VITE_BACKEND=mock|server` is suggested). The PayPal client ID comes from `GET /api/config`, never from a web env file.
 
-**ops/**: `VITE_HMS_API`, `VITE_HMS_ADMIN_KEY` (only for a non-loopback server). The AG licence is read by `ops/vite.config.ts` at dev-server or build time: `VITE_AG_LICENSE_KEY` in the git-ignored `ops/.env.local`, else the owner's key file (`HMS_AG_LICENSE_FILE`, default `~/.config/paypal-hackathon/aggrid-license.txt`, mode 600). It is never printed or committed. Bryntum installs as `@bryntum/scheduler@npm:@bryntum/scheduler-trial` plus its React wrapper.
+**ops/**: `VITE_HMS_API`, `VITE_HMS_ADMIN_KEY` (only for a non-loopback server). The AG licence is read by `ops/vite.config.ts` at dev-server or build time: `VITE_AG_LICENSE_KEY` in the git-ignored `ops/.env.local`, else a key file (`HMS_AG_LICENSE_FILE`, default `~/.config/paypal-hackathon/aggrid-license.txt`, mode 600). It is never printed or committed. Bryntum installs as `@bryntum/scheduler-community` and `@bryntum/scheduler-react-community` 8.0.0 (MIT) from the public npm registry.
 
 ## 11. Ports and processes
 
@@ -244,7 +250,7 @@ With the jump, the run takes about 3 minutes at speed 60.
 | web dev / preview | 5190 / 5191 | existing `web/vite.config.ts` |
 | ops dev / preview | 5197 / 5198 | `npm run dev` in `ops/` |
 
-Taken on this machine and never used: 8000, 5173, 5180, 8787, 8789, 8795. Agents stop only the servers they started, by PID.
+Stop only the servers you started, by PID or with `npm run demo -- --stop` and the same port flags.
 
 ## 12. Security and privacy
 
@@ -257,7 +263,7 @@ Taken on this machine and never used: 8000, 5173, 5180, 8787, 8789, 8795. Agents
 ## 13. Testing
 
 - `shared/`: `npm run check` (TypeScript plus 73 tests, including the worked money example, the matcher, the proof rules and the estimate formulas).
-- `server/`: `npm run check` (TypeScript plus node:test). Tests run in fake mode on an in-memory database with the market clock moved by hand: engine (price-time priority, partial fills, fee-clock steps at exact times, claims, compatibility, re-offers, lapses, sold out, deadlines), money (never above the user's limit even though PayPal allows 115%, job caps, final capture flag, voids after failures and partial captures, outages kept pending and retried with the same key, renewals on day 4, Venmo renewal-required, refunds, payout sync), the hero script end to end (held $60.00, captures $46.00 and $8.75, released $5.25, payouts $10.80 and $42.75, Rex's job $0), every contract route over HTTP, SSE audiences and replay, and the bidding-agent loop. Every suite runs on the real PayPal client (emulator) since D-47. The suites read photos with the rules only (an empty replay folder); `test/replay.test.ts` plays the hero on the recorded Muse Spark answers and checks the same money and the `muse`/`replay` stamps.
+- `server/`: `npm run check` (TypeScript plus node:test). Tests run in fake mode on an in-memory database with the market clock moved by hand: engine (price-time priority, partial fills, fee-clock steps at exact times, claims, compatibility, re-offers, lapses, sold out, deadlines), money (never above the user's limit even though PayPal allows 115%, job caps, final capture flag, voids after failures and partial captures, outages kept pending and retried with the same key, renewals on day 4, Venmo renewal-required, refunds, payout sync), the hero script end to end (held $63.70, captures $48.69 and $9.57 with processing at cost, released $5.44, payouts $10.80 and $42.75, PayPal's fees equal to the processing line, Rex's job $0), processing and payouts at cost on every job type (`test/processing.test.ts`), sandbox mode refusing to start without its settings (`test/config.test.ts`), every contract route over HTTP, SSE audiences and replay, and the bidding-agent loop. Every suite runs on the real PayPal client (emulator) since D-47. The suites read photos with the rules only (an empty replay folder); `test/replay.test.ts` plays the hero on the recorded Muse Spark answers and checks the same money and the `muse`/`replay` stamps.
 - End to end (`server/test/e2e.test.ts`): over HTTP only, with the real PayPal client and the real AI services (no key, no network): two US holds (PayPal and Venmo), Wei's fee clock filling both, Rex's missed check-in (claim lapsed, the plush back in the book), receipts read from the rendered photos, partial captures, payouts, tracking, final captures and releases, a sell-out that voids a hold, the scripted hero with both services, and the ops read model. `server/test/ports.test.ts` covers the wiring: PayPal state across a restart and a reset, two renewals from the original authorization, a decline and a second approval, sandbox run ids, and the AI loader.
 - Run the demo: `npm run demo` in `server/` (fake mode, the AI services in replay, a fresh market at 2026-11-12 10:30 San Francisco, speed 60), then `POST /api/demo/start {"scriptId":"hero","speed":60}`. With `npm run dev` in `ops/`, `npm run shots:live` there films the run into `proto-shots/v2/live/`; `npm run shots` in `web/` and in `ops/` take the final set into `proto-shots/v2/final/`, the only screenshot folder git tracks (D-68).
 - Sandbox: `node scripts/sandbox-gates.mjs run` runs the day-1 gates (PAYPAL-MAPPING.md section 7; results in docs/SANDBOX-GATES.md) and needs the owner for approvals.

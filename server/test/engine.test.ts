@@ -1,7 +1,7 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { ContractError } from '@holdmyspot/shared';
-import { claimBid, cancelBid, createBid } from '../src/app/bids.ts';
+import { authorizeBid, claimBid, cancelBid, createBid, quoteBid } from '../src/app/bids.ts';
 import { markBought, reportSoldOut, submitProof } from '../src/app/jobs.ts';
 import { bookSnapshot } from '../src/app/market.ts';
 import { ITEM, DAY, SHOP, MIN, NY_SHIP, checkInAt, persona, placeBid, postAsk, testServer, upload, type TestServer } from './helpers.ts';
@@ -43,7 +43,8 @@ describe('order book: price-time priority and partial fills', () => {
     }
     // Per-job caps: retail cap x qty, matched fee x qty, shipping budget in proportion.
     const miaJob = jobs.find((j) => j.bidId === mia.bid.id)!;
-    assert.deepEqual(miaJob.caps, { retailCents: 5600, feeCents: 2200, shippingCents: 3500 });
+    // Plus the most processing the job's two captures can carry at their caps (D-105).
+    assert.deepEqual(miaJob.caps, { retailCents: 5600, feeCents: 2200, shippingCents: 3500, processingCents: 562 });
     const book = bookSnapshot(s.app, ITEM);
     assert.equal(book.bids.count, 1);
     assert.equal(book.bids.bestFeeCents, 1200);
@@ -272,11 +273,11 @@ describe('failures re-offer quantity', () => {
       const out = await s.app.exec(() => cancelBid(s.app, { userId: 'mia', ops: false }, mia.bid.id));
       assert.equal(out.bid.status, 'cancelled');
       assert.equal(out.hold.status, 'released');
-      assert.equal(out.hold.releasedCents, 11_500);
+      assert.equal(out.hold.releasedCents, 12_222);
       assert.equal(s.app.store.asks.must(wei.ask.id).remainingCapacity, 3);
       assert.equal(s.app.store.asks.must(wei.ask.id).status, 'open');
       const released = s.app.store.ledger.where("bid_id = ? AND kind = 'released'", mia.bid.id);
-      assert.deepEqual(released.map((e) => [e.amount.cents, e.status, e.idempotencyKey]), [[11_500, 'succeeded', `void:${mia.bid.holdId}`]]);
+      assert.deepEqual(released.map((e) => [e.amount.cents, e.status, e.idempotencyKey]), [[12_222, 'succeeded', `void:${mia.bid.holdId}`]]);
       assert.equal(s.app.fakePayPal.inspectAuthorization(out.hold.authorizationId!)?.status, 'VOIDED');
     } finally {
       await s.done();
@@ -288,6 +289,12 @@ describe('failures re-offer quantity', () => {
     try {
       const mia = await placeBid(s.app, 'mia', { qty: 1, maxFeeCents: 1200 });
       const jun = await placeBid(s.app, 'jun', { qty: 1, maxFeeCents: 600 });
+      // Priya's request waits in PayPal's window while the line sells out.
+      const shipTo = { qty: 1, retailCapCents: 2800, maxFeeCents: 1000, shippingBudgetCents: 3500, destination: NY_SHIP, funding: 'paypal' as const, agent: null };
+      const pending = await s.app.exec(() =>
+        createBid(s.app, persona(s.app, 'priya'), { shopId: SHOP.id, itemId: ITEM, deadlineAt: s.app.now() + DAY, ...shipTo }),
+      );
+      await s.app.fakePayPal.approveOrder(pending.checkout.orderId, 'paypal', 'approve');
       const wei = await postAsk(s.app, 'wei', { capacity: 1, feeCents: 1100, etaInMin: 10 });
       await checkInAt(s.app, 'wei', wei.claim.id, SHOP.lngLat);
       const job = s.app.store.jobs.where('ask_id = ?', wei.ask.id)[0]!;
@@ -301,6 +308,18 @@ describe('failures re-offer quantity', () => {
         assert.equal(s.app.store.holds.must(b.holdId!).status, 'released');
       }
       assert.equal(code(await postAsk(s.app, 'lin').catch((e) => e)), 'SOLD_OUT');
+      // No new request either (D-116): the quote and the bid are refused, so no hold opens on a book
+      // that can never fill, and an approval that lands after the sell-out authorizes nothing.
+      const quote = await s.app.exec(() => quoteBid(s.app, persona(s.app, 'sam'), { shopId: SHOP.id, itemId: ITEM, qty: 1, destination: NY_SHIP })).catch((e) => e);
+      assert.equal(code(quote), 'SOLD_OUT');
+      assert.equal(code(await placeBid(s.app, 'sam', { qty: 1 }).catch((e) => e)), 'SOLD_OUT');
+      const late = await s.app.exec(() => authorizeBid(s.app, { userId: 'priya', ops: false }, pending.bid.id, pending.checkout.orderId)).catch((e) => e);
+      assert.equal(code(late), 'SOLD_OUT');
+      const refused = s.app.store.bids.must(pending.bid.id);
+      assert.deepEqual([refused.status, refused.closeReason], ['failed', 'sold_out']);
+      assert.equal(s.app.store.holds.must(refused.holdId!).status, 'failed');
+      assert.deepEqual(s.app.store.ledger.where('bid_id = ?', refused.id), [], 'nothing held, nothing to release');
+      assert.equal(s.app.store.bids.where("item_id = ? AND status IN ('open', 'partially_matched', 'matched')", ITEM).length, 0);
     } finally {
       await s.done();
     }

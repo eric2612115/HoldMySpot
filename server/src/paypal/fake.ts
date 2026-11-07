@@ -45,7 +45,7 @@ export class FakePayPal extends PayPalRestClient implements FakePaymentsControls
     return this.emulator.approveOrder(orderId, funding, outcome, shipTo);
   }
 
-  openDispute(captureId: string, opts?: { reason?: string; amountCents?: number }): string {
+  openDispute(captureId: string, opts?: { reason?: string; amountCents?: number; stage?: 'INQUIRY' | 'CHARGEBACK' }): string {
     return this.emulator.openDispute(captureId, opts);
   }
 

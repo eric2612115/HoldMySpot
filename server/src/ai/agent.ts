@@ -1,4 +1,4 @@
-import { askFeeAt, askSchedule, compatible, formatUsd, nextDropAt, priceAt, reachesAt, sortBids, suggestedFeeCents } from '@holdmyspot/shared';
+import { askFeeAt, askSchedule, compatible, formatUsd, maxFeeWithinLimitCents, nextDropAt, priceAt, reachesAt, sortBids, suggestedFeeCents } from '@holdmyspot/shared';
 import type { AiStamp, BidTask, BookBid, Cents, MarketMs } from '@holdmyspot/shared';
 import type { AiJsonResult, AiProvider, AiTool } from '@holdmyspot/shared/ports';
 import { asAiError } from './errors.ts';
@@ -37,9 +37,13 @@ const MINUTE = 60_000;
 
 const round50 = (cents: number): Cents => Math.round(cents / 50) * 50;
 
-/** The most the agent may set as the max fee per unit: floor((limit - shipping budget) / qty) - retail cap. */
-export function agentCeilingCents(bid: Pick<BidTask, 'limitCents' | 'shippingBudgetCents' | 'qty' | 'retailCapCents'>): Cents {
-  return Math.floor((bid.limitCents - bid.shippingBudgetCents) / bid.qty) - bid.retailCapCents;
+/**
+ * The most the agent may set as the max fee per unit: the highest fee whose
+ * worst case (qty x (retail cap + fee) + shipping budget + the processing
+ * reserve, `bidLimitCents`) still fits in the hold (D-105).
+ */
+export function agentCeilingCents(bid: Pick<BidTask, 'limitCents' | 'shippingBudgetCents' | 'qty' | 'retailCapCents' | 'destination'>): Cents {
+  return maxFeeWithinLimitCents({ qty: bid.qty, retailCapCents: bid.retailCapCents, shippingBudgetCents: bid.shippingBudgetCents }, bid.limitCents, bid.destination.mode) ?? 0;
 }
 
 export type GoalUrgency = 'fast' | 'cheap' | 'balanced';

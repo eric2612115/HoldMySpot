@@ -82,7 +82,7 @@ export interface CaptureResult {
   status: 'COMPLETED' | 'PENDING' | 'DECLINED' | 'FAILED' | 'REFUNDED' | 'PARTIALLY_REFUNDED';
   amountCents: Cents;
   finalCapture: boolean;
-  /** PayPal's processing fee from seller_receivable_breakdown, when reported. Informational. */
+  /** PayPal's processing fee from seller_receivable_breakdown, when reported. Recorded on the ledger and checked against PAYPAL_PRICING (D-105). */
   paypalFeeCents: Cents | null;
   createdAt: number;
   debugId: string | null;
@@ -143,7 +143,8 @@ export type PayoutItemStatus =
 export interface PayoutBatchResult {
   batchId: string;
   batchStatus: 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'DENIED' | 'CANCELED';
-  items: { itemId: string | null; senderItemId: string; status: PayoutItemStatus; amountCents: Cents }[];
+  /** `feeCents`: PayPal's payout_item_fee, once PayPal reports it (after the item is processed). */
+  items: { itemId: string | null; senderItemId: string; status: PayoutItemStatus; amountCents: Cents; feeCents?: Cents | null }[];
   debugId: string | null;
 }
 
@@ -211,7 +212,9 @@ export type AiTask =
   | 'fee_estimate'
   | 'shipping_estimate'
   | 'bidding_agent'
-  | 'reassign_note';
+  | 'reassign_note'
+  // Ops console agents (D-100): live turns only, never recorded or replayed.
+  | 'ops_agent';
 
 export interface AiImage {
   mime: 'image/jpeg' | 'image/png' | 'image/webp';

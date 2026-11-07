@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MarketMs } from '@holdmyspot/shared';
 import { pickBackend } from './backend.ts';
-import type { MarketSnapshot, OpsBackend } from './backend.ts';
+import type { MarketSnapshot, OpsBackend, Proposal } from './backend.ts';
 import { MINUTE } from './time.ts';
 
 export interface Market {
@@ -11,7 +11,8 @@ export interface Market {
   playing: boolean;
   setAt(at: MarketMs): void;
   togglePlay(): void;
-  approve(proposalId: string): Promise<void>;
+  /** Applies one option of a rescheduler proposal (its chosen one when `optionId` is null); resolves to what happened. */
+  approve(proposal: Proposal, optionId: string | null): Promise<string>;
   move(jobId: string, toQueuerId: string): Promise<string | null>;
   /** Bumps on every applied change so views can animate what moved. */
   revision: number;
@@ -91,22 +92,23 @@ export function useMarket(): Market | { error: string } | null {
   }, [backend, serverRunning]);
 
   const approve = useCallback(
-    async (proposalId: string) => {
-      if (!backend || at === null) return;
-      await backend.approve(proposalId, at);
+    async (proposal: Proposal, optionId: string | null) => {
+      if (!backend || at === null) return 'Not ready.';
+      const note = await backend.approve(proposal, optionId, live && snapshot ? snapshot.at : at);
       setRevision((r) => r + 1);
+      return note;
     },
-    [backend, at],
+    [backend, at, live, snapshot],
   );
 
   const move = useCallback(
     async (jobId: string, toQueuerId: string) => {
       if (!backend || at === null) return 'Not ready.';
-      const problem = await backend.move(jobId, toQueuerId, at);
+      const problem = await backend.move(jobId, toQueuerId, live && snapshot ? snapshot.at : at);
       setRevision((r) => r + 1);
       return problem;
     },
-    [backend, at],
+    [backend, at, live, snapshot],
   );
 
   if (error) return { error };

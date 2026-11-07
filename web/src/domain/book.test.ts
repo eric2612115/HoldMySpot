@@ -87,11 +87,12 @@ describe('book summary and holds', () => {
     ]);
   });
 
-  it('holds the shop price cap plus the max fee, like the server quote', () => {
+  it('holds the shop price cap plus the max fee and processing at cost, like the server quote', () => {
     const p = plushPoint();
     expect(retailCapFor(p.retailCents)).toBe(usd(36));
-    expect(holdFor(p, usd(12))).toBe(usd(48));
-    expect(holdFor(p, usd(12), 1, usd(12))).toBe(usd(60));
+    // Local: $48.00 plus $2.50 processing (one capture, one payout); shipped: $60.00 plus $3.70 (D-105).
+    expect(holdFor(p, usd(12))).toBe(5050);
+    expect(holdFor(p, usd(12), 1, usd(12))).toBe(6370);
   });
 
   it('counts spots and units', () => {

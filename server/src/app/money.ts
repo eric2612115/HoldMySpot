@@ -1,14 +1,17 @@
 import {
   ContractError,
   JOB_SETTLED,
+  PAYPAL_PRICING,
   assertCaptureWithinLimit,
   assertTransition,
   canTransition,
+  captureCapCents,
   formatUsd,
   holdTiming,
   isFinalCapture,
   isTerminal,
   money,
+  paypalCaptureFeeCents,
   payoutsForCapture,
   renewalVerdict,
 } from '@holdmyspot/shared';
@@ -38,6 +41,19 @@ import { emitBid, emitHold, emitJob, emitLedger, emitPayout } from './views.ts';
 
 export type CapturePart = 'receipt' | 'shipping' | 'handover';
 
+/**
+ * What one capture pays for. Processing (D-105) is this capture's own PayPal
+ * fee plus the Payouts fees it carries; requests stored before D-105 have none.
+ */
+export interface CaptureParts {
+  retailCents: number;
+  feeCents: number;
+  shippingCents: number;
+  processingCents?: number;
+  captureFeeCents?: number;
+  payoutFeesCents?: number;
+}
+
 type MoneyRequest =
   | { op: 'authorize'; adapter: Adapter; orderId: string; bidId: string }
   | {
@@ -49,7 +65,7 @@ type MoneyRequest =
       invoiceId: string;
       jobId: string;
       part: CapturePart;
-      parts: { retailCents: number; feeCents: number; shippingCents: number };
+      parts: CaptureParts;
     }
   /** `stray`: an authorization the hold does not use (it arrived late), so the void leaves the hold as it is. */
   | { op: 'void'; adapter: Adapter; authorizationId: string; holdId: string; amountCents: number; stray?: boolean }
@@ -60,6 +76,16 @@ type MoneyRequest =
 
 const INVOICE_SUFFIX: Record<CapturePart, string> = { receipt: 'R', shipping: 'S', handover: 'H' };
 const usd = (c: number) => formatUsd(c, { exact: true });
+
+/** "processing $2.69 at cost ($2.19 to take this payment, $0.50 for 2 payouts)": the processing part of a capture, to the cent. */
+function processingWords(parts: CaptureParts): string {
+  const processing = parts.processingCents ?? 0;
+  const payouts = parts.payoutFeesCents ?? 0;
+  const items = Math.round(payouts / PAYPAL_PRICING.payoutItemCents);
+  const take = parts.captureFeeCents ?? processing - payouts;
+  const detail = payouts > 0 ? `${usd(take)} to take this payment, ${usd(payouts)} for ${items} ${items === 1 ? 'payout' : 'payouts'}` : 'taking this payment';
+  return `processing ${usd(processing)} at cost (${detail})`;
+}
 
 export const adapterOf = (hold: Pick<Hold, 'clockBasis'>): Adapter => (hold.clockBasis === 'real' ? 'sandbox' : 'fake');
 
@@ -342,7 +368,7 @@ export async function captureForJob(
   jobId: string,
   part: CapturePart,
   amountCents: number,
-  parts: { retailCents: number; feeCents: number; shippingCents: number },
+  parts: CaptureParts,
   /** Duty the queuer prepaid inside a shipping capture (0 for a US domestic parcel), for the wording only. */
   dutyCents = 0,
 ): Promise<CaptureOutcome> {
@@ -354,7 +380,8 @@ export async function captureForJob(
     const { key, existing } = ledgerKey(app, `cap:${job.id}:${part}`);
     if (existing) return { existing, request: null };
 
-    const jobCap = part === 'shipping' ? job.caps.shippingCents : job.caps.retailCents + job.caps.feeCents;
+    // Each part's cap with its processing at cost on top (D-105).
+    const jobCap = captureCapCents(job.caps, job.mode, part);
     if (amountCents > jobCap) {
       throw new ContractError('OVER_LIMIT', `Capture of ${usd(amountCents)} is above this job's ${part} cap of ${usd(jobCap)}.`, { amountCents, capCents: jobCap });
     }
@@ -388,10 +415,11 @@ export async function captureForJob(
       part,
       parts,
     };
+    const processing = (parts.processingCents ?? 0) > 0 ? processingWords(parts) : null;
     const text =
       part === 'shipping'
-        ? `Charged ${usd(amountCents)} for ${dutyCents > 0 ? 'shipping and duty' : 'shipping'} at cost.`
-        : `Charged ${usd(amountCents)}: shop price ${usd(parts.retailCents)} plus queue fee ${job.qty} x ${usd(job.feeCents)} for ${item.shortName}.`;
+        ? `Charged ${usd(amountCents)}: ${dutyCents > 0 ? 'shipping and duty' : 'shipping'} ${usd(parts.shippingCents)} at cost${processing ? ` and ${processing}` : ''}.`
+        : `Charged ${usd(amountCents)}: shop price ${usd(parts.retailCents)} at cost, queue fee ${job.qty} x ${usd(job.feeCents)} for ${item.shortName}${processing ? `, and ${processing}` : ''}.`;
     const entry = appendLedger(
       app,
       {
@@ -472,7 +500,13 @@ export function applyCapture(app: App, ledgerId: string, req: Extract<MoneyReque
   hold.capturedCents += req.amountCents;
   hold.status = next;
   hold.updatedAt = app.now();
-  const entries: LedgerEntry[] = [settleLedger(app, entry, 'succeeded', paypal)];
+  // PayPal's own fee on this capture (seller_receivable_breakdown.paypal_fee); the schedule's when PayPal reports none.
+  const expectedFee = paypalCaptureFeeCents(req.amountCents);
+  const feeCents = r.paypalFeeCents ?? expectedFee;
+  if (feeCents !== expectedFee) {
+    app.log(`capture ${r.captureId}: PayPal reported a ${usd(feeCents)} fee, the schedule says ${usd(expectedFee)}; the job's processing variance shows on the ops board`);
+  }
+  const entries: LedgerEntry[] = [settleLedger(app, entry, 'succeeded', { ...paypal, feeCents })];
   if (req.finalCapture) {
     const rest = Math.max(0, hold.amount.cents - hold.capturedCents);
     hold.releasedCents += rest;
@@ -496,7 +530,12 @@ export function applyCapture(app: App, ledgerId: string, req: Extract<MoneyReque
   }
   app.store.holds.update(hold);
   emitHold(app, hold, bid.requesterId);
-  job.amounts = { ...job.amounts, capturedCents: job.amounts.capturedCents + req.amountCents };
+  job.amounts = {
+    ...job.amounts,
+    capturedCents: job.amounts.capturedCents + req.amountCents,
+    processingCents: (job.amounts.processingCents ?? 0) + (req.parts.processingCents ?? 0),
+    paypalFeesCents: (job.amounts.paypalFeesCents ?? 0) + feeCents,
+  };
   job.updatedAt = app.now();
   app.store.jobs.update(job);
   emitJob(app, job);
@@ -582,6 +621,7 @@ async function payout(app: App, jobId: string, part: PayoutPart): Promise<Ledger
       status: 'pending',
       paypalBatchId: null,
       paypalItemId: null,
+      paypalFeeCents: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -693,12 +733,17 @@ export function applyPayout(app: App, ledgerId: string, payoutId: string, r: Pay
   }
   const paypal = { payoutBatchId: r.batchId, payoutItemId: item?.itemId ?? undefined };
   if (status === 'succeeded' && entry.status !== 'succeeded') {
+    // PayPal's Payouts fee on this item (payout_item_fee), paid from the requester's processing line (D-105).
+    const feeCents = item?.feeCents ?? PAYPAL_PRICING.payoutItemCents;
+    record.paypalFeeCents = feeCents;
+    app.store.payouts.update(record);
+    emitPayout(app, record);
     const job = app.store.jobs.must(record.reference);
-    job.amounts = { ...job.amounts, paidOutCents: job.amounts.paidOutCents + record.amount.cents };
+    job.amounts = { ...job.amounts, paidOutCents: job.amounts.paidOutCents + record.amount.cents, paypalFeesCents: (job.amounts.paypalFeesCents ?? 0) + feeCents };
     job.updatedAt = app.now();
     app.store.jobs.update(job);
     emitJob(app, job);
-    return settleLedger(app, entry, 'succeeded', paypal);
+    return settleLedger(app, entry, 'succeeded', { ...paypal, feeCents });
   }
   if (status === 'failed' || status === 'returned' || status === 'cancelled') return settleLedger(app, entry, 'failed', paypal);
   return settleLedger(app, entry, 'pending', paypal);

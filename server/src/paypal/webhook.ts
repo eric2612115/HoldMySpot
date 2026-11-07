@@ -20,8 +20,9 @@ export interface WebhookEventSummary {
   invoiceId: string | null;
   senderBatchId: string | null;
   /**
-   * A hint from the invoice id or sender_batch_id. The platform app is shared
-   * with other entries, so the server should also check its own paypal_sync rows.
+   * A hint from the invoice id or sender_batch_id. The platform app's history
+   * can hold objects that are not HoldMySpot's, so the server should also check
+   * its own paypal_sync rows.
    */
   ours: boolean;
   createdAt: number | null;

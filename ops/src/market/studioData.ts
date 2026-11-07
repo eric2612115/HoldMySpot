@@ -20,20 +20,37 @@ const DESCRIPTIONS: Partial<Record<OpsDatasetName, string>> = {
   asks: 'Queuer offers at a shop: units, the fee now on the fee clock, the opening fee and the floor.',
   jobs: 'One job per match: the queuer, the requester, the stage and what the queuer earns (fee minus the 10% platform fee).',
   holds: 'PayPal holds behind the requests: held, captured, released and still held, in US dollars.',
-  ledger: 'Every money event: held, captured, released, paid out, renewed; one plain sentence each.',
+  ledger: 'Every money event: held, captured, released, paid out, renewed, refunded; its amount, status (succeeded, pending, failed), whose money, the PayPal object and its id, and one plain sentence. events is 1 per row (sum it to count events).',
   payouts: 'PayPal Payouts to queuers: the queue fee after the platform fee, and shop price plus shipping at cost.',
 };
 
-function fieldFor(f: OpsDataset['fields'][number]): AgFieldDefinition {
-  const base = { id: f.name, name: f.label };
+/** What the grid's cell renderers draw for a field (src/market/widgets/cells.ts); Studio carries it, never reads it. */
+export interface HmsFieldContext {
+  cell?: 'pill' | 'paypal' | 'money';
+}
+
+/** Fields drawn as a coloured pill: money events, statuses and stages. */
+const PILL_FIELDS = new Set(['status', 'kind', 'stage', 'payState', 'funding']);
+/** Money that sums to zero rather than "N/A" when nothing happened yet. */
+const ZERO_MONEY = new Set<OpsDatasetName>(['holds', 'payouts', 'ledger', 'fills', 'jobs']);
+
+/** Shorter column names for the dashboard's grids, where the shared label is long. */
+const SHORT_NAME: Record<string, string> = { 'ledger.slot': 'Time', 'fills.slot': 'Time', 'ledger.paypalObject': 'PayPal object' };
+
+function fieldFor(dataset: OpsDatasetName, f: OpsDataset['fields'][number]): AgFieldDefinition {
+  const base = { id: f.name, name: SHORT_NAME[`${dataset}.${f.name}`] ?? f.label };
   if (f.type === 'number') {
-    if (f.name.endsWith('Usd')) return { ...base, format: 'currencyFormat', formatOptions: { format: usdFormat } } as AgFieldDefinition;
-    return { ...base, format: 'integerFormat' } as AgFieldDefinition;
+    if (f.name.endsWith('Usd')) {
+      return { ...base, format: 'currencyFormat', formatOptions: { format: usdFormat }, context: { cell: 'money' }, ...(ZERO_MONEY.has(dataset) ? { blankValue: '$0.00' } : {}) } as AgFieldDefinition;
+    }
+    return { ...base, format: 'integerFormat', ...(dataset === 'fills' || f.name === 'events' ? { blankValue: '0' } : {}) } as AgFieldDefinition;
   }
   if (f.type === 'date') return { ...base, format: 'dateTimeFormat' } as AgFieldDefinition;
   if (f.type === 'boolean') return { ...base, format: 'booleanFormat' } as AgFieldDefinition;
-  const hide = f.name.endsWith('Id') || f.name === 'accent';
-  return { ...base, format: 'textFormat', ...(hide ? { hide: true } : {}) } as AgFieldDefinition;
+  if (f.name === 'paypalId') return { ...base, format: 'textFormat', context: { cell: 'paypal' } } as AgFieldDefinition;
+  const hide = (f.name.endsWith('Id') && f.name !== 'paypalId') || f.name === 'accent';
+  const context: HmsFieldContext | undefined = PILL_FIELDS.has(f.name) ? { cell: 'pill' } : undefined;
+  return { ...base, format: 'textFormat', ...(hide ? { hide: true } : {}), ...(context ? { context } : {}) } as AgFieldDefinition;
 }
 
 function rowsFor(d: OpsDataset): Record<string, unknown>[] {
@@ -84,7 +101,7 @@ export function studioData(snapshot: MarketSnapshot): AgDataSourcesDefinition {
     name: d.name.charAt(0).toUpperCase() + d.name.slice(1),
     description: DESCRIPTIONS[d.name],
     data: rowsFor(d),
-    fields: d.fields.map(fieldFor),
+    fields: d.fields.map((f) => fieldFor(d.name, f)),
   }));
   const relationships: AgRelationDefinition[] = Object.values(snapshot.datasets)
     .filter((d) => d.fields.some((f) => f.name === 'shopId'))

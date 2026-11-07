@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ItemLook } from '../../domain/types';
+import { spherePatchGeometry } from '../characters/patches';
 import { addOutline, toon, type OutlineSettings } from '../materials/toon';
 import { plushTag } from '../materials/textures';
 
@@ -66,12 +67,15 @@ function cake(outline: OutlineSettings): THREE.Group {
 }
 
 /**
- * A soft plush toy: a round body and head, a face that looks at you, and ears
- * by kind (bunny, cat, otter, pup). Built to read as "a plush" from far away.
+ * A soft plush toy: a round body and head, the cast's own face (glossy eyes
+ * with a sparkle and a small "w" mouth), ears by kind (bunny, cat, otter,
+ * pup), on a little display stand with the shop's tag, so it reads as
+ * something you buy rather than someone in the line.
  */
 function plush(look: 'bunny' | 'cat' | 'otter' | 'pup', outline: OutlineSettings): THREE.Group {
   const palette = {
-    bunny: { fur: '#FFF8F2', inner: '#FFB8CC', accent: '#FF8FB8' },
+    // Sakura mochi: a pale pink bunny with a cream face and tummy.
+    bunny: { fur: '#FFD9E2', inner: '#FFB0C4', accent: '#FF8FB8' },
     cat: { fur: '#FFFFFF', inner: '#FFB3C1', accent: '#E5484D' },
     otter: { fur: '#C99A73', inner: '#F2D7BE', accent: '#6FC3E8' },
     pup: { fur: '#F4E3C8', inner: '#B88763', accent: '#A78BFA' },
@@ -83,6 +87,9 @@ function plush(look: 'bunny' | 'cat' | 'otter' | 'pup', outline: OutlineSettings
   const ink = toon('#3A2B33');
   const blush = toon('#FF9DB4');
   const gold = toon('#F7C948');
+  // The display stand.
+  add(g, new THREE.CylinderGeometry(0.4, 0.44, 0.09, 36), toon('#FFF3E0'), outline, { pos: [0, -0.6, 0] });
+  add(g, new THREE.TorusGeometry(0.42, 0.018, 6, 48), accent, outline, { pos: [0, -0.6, 0], rot: [Math.PI / 2, 0, 0], outline: false });
   // Body and feet.
   add(g, new THREE.SphereGeometry(0.34, 28, 20), fur, outline, { pos: [0, -0.22, 0], scale: [1.05, 0.92, 0.95] });
   for (const side of [1, -1]) add(g, new THREE.SphereGeometry(0.12, 16, 12), fur, outline, { pos: [side * 0.17, -0.47, 0.12], scale: [1, 0.7, 1.15] });
@@ -103,15 +110,21 @@ function plush(look: 'bunny' | 'cat' | 'otter' | 'pup', outline: OutlineSettings
       add(ear, new THREE.CapsuleGeometry(0.075, 0.36, 6, 14), fur, outline, { pos: [0, 0.2, 0] });
       add(ear, new THREE.CapsuleGeometry(0.04, 0.26, 4, 10), inner, outline, { pos: [0, 0.2, 0.05], outline: false });
     }
-    // A blossom on one ear.
+    // A small cream muzzle (a head framed in pink would read as a hood) and a cream tummy, hugging the head and body.
+    const cream = toon('#FFF6EC');
+    head.add(new THREE.Mesh(spherePatchGeometry(0.33, [1.1, 0.95, 1], [{ theta: Math.PI * 0.66, phi: Math.PI / 2, a: 0.34, b: 0.24, lift: 0.004 }]), cream));
+    g.add(new THREE.Mesh(spherePatchGeometry(0.34, [1.05, 0.92, 0.95], [{ theta: Math.PI * 0.56, phi: Math.PI / 2, a: 0.6, b: 0.55, lift: 0.004 }], [0, -0.22, 0]), cream));
+    // A leaf-green ribbon at the neck with a blossom tied on at the front.
+    add(g, new THREE.TorusGeometry(0.25, 0.03, 8, 32), toon('#7CC88A'), outline, { pos: [0, 0.0, 0], rot: [Math.PI / 2, 0, 0], scale: [1.02, 0.92, 1] });
     const flower = new THREE.Group();
-    flower.position.set(0.24, 0.5, 0.05);
-    head.add(flower);
+    flower.position.set(0.09, -0.01, 0.255);
+    flower.rotation.y = 0.35;
+    g.add(flower);
     for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2;
-      add(flower, new THREE.SphereGeometry(0.045, 10, 8), accent, outline, { pos: [Math.cos(a) * 0.05, Math.sin(a) * 0.05, 0], outline: false });
+      const a = (i / 5) * Math.PI * 2 + Math.PI / 2;
+      add(flower, new THREE.SphereGeometry(0.042, 10, 8), accent, outline, { pos: [Math.cos(a) * 0.048, Math.sin(a) * 0.048, 0], scale: [1, 1, 0.6], outline: false });
     }
-    add(flower, new THREE.SphereGeometry(0.03, 10, 8), gold, outline, { pos: [0, 0, 0.02], outline: false });
+    add(flower, new THREE.SphereGeometry(0.028, 10, 8), gold, outline, { pos: [0, 0, 0.018], outline: false });
   } else if (look === 'cat') {
     for (const side of [1, -1]) {
       add(head, new THREE.ConeGeometry(0.11, 0.2, 4), fur, outline, { pos: [side * 0.19, 0.3, 0], rot: [0, Math.PI / 4, -side * 0.35] });
@@ -130,12 +143,20 @@ function plush(look: 'bunny' | 'cat' | 'otter' | 'pup', outline: OutlineSettings
     add(head, new THREE.SphereGeometry(0.13, 16, 12), toon('#FFF8F2'), outline, { pos: [0, -0.1, 0.24], scale: [1.2, 0.8, 0.7], outline: false });
     add(g, new THREE.TorusGeometry(0.23, 0.035, 8, 28), accent, outline, { pos: [0, 0.0, 0], rot: [Math.PI / 2, 0, 0], outline: false });
   }
-  // Face, looking out.
+  // Face, looking out: the cast's glossy eyes with a sparkle, blush, a nose and a small "w" mouth.
+  const shine = new THREE.MeshBasicMaterial({ color: '#FFFFFF' });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: '#2B2340' });
   for (const side of [1, -1]) {
-    add(head, new THREE.SphereGeometry(0.045, 12, 10), ink, outline, { pos: [side * 0.12, 0.02, 0.29], scale: [1, 1.25, 0.6], outline: false });
+    const eye = add(head, new THREE.SphereGeometry(0.05, 14, 12), eyeMat, outline, { pos: [side * 0.12, 0.035, 0.3], scale: [0.82, 1.15, 0.5], outline: false });
+    add(eye, new THREE.SphereGeometry(0.02, 8, 6), shine, outline, { pos: [0.018, 0.022, 0.05], outline: false });
     add(head, new THREE.SphereGeometry(0.05, 12, 10), blush, outline, { pos: [side * 0.2, -0.08, 0.25], scale: [1.2, 0.7, 0.4], outline: false });
   }
-  add(head, new THREE.SphereGeometry(0.03, 10, 8), look === 'otter' || look === 'pup' ? ink : blush, outline, { pos: [0, -0.04, 0.32], scale: [1.3, 0.9, 0.7], outline: false });
+  add(head, new THREE.SphereGeometry(0.03, 10, 8), look === 'otter' || look === 'pup' ? ink : blush, outline, { pos: [0, -0.04, 0.322], scale: [1.3, 0.9, 0.7], outline: false });
+  const mouthMat = new THREE.MeshBasicMaterial({ color: '#5A2E3A' });
+  const mouthZ = { bunny: 0.323, cat: 0.323, otter: 0.33, pup: 0.335 }[look];
+  for (const side of [1, -1]) {
+    add(head, new THREE.TorusGeometry(0.018, 0.0055, 5, 10, Math.PI), mouthMat, outline, { pos: [side * 0.018, -0.085, mouthZ], rot: [0, 0, Math.PI], outline: false });
+  }
   // The shop's tag on the hip.
   decal(g, plushTag(), 0.16, 0.2, [-0.24, -0.3, 0.27], [0, -0.3, 0.2]);
   g.position.y = 0.06;

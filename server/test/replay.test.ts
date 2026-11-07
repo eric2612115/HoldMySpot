@@ -45,11 +45,11 @@ describe('the hero demo on recorded model answers (replay)', { skip: recorded ? 
     assert.equal(fake.status, 'failed');
   });
 
-  it('moves the same money as the rules-only reader: held $60.00, charged $54.75, Rex $0', () => {
+  it('moves the same money as the rules-only reader: held $63.70, charged $58.26, Rex $0', () => {
     assert.equal(s.director!.state().status, 'finished');
     const bid = s.app.store.bids.first("requester_id = 'mia'")!;
     const hold = s.app.store.holds.must(bid.holdId!);
-    assert.deepEqual([hold.amount.cents, hold.capturedCents, hold.releasedCents], [6000, 5475, 525]);
+    assert.deepEqual([hold.amount.cents, hold.capturedCents, hold.releasedCents], [6370, 5826, 544]);
     const paid = s.app.store.payouts.where("recipient_user_id = 'wei'").map((p) => [p.amount.cents, p.status]);
     assert.deepEqual(paid, [
       [1080, 'succeeded'],

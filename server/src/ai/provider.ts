@@ -5,6 +5,7 @@ import type { ResolvedAi } from './config.ts';
 import { FakeProvider, FixtureTruth } from './fake.ts';
 import type { TruthSource } from './fake.ts';
 import { MuseProvider } from './muse.ts';
+import { OPENAI_HOST, OpenAiCompatibleProvider, hostOf } from './openai.ts';
 import { FixtureStore, RecordingProvider, ReplayProvider } from './replay.ts';
 
 /**
@@ -34,6 +35,18 @@ export function createLiveProvider(r: ResolvedAi, o: ProviderOverrides = {}): Ai
   }
   if (s.provider === 'muse' && r.keys.muse) {
     return new MuseProvider({ apiKey: r.keys.muse, model: s.museModel, url: s.museUrl, timeoutMs: s.timeoutMs, ...(o.fetch ? { fetch: o.fetch } : {}) });
+  }
+  if (s.provider === 'openai' && r.keys.openai) {
+    const host = hostOf(s.openaiUrl);
+    return new OpenAiCompatibleProvider({
+      id: 'openai',
+      label: host === OPENAI_HOST ? 'OpenAI API' : `API at ${host || 'HMS_AI_BASE_URL'}`,
+      apiKey: r.keys.openai,
+      model: s.openaiModel,
+      url: s.openaiUrl,
+      timeoutMs: s.timeoutMs,
+      ...(o.fetch ? { fetch: o.fetch } : {}),
+    });
   }
   return null;
 }

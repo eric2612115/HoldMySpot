@@ -10,7 +10,8 @@ import { decodeImage } from './image.ts';
 import { reassignNote } from './notes.ts';
 import { dHash } from './phash.ts';
 import { checkInPhoto, confidenceOf, purchaseProof, reasonsOf } from './proof.ts';
-import { createProvider } from './provider.ts';
+import { lenientJsonFetch, opsTurnProvider, runOpsTurn } from './opsTurn.ts';
+import { createLiveProvider, createProvider } from './provider.ts';
 import type { ProviderOverrides } from './provider.ts';
 import type { CheckInResult, HmsAiPort, PurchaseResult } from './types.ts';
 
@@ -35,9 +36,10 @@ import type { CheckInResult, HmsAiPort, PurchaseResult } from './types.ts';
  *
  * Provider and mode (docs/AI-SERVICES.md section 2): `auto` picks Anthropic
  * when ANTHROPIC_API_KEY is found, else Muse when MODEL_API_KEY is found,
- * else rules only. Without a key nothing touches the network: saved answers
- * replay from server/fixtures/ai, and demo photos read from their truth
- * sidecars in server/fixtures/proofs.
+ * else OpenAI (or any OpenAI-compatible endpoint, HMS_AI_BASE_URL) when
+ * OPENAI_API_KEY is found, else rules only. Without a key nothing touches
+ * the network: saved answers replay from server/fixtures/ai, and demo photos
+ * read from their truth sidecars in server/fixtures/proofs.
  */
 
 export interface BuildAiPortOptions extends ResolveOptions, ProviderOverrides {
@@ -61,6 +63,8 @@ export function buildAiPort(opts: BuildAiPortOptions = {}): HmsAiPort {
     : { provider: resolved.settings.provider, model: resolved.settings.model, mode: resolved.settings.mode };
   const fallback = opts.scenarioFallback ?? null;
   const noReader = !opts.provider && resolved.settings.provider === 'fake';
+  // The ops console's agents call a live model only (D-100), never replay or record.
+  const ops = opsTurnProvider(resolved, opts.provider ?? null, () => createLiveProvider(resolved, { ...opts, fetch: lenientJsonFetch(opts.fetch ?? fetch) }));
   const unread = (e: unknown) => noReader && e instanceof AiError && e.kind === 'no_truth';
   // Replay and rules-only answers need no network: a staged demo photo that is a
   // rendered fixture is then read by the real pipeline (truth sidecar or saved answer).
@@ -126,6 +130,7 @@ export function buildAiPort(opts: BuildAiPortOptions = {}): HmsAiPort {
     },
     eta: (input) => estimateEta(input),
     biddingAgent: (input) => runAgent(input, provider),
+    opsAgentTurn: (input) => runOpsTurn(input, ops.provider, ops.reason),
   };
 }
 
@@ -159,7 +164,9 @@ export async function createAiPort(options: AiPortOptions): Promise<HmsAiPort> {
 export type * from './types.ts';
 export { agentCeilingCents, goalUrgency, policyDecision, runAgent } from './agent.ts';
 export { SecretValue, aiBootLine, resolveAiSettings } from './config.ts';
-export type { AiSettings, ResolvedAi } from './config.ts';
+export type { AiSettings, HmsAiKeyReport, ResolvedAi } from './config.ts';
+export { OpenAiCompatibleProvider, chatCompletionsUrl } from './openai.ts';
+export { createLiveProvider } from './provider.ts';
 export { AiError } from './errors.ts';
 export { estimateEta, feeEstimate, shippingEstimate } from './estimates.ts';
 export { FakeProvider, FixtureTruth, MemoryTruth } from './fake.ts';

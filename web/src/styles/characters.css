@@ -1,7 +1,7 @@
 .cast-page {
   min-height: 100dvh;
   display: grid;
-  grid-template-rows: auto minmax(300px, 47vh) auto auto;
+  grid-template-rows: auto minmax(360px, 54vh) auto auto;
   background:
     radial-gradient(circle at 1px 1px, rgba(91, 76, 240, 0.08) 1px, transparent 1.5px) 0 0 / 22px 22px,
     radial-gradient(110% 80% at 50% 38%, #ffffff 0%, #eef4e6 50%, #e5def8 100%);
@@ -50,9 +50,14 @@
 .cast-stage {
   position: relative;
   min-height: 0;
+}
+
+.cast-stage__gl {
+  position: absolute;
+  inset: 0;
   /* Let the round stage fade out instead of ending on a hard edge. */
-  -webkit-mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 78%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 84%, transparent 100%);
 }
 
 .cast-stage canvas {
@@ -69,37 +74,128 @@
   cursor: grabbing;
 }
 
-.cast-cards {
-  list-style: none;
+.cast-meet {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px));
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 4px 12px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-2);
+  animation: cast-meet-in 0.35s var(--ease-out);
+}
+
+@keyframes cast-meet-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
+
+.cast-meet__face svg {
+  display: block;
+}
+
+.cast-meet__who {
+  display: grid;
+  min-width: 0;
+}
+
+.cast-meet__who b {
+  font: 600 18px/1.15 var(--font-play);
+}
+
+.cast-meet__who small {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.cast-meet__moves {
+  margin: 0;
+  min-width: 168px;
+}
+
+.cast-meet__back {
+  font: 600 14px/1 var(--font-play);
+}
+
+.cast-roster {
   margin: 0 auto;
   padding: 0 16px;
   width: 100%;
   max-width: 900px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 3fr 2fr;
   gap: 12px;
 }
 
-.cast-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.cast-roster__group {
   padding: 12px 12px 10px;
-  border-radius: 20px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: var(--shadow-1);
-  text-align: center;
 }
 
-.cast-card h2 {
-  font: 600 18px/1.2 var(--font-play);
+.cast-roster__group h2 {
+  margin: 2px 6px 6px;
+  font: 600 16px/1.2 var(--font-play);
 }
 
-.cast-card p {
-  font-size: 13px;
-  color: var(--ink-2);
-  line-height: 1.4;
-  flex: 1;
+.cast-roster__group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 2px 6px;
+}
+
+.cast-person {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cast-person svg {
+  flex: none;
+}
+
+.cast-person span {
+  display: grid;
+  min-width: 0;
+}
+
+.cast-person b {
+  font: 600 14.5px/1.2 var(--font-play);
+}
+
+.cast-person small {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cast-person:hover {
+  background: var(--mist);
+}
+
+.cast-person.is-on {
+  background: var(--grape-soft);
 }
 
 .segmented {
@@ -211,7 +307,19 @@
 
 @media (max-width: 720px) {
   .cast-page {
-    grid-template-rows: auto minmax(270px, 39vh) auto auto;
+    grid-template-rows: auto minmax(340px, 48vh) auto auto;
+  }
+  .cast-meet {
+    grid-template-columns: auto 1fr auto;
+    bottom: 6px;
+    padding: 8px 12px 8px 8px;
+  }
+  .cast-meet__moves {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .cast-roster {
+    grid-template-columns: 1fr;
   }
   .look {
     gap: 12px;
@@ -245,9 +353,6 @@
   .cast-head__toggle {
     margin-left: auto;
     height: 40px;
-  }
-  .cast-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .look__row {
     align-items: flex-start;

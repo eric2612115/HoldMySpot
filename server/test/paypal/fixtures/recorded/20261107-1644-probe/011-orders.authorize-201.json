@@ -1,0 +1,163 @@
+{
+  "op": "orders.authorize",
+  "method": "POST",
+  "path": "/v2/checkout/orders/7EW40822311629340/authorize",
+  "status": 201,
+  "debugId": "ca56b0f71ad00",
+  "body": {
+    "id": "7EW40822311629340",
+    "intent": "AUTHORIZE",
+    "status": "COMPLETED",
+    "payment_source": {
+      "paypal": {
+        "email_address": "redacted@example.com",
+        "account_id": "REDACTEDID",
+        "account_status": "VERIFIED",
+        "name": {
+          "full_name": "Test Buyer"
+        },
+        "address": {
+          "country_code": "US"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "reference_id": "gate_20261107-1644_E",
+        "amount": {
+          "currency_code": "USD",
+          "value": "10.00",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "10.00"
+            },
+            "shipping": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "handling": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "insurance": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "shipping_discount": {
+              "currency_code": "USD",
+              "value": "0.00"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "display_data": {
+            "brand_name": "HoldMySpot"
+          }
+        },
+        "description": "HoldMySpot sandbox gate E: hold up to $10.00",
+        "custom_id": "gate_20261107-1644_E",
+        "invoice_id": "HMS-GATE-20261107-1644-E",
+        "items": [
+          {
+            "name": "Lucky Cat plush (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "7.00"
+            },
+            "tax": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "quantity": "1",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "3.00"
+            },
+            "tax": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "quantity": "1"
+          }
+        ],
+        "payments": {
+          "authorizations": [
+            {
+              "status": "CREATED",
+              "id": "6BY23435E1186474T",
+              "amount": {
+                "currency_code": "USD",
+                "value": "10.00"
+              },
+              "invoice_id": "HMS-GATE-20261107-1644-E",
+              "custom_id": "gate_20261107-1644_E",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "expiration_time": "2026-12-06T08:45:11Z",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T/capture",
+                  "rel": "capture",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T/void",
+                  "rel": "void",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/6BY23435E1186474T/reauthorize",
+                  "rel": "reauthorize",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/7EW40822311629340",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T08:45:11Z",
+              "update_time": "2026-11-07T08:45:11Z"
+            }
+          ]
+        }
+      }
+    ],
+    "payer": {
+      "name": {
+        "full_name": "Test Buyer"
+      },
+      "email_address": "redacted@example.com",
+      "payer_id": "REDACTEDID",
+      "address": {
+        "country_code": "US"
+      }
+    },
+    "create_time": "2026-11-07T08:44:54Z",
+    "update_time": "2026-11-07T08:45:11Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/7EW40822311629340",
+        "rel": "self",
+        "method": "GET"
+      }
+    ]
+  }
+}

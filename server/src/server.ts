@@ -45,6 +45,8 @@ export async function createServer(config: ServerConfig, opts: CreateOptions = {
     const loaded = await loadSandboxPayPal(config, log);
     sandbox = loaded.port;
     if (!sandbox) {
+      // Never a quiet switch to simulated PayPal when the sandbox was asked for (D-108).
+      if (!config.sandboxFallback) throw new Error(`HMS_MODE=sandbox, but ${loaded.reason}. Nothing was started.`);
       config = { ...config, mode: 'fake', modeReason: `${config.modeReason.replace(/\.$/, '')}, but ${loaded.reason}: running fake.` };
     }
   }

@@ -1,0 +1,1048 @@
+/*
+ * The queuer's half: phone switch, people picker, the errand sheet and pill,
+ * photo fields, the AI check card and the payout card. Same tokens as the map
+ * (tokens.css): round Fredoka for play, straight Figtree for money.
+ */
+
+/* ---- Phone switch: under the top bar, below the money panel when it opens. */
+.q-switch {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  translate: -50% 0;
+  /* Above a sheet's scrim (like the top bar), so the other phone is one tap away. */
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(6px);
+  transition: opacity 0.25s;
+}
+.phone .q-switch {
+  top: 104px;
+}
+@media (max-width: 720px), (max-height: 560px) {
+  .phone .q-switch {
+    top: 64px;
+  }
+}
+.map-page.is-overview .q-switch,
+.map-page:has(.money.is-open) .q-switch {
+  opacity: 0;
+  pointer-events: none;
+}
+.q-switch__side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 12px 3px 3px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.q-switch__side span {
+  display: grid;
+  text-align: left;
+  line-height: 1.05;
+}
+.q-switch__side b {
+  font: 600 13.5px/1.1 var(--font-play);
+}
+.q-switch__side small {
+  font: 500 10.5px/1.1 var(--font-money);
+}
+.q-switch__side svg {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.q-switch__side.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+.q-switch__side.is-on svg {
+  opacity: 1;
+}
+.q-switch__more {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mist);
+  color: var(--grape-deep);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+/* On the requester's phone the task sheet is the requester's: what a queuer would earn is on the other phone. */
+html[data-phone='requester'] .task .earn {
+  display: none;
+}
+
+/* ---- People picker. */
+.q-people {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  display: grid;
+  place-items: end center;
+  padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(20, 22, 40, 0.42);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s,
+    visibility 0s linear 0.2s;
+}
+.q-people.is-open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.2s;
+}
+.q-people__card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 82%;
+  overflow-y: auto;
+  padding: 16px 16px 10px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-money);
+}
+.q-people__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.q-people__head h2 {
+  font: 600 19px/1.2 var(--font-play);
+}
+.q-people__head p {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.q-people__card h3 {
+  margin: 12px 0 4px;
+  font: 600 13px/1.2 var(--font-play);
+  color: var(--ink-2);
+}
+.q-people__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.q-people__row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.q-people__row:hover:not(:disabled) {
+  background: var(--mist);
+}
+.q-people__row.is-current {
+  background: var(--grape-soft);
+  cursor: default;
+}
+.q-people__who {
+  flex: 1;
+  display: grid;
+}
+.q-people__who b {
+  font: 600 14.5px/1.2 var(--font-play);
+}
+.q-people__who small {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.q-people__go {
+  font: 600 12.5px/1 var(--font-play);
+  color: var(--grape-deep);
+}
+.q-people__row.is-current .q-people__go {
+  color: var(--ink-3);
+}
+
+/* ---- Errand pill: the visit, folded down while the map is in view. */
+.q-pill {
+  position: absolute;
+  left: 12px;
+  right: 74px;
+  bottom: calc(30px + env(safe-area-inset-bottom));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px 7px 7px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+  text-align: left;
+  cursor: pointer;
+  animation: toast-in 0.4s var(--ease-spring);
+}
+.map-page.is-overview .q-pill {
+  opacity: 0;
+  pointer-events: none;
+}
+.map-page:has(.q-pill) .hint {
+  display: none;
+}
+.q-pill__icon {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--hue) 18%, white);
+}
+.q-pill__text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.q-pill__text b {
+  font: 600 14px/1.2 var(--font-play);
+  color: var(--ink);
+}
+.q-pill__text span {
+  font: 500 12.5px/1.3 var(--font-money);
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-pill__clock {
+  font: 650 19px/1 var(--font-play);
+  font-variant-numeric: tabular-nums;
+  color: var(--hot);
+}
+.q-pill.is-in_line .q-pill__clock,
+.q-pill.is-waiting .q-pill__clock {
+  color: var(--captured);
+}
+
+/* ---- Errand sheet. */
+.q-errand h4,
+.q-errand h5,
+.q-task h4 {
+  margin: 0;
+}
+.q-errand {
+  display: grid;
+  gap: 12px;
+}
+.q-errand__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.q-errand__head .task__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+}
+.q-errand__title {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.q-errand__kicker {
+  font: 600 11.5px/1.2 var(--font-money);
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--hue) 50%, var(--ink));
+}
+.q-errand__title h2 {
+  font: 600 20px/1.2 var(--font-play);
+}
+.q-errand__title p {
+  font: 500 12.5px/1.3 var(--font-money);
+  color: var(--ink-3);
+}
+.q-fine {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.q-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  position: relative;
+}
+.q-steps::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: var(--line);
+}
+.q-steps li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.q-steps__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #d6d8e6;
+}
+.q-steps__label {
+  font: 500 10.5px/1.1 var(--font-money);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.q-steps li.is-done .q-steps__dot {
+  background: var(--captured);
+  border-color: var(--captured);
+}
+.q-steps li.is-now .q-steps__dot {
+  background: var(--grape);
+  border-color: var(--grape);
+  box-shadow: 0 0 0 4px rgba(91, 76, 240, 0.2);
+}
+.q-steps li.is-now .q-steps__label {
+  color: var(--ink);
+  font-weight: 650;
+}
+.q-steps li.is-bad .q-steps__dot {
+  background: var(--hot);
+  border-color: var(--hot);
+}
+.q-steps li.is-bad .q-steps__label {
+  color: var(--hot);
+  font-weight: 650;
+}
+
+.q-card {
+  display: grid;
+  gap: 10px;
+}
+.q-note,
+.q-lead {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.q-lead {
+  font-size: 13.5px;
+}
+.q-error {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #ffe8ec;
+  color: #a3253f;
+  font: 600 13px/1.4 var(--font-money);
+}
+.q-quiet {
+  justify-self: center;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+/* Countdown and queue timer. */
+.q-clock {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--hue) 20%, white) 0%, transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--hue) 8%, white), #fff 80%);
+  border: 2px solid color-mix(in srgb, var(--hue) 32%, white);
+}
+.q-clock > div {
+  display: grid;
+}
+.q-clock__big {
+  font: 700 44px/1 var(--font-play);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.q-clock__big.is-late {
+  color: var(--hot);
+}
+.q-clock__big.is-run {
+  color: var(--captured);
+}
+.q-clock__caption {
+  font: 500 12.5px/1.3 var(--font-money);
+  color: var(--ink-3);
+}
+.q-clock__side {
+  justify-items: end;
+  text-align: right;
+}
+.q-clock__side strong {
+  font: 650 16px/1.15 var(--font-play);
+  color: var(--ink);
+}
+.q-clock__side span {
+  font: 500 11.5px/1.3 var(--font-money);
+  color: var(--ink-3);
+  max-width: 150px;
+}
+
+/* A matched job. */
+.q-job {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'who fee' 'what fee';
+  column-gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--mist);
+}
+.q-job__who {
+  grid-area: who;
+  font: 600 14px/1.2 var(--font-play);
+}
+.q-job__what {
+  grid-area: what;
+  font: 500 12.5px/1.3 var(--font-money);
+  color: var(--ink-3);
+}
+.q-job__fee {
+  grid-area: fee;
+  align-self: center;
+  display: grid;
+  justify-items: end;
+  font: 700 16px/1.1 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  color: var(--captured);
+}
+.q-job__fee small {
+  font: 500 11px/1.2 var(--font-money);
+  color: var(--ink-3);
+}
+
+/* One-time codes. */
+.q-code {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 2px dashed color-mix(in srgb, var(--grape) 35%, white);
+  background: #fbfaff;
+}
+.q-code__value {
+  flex: none;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font: 700 21px/1 var(--font-money);
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+}
+.q-code__text {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+
+.q-walk {
+  height: 42px;
+  font-size: 14.5px;
+}
+
+/* Photo fields. */
+.q-photo {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+}
+.q-photo.has-photo {
+  border-color: color-mix(in srgb, var(--captured) 40%, white);
+}
+.q-photo__frame {
+  flex: none;
+  width: 78px;
+  height: 78px;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--mist);
+  color: var(--ink-3);
+}
+.q-photo__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.q-photo__body {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.q-photo__body strong {
+  font: 600 14px/1.2 var(--font-play);
+}
+.q-photo__body > span {
+  font: 500 12px/1.35 var(--font-money);
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-photo__buttons {
+  display: flex;
+  gap: 6px;
+  margin-top: 5px;
+}
+.q-chipbtn {
+  position: relative;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: var(--grape-soft);
+  color: var(--grape-deep);
+  font: 600 12.5px/1 var(--font-play);
+  cursor: pointer;
+}
+.q-chipbtn.is-disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.q-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.q-actions {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+}
+.q-actions .take-button,
+.q-actions .ghost-button {
+  height: 48px;
+}
+.q-danger {
+  border-color: #f7c2cd;
+  color: #b4233f;
+}
+.q-danger:hover:not(:disabled) {
+  background: #fff0f3;
+  border-color: var(--hot);
+}
+.take-button.q-danger-fill {
+  background: #c7334f;
+}
+.q-soldout {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fff4f6;
+  border: 1.5px solid #f7c2cd;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* Fee clock while in line. */
+.q-feeclock {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px 8px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+}
+.q-feeclock__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font: 500 12.5px/1.2 var(--font-money);
+  color: var(--ink-3);
+}
+.q-feeclock__row strong {
+  font: 700 22px/1 var(--font-play);
+  color: var(--ink);
+  margin-right: 4px;
+}
+
+/* The AI check. */
+.q-ai {
+  display: grid;
+  gap: 8px;
+  padding: 12px 13px;
+  border-radius: 18px;
+  border: 2px solid var(--line);
+  background: #fff;
+  font-family: var(--font-money);
+  animation: row-in 0.35s var(--ease-out);
+}
+.q-ai.is-passed {
+  border-color: color-mix(in srgb, var(--captured) 40%, white);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--captured-bg) 55%, white), #fff 60%);
+}
+.q-ai.is-failed {
+  border-color: #f4b3c0;
+  background: linear-gradient(180deg, #fff0f3, #fff 60%);
+}
+.q-ai.is-review {
+  border-color: #f3d38f;
+  background: linear-gradient(180deg, #fff8e6, #fff 60%);
+}
+.q-ai__head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.q-ai__head h4 {
+  font: 650 15px/1.25 var(--font-play);
+}
+.q-ai__head p,
+.q-ai__summary {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.q-ai__head.is-result {
+  align-items: center;
+}
+.q-ai.is-verifying .spinner {
+  margin-top: 3px;
+  border-color: rgba(91, 76, 240, 0.2);
+  border-top-color: var(--grape);
+}
+.q-ai__badge {
+  flex: none;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font: 700 12px/1 var(--font-money);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--captured);
+}
+.q-ai.is-failed .q-ai__badge {
+  background: #c7334f;
+}
+.q-ai.is-review .q-ai__badge {
+  background: var(--held);
+}
+.q-ai__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+.q-ai__rows li {
+  display: grid;
+  grid-template-columns: 18px 72px 1fr;
+  gap: 6px;
+  align-items: baseline;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+.q-ai__rows li:last-child {
+  border-bottom: 0;
+}
+.q-ai__mark {
+  font-weight: 800;
+  color: var(--ink-3);
+  text-align: center;
+}
+.q-ai__rows li.is-ok .q-ai__mark {
+  color: var(--captured);
+}
+.q-ai__rows li.is-bad .q-ai__mark {
+  color: #c7334f;
+}
+.q-ai__label {
+  font-weight: 650;
+  color: var(--ink-2);
+}
+.q-ai__value {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.q-ai__rows li.is-bad .q-ai__value {
+  color: #a3253f;
+}
+.q-ai__flags {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #fff4f6;
+}
+.q-ai__flags h5 {
+  margin: 0 0 4px;
+  font: 700 12px/1.2 var(--font-money);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #a3253f;
+}
+.q-ai__flags ul {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 3px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.q-ai__flags b {
+  color: var(--ink);
+}
+.q-ai__stamp {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.q-money {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--captured-bg);
+  color: var(--captured);
+  font: 600 13px/1.45 var(--font-money);
+}
+
+/* Ship or hand over. */
+.q-ship {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1.5px solid var(--line);
+  font-family: var(--font-money);
+}
+.q-ship h4 {
+  font: 600 16px/1.2 var(--font-play);
+}
+.q-ship label {
+  display: grid;
+  gap: 4px;
+}
+.q-ship label span {
+  font: 600 12px/1.2 var(--font-money);
+  color: var(--ink-2);
+}
+.q-ship input {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line);
+  font: 500 15px/1 var(--font-money);
+  color: var(--ink);
+  background: #fff;
+}
+.q-ship input:focus {
+  outline: none;
+  border-color: var(--grape);
+  box-shadow: 0 0 0 3px rgba(91, 76, 240, 0.15);
+}
+
+/* Paid. */
+.q-pay {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 22px;
+  background: linear-gradient(170deg, #f2f6ff, #fff 65%);
+  border: 2px solid #d4e1ff;
+  font-family: var(--font-money);
+}
+.q-pay__brand {
+  justify-self: start;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--pp);
+  font: 700 11.5px/1 var(--font-money);
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 3px rgba(29, 43, 107, 0.12);
+}
+.q-pay__big {
+  margin: 4px 0 0;
+  font: 750 34px/1.05 var(--font-money);
+  color: var(--pp);
+  font-variant-numeric: tabular-nums;
+}
+.q-pay__by {
+  margin-top: -4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.q-pay__lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.q-pay__lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #e2e9fb;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.q-pay__lines b {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.q-pay__lines em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--held);
+}
+.q-pay__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 2px 0;
+}
+.q-pay__stats > div {
+  display: grid;
+  padding: 9px 10px;
+  border-radius: 12px;
+  background: #fff;
+}
+.q-pay__stats strong {
+  font: 700 16px/1.15 var(--font-money);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.q-pay__stats span {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.q-pay__stats > div:last-child strong {
+  color: var(--captured);
+}
+
+/* How a visit ended without a payout. */
+.q-outcome {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--released-bg);
+  color: var(--released);
+  font-family: var(--font-money);
+}
+.q-outcome h4 {
+  font: 650 18px/1.2 var(--font-play);
+  color: var(--ink);
+}
+.q-outcome p {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.q-outcome.is-rejected {
+  background: #fff0f3;
+}
+.q-outcome.is-rejected h4 {
+  color: #a3253f;
+}
+.q-outcome__money {
+  font-weight: 700;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Task card on the queuer's phone. */
+.q-take {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: 11px 16px;
+  font-size: 16.5px;
+}
+.q-take small {
+  font: 500 12px/1.1 var(--font-money);
+  opacity: 0.88;
+}
+.q-own {
+  height: 42px;
+  font-size: 14.5px;
+}
+.q-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  animation: row-in 0.3s var(--ease-out);
+}
+.q-form__rows {
+  display: grid;
+  gap: 6px;
+  padding: 4px 0;
+}
+.q-form__rows .q-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.q-form__rows .q-stepper__label {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.q-form__rows .q-stepper__row {
+  width: 168px;
+}
+.q-form__rows .q-stepper__row strong {
+  font-size: 17px;
+}
+.q-form__rows .round-button {
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+}
+.q-form__note {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.q-form__keep {
+  font: 600 13px/1.4 var(--font-money);
+  color: var(--captured);
+}
+.q-form__eta {
+  display: grid;
+  gap: 6px;
+}
+.q-stepper {
+  display: grid;
+  gap: 4px;
+}
+.q-stepper__label {
+  font: 600 12px/1.2 var(--font-money);
+  color: var(--ink-3);
+}
+.q-stepper__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.q-stepper__row strong {
+  font: 700 22px/1 var(--font-play);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.q-stepper__row .round-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.q-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13.5px/1.3 var(--font-play);
+  color: var(--ink);
+}
+.q-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--grape);
+}
+.q-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.q-chip {
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--mist);
+  color: var(--ink-2);
+  font: 600 12.5px/1 var(--font-play);
+  cursor: pointer;
+}
+.q-chip.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* ---- The requester's handover code. */
+.q-handover {
+  position: absolute;
+  left: 12px;
+  right: 74px;
+  bottom: calc(30px + env(safe-area-inset-bottom));
+  z-index: 6;
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-money);
+  animation: toast-in 0.4s var(--ease-spring);
+}
+.map-page:has(.q-handover) .hint {
+  display: none;
+}
+.q-handover__kicker {
+  font: 700 11.5px/1.2 var(--font-money);
+  letter-spacing: 0.02em;
+  color: var(--grape-deep);
+}
+.q-handover p {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.q-handover__code {
+  justify-self: start;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: #fff;
+  font: 700 26px/1 var(--font-money);
+  letter-spacing: 0.24em;
+}

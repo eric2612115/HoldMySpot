@@ -1,0 +1,33 @@
+{
+  "op": "authorizations.void",
+  "method": "POST",
+  "path": "/v2/payments/authorizations/7A67222576480453H/void",
+  "status": 200,
+  "debugId": "f266828ea139b",
+  "body": {
+    "id": "7A67222576480453H",
+    "status": "VOIDED",
+    "amount": {
+      "currency_code": "USD",
+      "value": "30.00"
+    },
+    "invoice_id": "HMS-GATE-20261107-1614-C",
+    "seller_protection": {
+      "status": "ELIGIBLE",
+      "dispute_categories": [
+        "ITEM_NOT_RECEIVED",
+        "UNAUTHORIZED_TRANSACTION"
+      ]
+    },
+    "expiration_time": "2026-12-06T00:15:30-08:00",
+    "create_time": "2026-11-07T00:15:30-08:00",
+    "update_time": "2026-11-07T00:15:36-08:00",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/7A67222576480453H",
+        "rel": "self",
+        "method": "GET"
+      }
+    ]
+  }
+}

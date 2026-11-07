@@ -21,3 +21,7 @@ proto-shots/v2/*
 
 # Owner-only notes (may contain Chinese and machine-specific details); never committed.
 private/
+
+# Keys written by `npm run keys` (mode 600) and the launcher's logs and pid files.
+.secrets/
+.run/

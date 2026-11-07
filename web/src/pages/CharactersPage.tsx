@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { SEED_USERS, type User } from '@holdmyspot/shared';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CastStage, type Motion } from '../three/castStage';
+import { CastStage, type Motion, type StageLayout, type StageMember } from '../three/castStage';
 import type { PaletteSlot } from '../three/characters/chibi';
-import { CAST, type CastRole } from '../three/characters/presets';
+import { castSpec, lookOfAvatar, personSpec, SPECIES_NAMES, type PersonLook } from '../three/characters/presets';
 import { useLook } from '../state/look';
 import { useMediaQuery } from '../ui/hooks';
+import { PlayerFace } from '../ui/ItemIcon';
+import { LookFace } from '../ui/PersonFace';
 
 const SWATCHES: Array<{ slot: PaletteSlot; label: string; colors: string[] }> = [
   { slot: 'hair', label: 'Hair', colors: ['#3B2F4A', '#1E1B18', '#6B4226', '#C68B59', '#E8C27A', '#8E7CC3'] },
@@ -12,17 +15,66 @@ const SWATCHES: Array<{ slot: PaletteSlot; label: string; colors: string[] }> = 
   { slot: 'bottom', label: 'Trousers', colors: ['#2E3A59', '#1F1F24', '#56688F', '#C9B79C', '#7A8B6F', '#E9D6BF'] },
 ];
 
+const PLAYER = 'player';
+
+/**
+ * The group photo: front row first. Mia, Wei and you stand in the middle of the front row. Ava stands
+ * last in the back row, so her tall tail rises over empty background instead of a face.
+ */
+const LAYOUT: StageLayout = {
+  wide: [
+    ['jo', 'rin', 'mia', PLAYER, 'wei', 'lin', 'mo', 'rex'],
+    ['priya', 'dana', 'sam', 'jun', 'theo', 'leo', 'noor', 'ava'],
+  ],
+  narrow: [
+    ['rin', 'mia', 'wei', 'lin'],
+    ['mo', PLAYER, 'rex', 'jo'],
+    ['dana', 'sam', 'jun', 'priya'],
+    ['leo', 'theo', 'noor', 'ava'],
+  ],
+};
+
+const CITY: Record<string, string> = { sf: 'San Francisco', nyc: 'New York' };
+
+interface Person {
+  id: string;
+  name: string;
+  look: PersonLook;
+  line: string;
+}
+
+function personOf(u: User): Person {
+  const look = lookOfAvatar(u.avatar, u.id);
+  const role = u.roles.includes('queuer') ? `queues in ${CITY[u.cityId]}` : `asks from ${CITY[u.cityId]}`;
+  return { id: u.id, name: u.displayName, look, line: `${SPECIES_NAMES[look.species]} · ${role}` };
+}
+
 export function CharactersPage() {
   const host = useRef<HTMLDivElement>(null);
   const stage = useRef<CastStage | null>(null);
   const palette = useLook((s) => s.palette);
   const setColor = useLook((s) => s.setColor);
   const reset = useLook((s) => s.reset);
-  const [motion, setMotion] = useState<Record<CastRole, Motion>>({ player: 'idle', queuer: 'walk', buyer: 'idle', passerby: 'walk' });
+  const [motion, setMotion] = useState<Record<string, Motion>>({});
+  const [focus, setFocus] = useState<string | null>(null);
+  const touch = useMediaQuery('(pointer: coarse)');
+
+  const people = useMemo(() => SEED_USERS.map(personOf), []);
+  const queuers = people.filter((p) => SEED_USERS.find((u) => u.id === p.id)?.roles.includes('queuer'));
+  const requesters = people.filter((p) => !queuers.includes(p));
+  const animals = people.filter((p) => p.look.species !== 'human').length;
 
   useEffect(() => {
     if (!host.current) return;
-    const s = new CastStage(host.current);
+    const members: StageMember[] = [
+      { id: PLAYER, spec: castSpec('player') },
+      ...SEED_USERS.map((u) => ({ id: u.id, spec: personSpec(u.avatar ?? u.id) })),
+    ];
+    const s = new CastStage(host.current, members, LAYOUT, (id) => {
+      setFocus(id);
+      s.hop(id);
+    });
+    s.setPalette(PLAYER, useLook.getState().palette);
     stage.current = s;
     return () => {
       s.dispose();
@@ -31,15 +83,25 @@ export function CharactersPage() {
   }, []);
 
   useEffect(() => {
-    for (const [role, m] of Object.entries(motion) as [CastRole, Motion][]) stage.current?.setMotion(role, m);
+    for (const [id, m] of Object.entries(motion)) stage.current?.setMotion(id, m);
   }, [motion]);
 
   useEffect(() => {
-    stage.current?.setPlayerPalette(palette);
+    stage.current?.setPalette(PLAYER, palette);
   }, [palette]);
 
-  const allWalk = Object.values(motion).every((m) => m === 'walk');
-  const touch = useMediaQuery('(pointer: coarse)');
+  useEffect(() => {
+    stage.current?.focus(focus);
+  }, [focus]);
+
+  const ids = [PLAYER, ...people.map((p) => p.id)];
+  const allWalk = ids.every((id) => motion[id] === 'walk');
+  const meet = (id: string) => {
+    setFocus(id);
+    stage.current?.hop(id);
+    host.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+  const focused = focus === PLAYER ? null : people.find((p) => p.id === focus);
 
   return (
     <div className="cast-page">
@@ -52,40 +114,83 @@ export function CharactersPage() {
         </Link>
         <div className="cast-head__title">
           <h1>The cast</h1>
-          <p>Four original characters, built from simple shapes. Drag to look around, {touch ? 'pinch' : 'scroll'} to zoom.</p>
+          <p>
+            {people.length + 1} original characters, {animals} of them animal-people, built from simple shapes. Tap anyone to meet them; drag to look around, {touch ? 'pinch' : 'scroll'} to
+            zoom.
+          </p>
         </div>
         <button
           type="button"
           className="ghost-button cast-head__toggle"
           onClick={() => {
             const m: Motion = allWalk ? 'idle' : 'walk';
-            setMotion({ player: m, queuer: m, buyer: m, passerby: m });
+            setMotion(Object.fromEntries(ids.map((id) => [id, m])));
           }}
         >
           {allWalk ? 'Everyone idle' : 'Everyone walk'}
         </button>
       </header>
 
-      <div className="cast-stage" ref={host} />
-
-      <ul className="cast-cards">
-        {CAST.map((c) => (
-          <li key={c.role} className="cast-card">
-            <h2>{c.title}</h2>
-            <p>{c.blurb}</p>
-            <div className="segmented" role="group" aria-label={`${c.title} animation`}>
+      <div className={`cast-stage${focus ? ' is-focused' : ''}`}>
+        <div className="cast-stage__gl" ref={host} />
+        {focus && (
+          <div className="cast-meet" role="group" aria-label={`Meet ${focused?.name ?? 'you'}`}>
+            <span className="cast-meet__face">{focused ? <LookFace look={focused.look} size={44} /> : <PlayerFace hair={palette.hair} skin={palette.skin} top={palette.top} size={44} />}</span>
+            <span className="cast-meet__who">
+              <b>{focused?.name ?? 'You'}</b>
+              <small>{focused?.line ?? 'Human · your colours, below'}</small>
+            </span>
+            <div className="segmented cast-meet__moves" role="group" aria-label="Animation">
               {(['idle', 'walk'] as Motion[]).map((m) => (
-                <button key={m} type="button" aria-pressed={motion[c.role] === m} onClick={() => setMotion((s) => ({ ...s, [c.role]: m }))}>
+                <button key={m} type="button" aria-pressed={(motion[focus] ?? 'idle') === m} onClick={() => setMotion((s) => ({ ...s, [focus]: m }))}>
                   {m === 'idle' ? 'Idle' : 'Walk'}
                 </button>
               ))}
-              <button type="button" onClick={() => stage.current?.hop(c.role)}>
+              <button type="button" onClick={() => stage.current?.hop(focus)}>
                 Hop
               </button>
             </div>
-          </li>
+            <button type="button" className="text-button cast-meet__back" onClick={() => setFocus(null)}>
+              Everyone
+            </button>
+          </div>
+        )}
+      </div>
+
+      <section className="cast-roster" aria-label="Who is who">
+        {[
+          { title: 'Queuers', list: queuers },
+          { title: 'Requesters', list: requesters },
+        ].map(({ title, list }) => (
+          <div key={title} className="cast-roster__group">
+            <h2>{title}</h2>
+            <ul>
+              {title === 'Queuers' && (
+                <li>
+                  <button type="button" className={`cast-person${focus === PLAYER ? ' is-on' : ''}`} onClick={() => meet(PLAYER)}>
+                    <PlayerFace hair={palette.hair} skin={palette.skin} top={palette.top} size={38} />
+                    <span>
+                      <b>You</b>
+                      <small>Human · walks the map</small>
+                    </span>
+                  </button>
+                </li>
+              )}
+              {list.map((p) => (
+                <li key={p.id}>
+                  <button type="button" className={`cast-person${focus === p.id ? ' is-on' : ''}`} onClick={() => meet(p.id)}>
+                    <LookFace look={p.look} size={38} />
+                    <span>
+                      <b>{p.name}</b>
+                      <small>{p.line}</small>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </section>
 
       <section className="look" aria-labelledby="look-title">
         <div className="look__head">

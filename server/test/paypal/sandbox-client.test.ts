@@ -433,7 +433,8 @@ describe('sandbox adapter: payouts and disputes', () => {
     });
     const batch = await t.client.getPayoutBatch('5UXD2E8A7EBQJ');
     assert.equal(batch.batchStatus, 'SUCCESS');
-    assert.deepEqual(batch.items, [{ itemId: '8AELMXH8UB2P8', senderItemId: 'po_0001', status: 'SUCCESS', amountCents: 2_160 }]);
+    // feeCents: PayPal's payout_item_fee as this documented answer gives it (D-105).
+    assert.deepEqual(batch.items, [{ itemId: '8AELMXH8UB2P8', senderItemId: 'po_0001', status: 'SUCCESS', amountCents: 2_160, feeCents: 0 }]);
     const item = await t.client.getPayoutItem('8AELMXH8UB2P8');
     assert.equal(item.status, 'UNCLAIMED');
     assert.equal(item.errorName, 'RECEIVER_UNREGISTERED');

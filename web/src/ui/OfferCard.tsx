@@ -1,13 +1,15 @@
 import { askSchedule, bidDisclosures, fillPriceForMax, nextDropAt, nextPriceAfter, reachesAt } from '@holdmyspot/shared';
-import type { StepDownSchedule } from '@holdmyspot/shared';
+import type { CheckoutFunding, StepDownSchedule } from '@holdmyspot/shared';
 import { useState } from 'react';
 import { bestOffer, holdFor, offerFeeAt, retailCapFor, supplyLabel } from '../domain/book';
 import { formatUsd, type Cents } from '../domain/money';
 import type { FeeOffer, TaskPoint } from '../domain/types';
 import { isOpenOrder, useMarket, type UserOrder } from '../state/market';
 import { clock } from '../state/services';
+import { BookGlyph } from './book/BookStrip';
+import { openBook } from './book/store';
 import { mmss, useNow } from './hooks';
-import { PayPalButton } from './PayPalButton';
+import { PayPalButton, PayPalSdkButtons } from './PayPalButton';
 import { PriceStairs } from './PriceStairs';
 
 /**
@@ -50,10 +52,11 @@ function Disclosures({ lines }: { lines: string[] }) {
   );
 }
 
-/** What the card says when no offer is open: nobody offered yet, or every queuer here is booked. */
+/** What the card says when no offer is open: sold out, nobody offered yet, or every queuer here is booked. */
 function noOfferNote(point: TaskPoint, order: UserOrder | undefined): string {
+  if (point.status === 'sold_out') return `${point.shop.name} has sold out of the ${point.itemShort}.`;
   const inLine = point.queue.queuers;
-  const mine = order && (order.status === 'booked' || order.status === 'settling' || order.status === 'filled') ? order.queuerName : undefined;
+  const mine = order && (order.status === 'booked' || order.status === 'settling' || order.status === 'bought' || order.status === 'filled') ? order.queuerName : undefined;
   if (mine) return `${mine} took your request. No other offer is open right now.`;
   if (inLine.length > 0 || point.offers.length > 0) {
     const who = inLine.length === 0 ? 'Every queuer here' : inLine.length === 1 ? inLine[0] : `${inLine.slice(0, -1).join(', ')} and ${inLine[inLine.length - 1]}`;
@@ -76,6 +79,10 @@ export function OfferCard({ point, blockedReason }: { point: TaskPoint; blockedR
   const setMax = useMarket((s) => s.setMax);
   const cancelMax = useMarket((s) => s.cancelMax);
   const clearOrder = useMarket((s) => s.clearOrder);
+  const payWith = useMarket((s) => s.payWith);
+  const cancelApproval = useMarket((s) => s.cancelApproval);
+  // A server in sandbox mode: PayPal's own buttons replace the placeholder ones (fake mode keeps the Simulated PayPal sheet).
+  const sandbox = useMarket((s) => s.backend === 'server' && s.serverMode === 'sandbox');
   const [picking, setPicking] = useState(false);
 
   const offer = bestOffer(point, now);
@@ -134,6 +141,11 @@ export function OfferCard({ point, blockedReason }: { point: TaskPoint; blockedR
             </div>
           </div>
           {sched && <PriceStairs schedule={sched.schedule} now={now} hue={point.hue} preview={sched.preview} maxCents={order?.status === 'resting' ? order.maxFeeCents : undefined} />}
+          {sched && (
+            <button type="button" className="text-button auction__book" onClick={() => openBook(point.id, 'sheet')}>
+              <BookGlyph /> Watch it step down against every request
+            </button>
+          )}
           <p className="auction__rule">
             {sched
               ? `Opens at ${formatUsd(sched.schedule.openCents)}, drops ${formatUsd(sched.schedule.stepCents)} every ${minutesWord(sched.schedule.intervalMs)}, never below ${formatUsd(sched.schedule.floorCents)}. ${sched.preview ? `The clock starts when ${offer.queuerName} checks in.` : `It started when ${offer.queuerName} checked in.`}`
@@ -144,18 +156,28 @@ export function OfferCard({ point, blockedReason }: { point: TaskPoint; blockedR
       )}
 
       {blockedReason ? (
-        <p className="auction__fine">{blockedReason}</p>
+        <>
+          {/* A sell-out blocks new requests, but the viewer's own request still says where it stands (D-116). */}
+          {order && <OrderNote point={point} order={order} offer={offer} now={now} onCancel={() => void cancelMax(point.id)} />}
+          <p className="auction__fine">{blockedReason}</p>
+        </>
       ) : showPicker ? (
         <MaxPicker
           point={point}
           offerFee={fee}
           offer={offer}
           busy={approvingMax}
+          sandbox={sandbox}
           onCancel={() => setPicking(false)}
           onConfirm={(cents) => {
             setPicking(false);
             void setMax(point.id, cents);
           }}
+          onPay={(cents, funding) => {
+            setPicking(false);
+            payWith(point.id, { kind: 'max', maxFeeCents: cents }, funding);
+          }}
+          onStopWaiting={() => cancelApproval(point.id)}
         />
       ) : (
         <ActionZone
@@ -164,7 +186,10 @@ export function OfferCard({ point, blockedReason }: { point: TaskPoint; blockedR
           fee={fee}
           order={order}
           now={now}
+          sandbox={sandbox}
           onBook={() => void requestNow(point.id)}
+          onPayNow={(funding) => payWith(point.id, { kind: 'now' }, funding)}
+          onStopWaiting={() => cancelApproval(point.id)}
           onPick={() => setPicking(true)}
           onCancel={() => void cancelMax(point.id)}
           onAgain={() => clearOrder(point.id)}
@@ -180,7 +205,10 @@ function ActionZone({
   fee,
   order,
   now,
+  sandbox,
   onBook,
+  onPayNow,
+  onStopWaiting,
   onPick,
   onCancel,
   onAgain,
@@ -190,7 +218,12 @@ function ActionZone({
   fee: Cents | null;
   order: UserOrder | undefined;
   now: number;
+  /** PayPal's own buttons (server in sandbox mode) instead of the placeholder. */
+  sandbox: boolean;
   onBook: () => void;
+  /** Sandbox: called inside the click on PayPal's button. */
+  onPayNow: (funding: CheckoutFunding) => void;
+  onStopWaiting: () => void;
   onPick: () => void;
   onCancel: () => void;
   onAgain: () => void;
@@ -198,7 +231,7 @@ function ActionZone({
   const status = order?.status;
   const full = !offer || offer.supply <= 0;
 
-  if (status === 'resting' || status === 'booked' || status === 'settling') return <OrderStatus point={point} order={order!} offer={offer} now={now} onCancel={onCancel} />;
+  if (status === 'resting' || status === 'booked' || status === 'settling' || status === 'bought') return <OrderStatus point={point} order={order!} offer={offer} now={now} onCancel={onCancel} />;
 
   if (status === 'filled') {
     const charged = formatUsd(order?.chargedCents ?? 0, { exact: true });
@@ -222,20 +255,24 @@ function ActionZone({
   return (
     <div className="auction__actions">
       {status === 'error' && <p className="auction__error">{order?.message}</p>}
-      {(status === 'released' || status === 'missed') && (
-        <p className="auction__done">
-          {status === 'missed' ? `${order?.queuerName ?? 'The queuer'} was fully booked while PayPal was approving. ` : order?.message ? `${order.message} ` : 'Cancelled. '}
-          {(order?.releasedCents ?? 0) > 0 ? `${formatUsd(order?.releasedCents ?? 0, { exact: true })} went back to you.` : ''}
-        </p>
+      {(status === 'released' || status === 'missed') && <p className="auction__done">{closedText(order!)}</p>}
+      {offer && fee !== null && sandbox && (
+        <PayPalSdkButtons
+          lead={`Book ${offer.queuerName} now for ${formatUsd(fee)} with`}
+          waiting={status === 'approving' && order?.kind === 'now'}
+          disabled={full || inFlight}
+          onPay={onPayNow}
+          onStopWaiting={onStopWaiting}
+        />
       )}
-      {offer && fee !== null && (
+      {offer && fee !== null && !sandbox && (
         <PayPalButton state={inFlight && order?.kind === 'now' ? 'waiting' : 'ready'} waitingLabel={waitingLabel} disabled={full || inFlight} label={`Book ${offer.queuerName} now for ${formatUsd(fee)}`} onClick={onBook} />
       )}
       <button type="button" className={offer ? 'ghost-button' : 'pp-button is-ready'} disabled={inFlight} onClick={onPick}>
         Set my max fee
       </button>
       {inFlight ? (
-        <p className="auction__fine">PayPal holds up to {formatUsd(holdCents, { exact: true })}. You are charged from the receipt; the rest is released.</p>
+        <p className="auction__fine">PayPal holds up to {formatUsd(holdCents, { exact: true })}. You are charged from the receipt, with processing at cost; the rest is released.</p>
       ) : offer && fee !== null ? (
         <>
           <p className="auction__fine">First to accept wins while spots last.</p>
@@ -243,11 +280,24 @@ function ActionZone({
         </>
       ) : (
         <p className="auction__fine">
-          PayPal holds the shop price cap plus your max fee{shipping > 0 ? ' and a shipping budget' : ''}. Nothing is charged until a queuer&rsquo;s receipt is checked.
+          PayPal holds the shop price cap, your max fee{shipping > 0 ? ', a shipping budget' : ''} and processing at cost. Nothing is charged until a queuer&rsquo;s receipt is checked.
         </p>
       )}
     </div>
   );
+}
+
+/** The line under a request that closed without a charge: why, and what went back. */
+function closedText(order: UserOrder): string {
+  const why = order.status === 'missed' ? `${order.queuerName ?? 'The queuer'} was fully booked while PayPal was approving. ` : order.message ? `${order.message} ` : 'Cancelled. ';
+  return `${why}${(order.releasedCents ?? 0) > 0 ? `${formatUsd(order.releasedCents ?? 0, { exact: true })} went back to you.` : ''}`.trim();
+}
+
+/** The viewer's own request where new requests are blocked (a sell-out): its card or its closing line, no buttons. */
+function OrderNote({ point, order, offer, now, onCancel }: { point: TaskPoint; order: UserOrder; offer: FeeOffer | null; now: number; onCancel: () => void }) {
+  if (order.status === 'released' || order.status === 'missed') return <p className="auction__done">{closedText(order)}</p>;
+  if (order.status === 'error') return order.message ? <p className="auction__error">{order.message}</p> : null;
+  return <OrderStatus point={point} order={order} offer={offer} now={now} onCancel={onCancel} />;
 }
 
 function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint; order: UserOrder; offer: FeeOffer | null; now: number; onCancel: () => void }) {
@@ -288,8 +338,33 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
           <span className="order__muted">{order.status === 'settling' ? 'receipt being checked' : 'not charged yet'}</span>
         </div>
         <p>
-          {queuer} is queueing for you{order.fillFeeCents !== undefined ? ` for a ${formatUsd(order.fillFeeCents)} fee` : ''}. You are charged the shop price from the receipt plus the fee
+          {queuer} is queueing for you{order.fillFeeCents !== undefined ? ` for a ${formatUsd(order.fillFeeCents)} fee` : ''}. You are charged the shop price from the receipt, the fee and processing at cost
           {eta !== null ? `, in about ${minutesWord(eta)}` : ' once the receipt is checked'}.
+        </p>
+      </div>
+    );
+  }
+  if (order.status === 'bought') {
+    // The receipt passed but the hold is still open (D-115): a shipped errand's receipt is captured and the
+    // rest waits for tracking; a local errand is charged only at the handover code.
+    const charged = order.chargedCents ?? 0;
+    const held = Math.max(0, (order.holdCents ?? 0) - charged - (order.releasedCents ?? 0));
+    return (
+      <div className="order is-booked">
+        <div className="order__row">
+          {charged > 0 && (
+            <>
+              <span className="state-chip is-captured">Captured</span>
+              <strong>{formatUsd(charged, { exact: true })}</strong>
+            </>
+          )}
+          <span className="state-chip is-held">Held</span>
+          <strong>{formatUsd(held, { exact: true })}</strong>
+        </div>
+        <p>
+          {order.mode === 'ship'
+            ? `${queuer} bought your ${point.itemShort}. Receipt checked: you paid the shop price, the fee and processing at cost. ${formatUsd(held, { exact: true })} stays held until ${queuer} adds tracking; then shipping is charged at cost and the rest is released.`
+            : `${queuer} bought your ${point.itemShort}. Receipt checked. You are charged when you give ${queuer} your handover code: the shop price, the fee and processing at cost; the rest of the hold is released.`}
         </p>
       </div>
     );
@@ -308,7 +383,7 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
           )}
         </div>
         <p>
-          {queuer} bought your {point.itemShort} and was paid out. Receipt checked.
+          {queuer} bought your {point.itemShort} and was paid out. Receipt checked. You paid the shop price{order.mode === 'ship' ? ', shipping' : ''} and processing at cost, plus the fee; Money lists every line.
         </p>
       </div>
     );
@@ -321,15 +396,23 @@ function MaxPicker({
   offerFee,
   offer,
   busy,
+  sandbox,
   onCancel,
   onConfirm,
+  onPay,
+  onStopWaiting,
 }: {
   point: TaskPoint;
   offerFee: Cents | null;
   offer: FeeOffer | null;
   busy: boolean;
+  /** PayPal's own buttons (server in sandbox mode) instead of the placeholder. */
+  sandbox: boolean;
   onCancel: () => void;
   onConfirm: (c: Cents) => void;
+  /** Sandbox: called inside the click on PayPal's button. */
+  onPay: (c: Cents, funding: CheckoutFunding) => void;
+  onStopWaiting: () => void;
 }) {
   const unit = 100; // whole dollars
   const lo = Math.ceil(point.minFeeCents / unit) * unit;
@@ -371,10 +454,15 @@ function MaxPicker({
       <p className="picker__explain">
         The request rests until an offer reaches {formatUsd(v)}
         {at !== null && sched && !sched.preview ? `, in about ${minutesWord(Math.max(0, at - clock.now()))}` : ''}. The hold covers the {point.itemShort} at up to{' '}
-        {formatUsd(retailCapFor(point.retailCents))}, up to {formatUsd(v)} for the queuer{shipping > 0 ? ` and up to ${formatUsd(shipping)} for shipping` : ''}.
+        {formatUsd(retailCapFor(point.retailCents))}, up to {formatUsd(v)} for the queuer{shipping > 0 ? `, up to ${formatUsd(shipping)} for shipping` : ''} and up to{' '}
+        {formatUsd(hold - (retailCapFor(point.retailCents) + v) - shipping, { exact: true })} for processing and payouts at cost.
       </p>
       <Disclosures lines={disclosuresFor(point, v, shipping)} />
-      <PayPalButton state={busy ? 'waiting' : 'ready'} label={`Hold ${formatUsd(hold)} with PayPal`} onClick={() => onConfirm(v)} />
+      {sandbox ? (
+        <PayPalSdkButtons lead={`Hold ${formatUsd(hold)} with`} waiting={busy} onPay={(funding) => onPay(v, funding)} onStopWaiting={onStopWaiting} />
+      ) : (
+        <PayPalButton state={busy ? 'waiting' : 'ready'} label={`Hold ${formatUsd(hold)} with PayPal`} onClick={() => onConfirm(v)} />
+      )}
       <button type="button" className="text-button" onClick={onCancel} disabled={busy}>
         Not now
       </button>

@@ -20,7 +20,8 @@ async function importOptional(relative: string): Promise<Record<string, unknown>
 }
 
 export async function loadSandboxPayPal(config: ServerConfig, log: (line: string) => void): Promise<{ port: PaymentsPort | null; reason: string }> {
-  if (config.mode !== 'sandbox' || !config.paypal) return { port: null, reason: 'fake mode' };
+  if (config.mode !== 'sandbox') return { port: null, reason: 'fake mode' };
+  if (!config.paypal) return { port: null, reason: 'no PayPal sandbox settings were loaded' };
   try {
     const mod = await importOptional('../paypal/sandbox.ts');
     const factory = (mod?.createSandboxPayPal ?? mod?.default) as SandboxPayPalFactory | undefined;

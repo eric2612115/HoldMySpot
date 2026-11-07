@@ -1,3 +1,4 @@
+import { grossUpCapture, payoutItemsCovered, platformFeeCents } from '@holdmyspot/shared';
 import type { CityConfig } from '../config/cities';
 import { bestOffer, holdFor, matchPoint, offerFeeAt, units, withBookSummary } from '../domain/book';
 import { buildCatalog, randomBidder, seeded } from '../domain/catalog';
@@ -45,21 +46,26 @@ function fail(pointId: string, err: unknown) {
   get().toast(message, 'info');
 }
 
-/** The receipt is in: capture the shop price plus the matched fee, release the rest, pay the queuer. */
+/**
+ * The receipt is in: capture the shop price, the matched fee and processing at
+ * cost (one capture and one payout, like a local errand on the server, D-105),
+ * release the rest, pay the queuer.
+ */
 async function settle(p: TaskPoint, order: UserOrder) {
   if (!order.holdId || order.holdCents === undefined || order.fillFeeCents === undefined) return;
   const queuer = order.queuerName ?? 'The queuer';
-  const charged = p.retailCents + order.fillFeeCents;
+  const gross = grossUpCapture(p.retailCents + order.fillFeeCents, payoutItemsCovered('local', 'handover'));
+  const charged = gross.amountCents;
   patchOrder(p.id, { status: 'settling' });
   await payments.capture(order.holdId, charged, {
-    description: `${p.itemShort}: ${formatUsd(p.retailCents, { exact: true })} from the receipt plus a ${formatUsd(order.fillFeeCents, { exact: true })} fee`,
+    description: `${p.itemShort}: ${formatUsd(p.retailCents, { exact: true })} from the receipt, a ${formatUsd(order.fillFeeCents, { exact: true })} fee and ${formatUsd(gross.processingCents, { exact: true })} processing at cost`,
     final: true,
   });
   patchOrder(p.id, { status: 'filled', chargedCents: charged, releasedCents: order.holdCents - charged });
   get().celebrate(p.id);
   get().toast(`Receipt checked. ${queuer} bought your ${p.itemShort}.`, 'win');
-  const platform = Math.floor(order.fillFeeCents / 10);
-  await payments.payout({ recipient: queuer, amountCents: charged - platform, note: `${p.itemShort} and the queue fee`, reference: p.id });
+  const platform = platformFeeCents(order.fillFeeCents);
+  await payments.payout({ recipient: queuer, amountCents: p.retailCents + order.fillFeeCents - platform, note: `${p.itemShort} and the queue fee`, reference: p.id });
 }
 
 /** A used-up offer hands over to the next queuer, who checks in and opens a fresh offer. */

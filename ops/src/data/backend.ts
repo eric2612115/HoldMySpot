@@ -1,15 +1,17 @@
 import { CONTRACT_VERSION, DEFAULT_RULES, HEADERS, SEED_SHOPS, apiPath } from '@holdmyspot/shared';
-import type { ApiSpec, AppConfig, BookSnapshot, MarketMs, OpsDataset, OpsDatasetName, Shop } from '@holdmyspot/shared';
+import type { ApiErrorBody, ApiSpec, AppConfig, BookSnapshot, MarketMs, OpsDataset, OpsDatasetName, OpsMovesRequest, Shop } from '@holdmyspot/shared';
+import { actionsFor, proposalsAt } from '../agents/rescheduler.ts';
+import type { Proposal } from '../agents/rescheduler.ts';
 import { boardDay, worldFromRecords } from './serverWorld.ts';
 import { DEFAULT_MOMENT, MOMENTS, PROPOSAL_JO, PROPOSAL_NOOR, worldAt } from './mock/heroDay.ts';
-import type { Approvals } from './mock/heroDay.ts';
-import { boardBundle, booksAt, datasetsAt, proposalsAt } from './mock/views.ts';
-import type { BoardBundle, Proposal } from './mock/views.ts';
-import { getJob, moveProblem, targetAsk } from './mock/world.ts';
-import type { ManualMove } from './mock/world.ts';
-import { parseMarketTime } from './time.ts';
+import { boardBundle, booksAt, datasetsAt } from './mock/views.ts';
+import type { BoardBundle } from './mock/views.ts';
+import { RULES_STAMP, moveProblem, targetAsk } from './mock/world.ts';
+import type { OpsAction, World } from './mock/world.ts';
+import { parseMarketTime, sf } from './time.ts';
 
-export type { BoardBundle, Proposal, ProposedMove } from './mock/views.ts';
+export type { BoardBundle } from './mock/views.ts';
+export type { Proposal, ProposalOption, ProposedMove } from '../agents/rescheduler.ts';
 
 /** Everything the console draws for one market moment. */
 export interface MarketSnapshot {
@@ -28,7 +30,8 @@ export interface OpsBackend {
   moments: { id: string; label: string; at: MarketMs }[];
   initialAt(): MarketMs;
   snapshot(at: MarketMs): Promise<MarketSnapshot>;
-  approve(proposalId: string, at: MarketMs): Promise<void>;
+  /** Applies one option of a rescheduler proposal (the chosen one when `optionId` is null). Returns what happened. */
+  approve(proposal: Proposal, optionId: string | null, at: MarketMs): Promise<string>;
   /** Synchronous, for drag feedback: why this job cannot move to that queuer, or null. */
   moveProblem(jobId: string, toQueuerId: string, at: MarketMs): string | null;
   move(jobId: string, toQueuerId: string, at: MarketMs): Promise<string | null>;
@@ -49,67 +52,80 @@ function fakeConfig(at: MarketMs): AppConfig {
   };
 }
 
-/** Approvals given in the URL (?approve=all or ?approve=jo,noor), applied at the opening moment. */
-function approvalsFromUrl(at: MarketMs): Approvals {
+/** The approvals the URL asks for (?approve=all, or jo / noor), each made at its scene's moment with the rules' choice. */
+function approvalsFromUrl(at: MarketMs): OpsAction[] {
   const value = new URLSearchParams(location.search).get('approve');
-  if (!value) return {};
-  const all = value === 'all';
-  const out: Approvals = {};
-  if (all || value.includes('jo')) out[PROPOSAL_JO] = Math.min(at, Date.parse('2026-11-12T11:21:00-08:00'));
-  if (all || value.includes('noor')) out[PROPOSAL_NOOR] = Math.min(at, Date.parse('2026-11-12T11:22:00-08:00'));
-  return out;
+  if (!value) return [];
+  const scenes: [string, string, MarketMs][] = [
+    ['jo', PROPOSAL_JO, Math.min(at, sf('11:21'))],
+    ['noor', PROPOSAL_NOOR, Math.min(at, sf('11:22'))],
+  ];
+  const actions: OpsAction[] = [];
+  for (const [name, id, t] of scenes) {
+    if (value !== 'all' && !value.includes(name)) continue;
+    const proposal = proposalsAt(worldAt(t, actions), t, actions).find((p) => p.id === id && p.status === 'open');
+    if (proposal) actions.push(...actionsFor(proposal, null, t));
+  }
+  return actions;
 }
 
 export class MockBackend implements OpsBackend {
   readonly kind = 'mock' as const;
   readonly moments = MOMENTS;
-  private approvals: Approvals;
-  private moves: ManualMove[] = [];
+  /** Moves ops made (approvals and drags), replayed at their times. */
+  private actions: OpsAction[];
   private readonly startAt: MarketMs;
 
   constructor() {
     this.startAt = parseMarketTime(new URLSearchParams(location.search).get('at')) ?? DEFAULT_MOMENT;
-    this.approvals = approvalsFromUrl(this.startAt);
+    this.actions = approvalsFromUrl(this.startAt);
   }
 
   initialAt(): MarketMs {
     return this.startAt;
   }
 
+  private world(at: MarketMs): World {
+    return worldAt(at, this.actions.filter((a) => a.at <= at));
+  }
+
   async snapshot(at: MarketMs): Promise<MarketSnapshot> {
-    const approvals = Object.fromEntries(Object.entries(this.approvals).filter(([, t]) => t <= at));
-    const moves = this.moves.filter((m) => m.at <= at);
-    const w = worldAt(at, approvals, moves);
+    const actions = this.actions.filter((a) => a.at <= at);
+    const w = worldAt(at, actions);
     return {
       at,
       config: fakeConfig(at),
       bundle: boardBundle(w, at),
       books: booksAt(w, at),
       datasets: datasetsAt(w, at),
-      proposals: proposalsAt(at, approvals),
+      proposals: proposalsAt(w, at, actions),
       shops: SEED_SHOPS,
     };
   }
 
-  async approve(proposalId: string, at: MarketMs): Promise<void> {
-    if (this.approvals[proposalId] === undefined) this.approvals = { ...this.approvals, [proposalId]: at };
+  async approve(proposal: Proposal, optionId: string | null, at: MarketMs): Promise<string> {
+    if (this.actions.some((a) => a.proposalId === proposal.id && a.at <= at)) return 'Already approved.';
+    const actions = actionsFor(proposal, optionId, at);
+    this.actions = [...this.actions, ...actions];
+    return actions.length ? 'Approved. The board shows the new plan.' : 'Nothing to move.';
   }
 
   moveProblem(jobId: string, toQueuerId: string, at: MarketMs): string | null {
-    const w = worldAt(at, this.approvals, this.moves);
+    const w = this.world(at);
     const job = w.jobs.find((j) => j.id === jobId);
     if (!job) return 'This job is no longer on the board.';
     return moveProblem(w, job, toQueuerId, at);
   }
 
   async move(jobId: string, toQueuerId: string, at: MarketMs): Promise<string | null> {
-    const w = worldAt(at, this.approvals, this.moves);
-    const job = getJob(w, jobId);
+    const w = this.world(at);
+    const job = w.jobs.find((j) => j.id === jobId);
+    if (!job) return 'This job is no longer on the board.';
     const problem = moveProblem(w, job, toQueuerId, at);
     if (problem) return problem;
     const ask = targetAsk(w, job, toQueuerId);
     if (!ask) return 'No open offer to move to.';
-    this.moves = [...this.moves, { bidId: job.bidId, fromAskId: job.askId, toAskId: ask.id, at }];
+    this.actions = [...this.actions, { at, proposalId: null, move: { kind: 'reassign', jobId, toAskId: ask.id }, reason: 'Dragged on the board by ops.', label: 'Dragged on the board', ai: RULES_STAMP }];
     return null;
   }
 }
@@ -118,23 +134,25 @@ export class MockBackend implements OpsBackend {
  * Talks to the HoldMySpot server through the contract. The server owns the
  * clock, the rules and every record: the console reads them in one call
  * (GET /api/ops/records) and draws them with the same functions the replay
- * uses (boardBundle, datasetsAt), with the server's own book snapshots. The
- * console polls; the clock button pauses and resumes a demo run.
- * Rescheduling proposals and drag-to-reassign need routes the contract does
- * not have yet, so they stay in the replay for now.
+ * uses (boardBundle, datasetsAt, and the rescheduler's proposalsAt), with the
+ * server's own book snapshots. The console polls; the clock button pauses and
+ * resumes a demo run. Approvals and drags go to POST /api/ops/moves, where
+ * the server checks every move again with its own rules (D-102).
  */
 export class ServerBackend implements OpsBackend {
   readonly kind = 'server' as const;
   readonly moments: { id: string; label: string; at: MarketMs }[] = [];
   private shops: Shop[] | null = null;
-  private last: { sig: string; snapshot: MarketSnapshot } | null = null;
+  private last: { sig: string; snapshot: MarketSnapshot; world: World } | null = null;
+  /** Approvals made from this console, so their cards stay as "approved" after the problem is gone. */
+  private approved: OpsAction[] = [];
   constructor(
     private readonly base: string,
     private clockAt: MarketMs,
   ) {}
 
-  private headers(): Record<string, string> {
-    const headers: Record<string, string> = {};
+  private headers(json = false): Record<string, string> {
+    const headers: Record<string, string> = json ? { 'content-type': 'application/json' } : {};
     const admin = import.meta.env.VITE_HMS_ADMIN_KEY as string | undefined;
     if (admin) headers[HEADERS.admin] = admin;
     return headers;
@@ -161,7 +179,7 @@ export class ServerBackend implements OpsBackend {
     const at = records.at;
     this.clockAt = at;
     // A paused market answers the same records: keep the same snapshot so nothing redraws.
-    const sig = JSON.stringify([config.mode, config.clock.paused, config.clock.speed, records, books.books]);
+    const sig = JSON.stringify([config.mode, config.clock.paused, config.clock.speed, records, books.books, this.approved.length]);
     if (this.last?.sig === sig) return this.last.snapshot;
     const w = worldFromRecords(records);
     const snapshot: MarketSnapshot = {
@@ -170,10 +188,10 @@ export class ServerBackend implements OpsBackend {
       bundle: boardBundle(w, at, boardDay(at)),
       books: books.books,
       datasets: datasetsAt(w, at, books.books),
-      proposals: [],
+      proposals: proposalsAt(w, at, this.approved),
       shops: shops.shops,
     };
-    this.last = { sig, snapshot };
+    this.last = { sig, snapshot, world: w };
     return snapshot;
   }
 
@@ -183,16 +201,47 @@ export class ServerBackend implements OpsBackend {
     if (!res.ok) throw new Error(`The server clock is not under demo control (${res.status}).`);
   }
 
-  async approve(): Promise<void> {
-    await fetch(`${this.base}/api/ops/sweep`, { method: 'POST', headers: this.headers() });
+  private async postMoves(body: OpsMovesRequest): Promise<{ ok: true; note: string } | { ok: false; problem: string }> {
+    const res = await fetch(`${this.base}/api/ops/moves`, { method: 'POST', headers: { ...this.headers(true), 'idempotency-key': crypto.randomUUID() }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      let problem = `The server answered ${res.status}.`;
+      try {
+        problem = ((await res.json()) as ApiErrorBody).error.message || problem;
+      } catch {
+        // keep the status line
+      }
+      return { ok: false, problem };
+    }
+    const out = (await res.json()) as ApiSpec['POST /api/ops/moves']['response'];
+    const skipped = out.skipped.map((x) => x.problem).join(' ');
+    return { ok: true, note: [out.applied.map((a) => a.note).join(' '), skipped ? `Skipped: ${skipped}` : ''].filter(Boolean).join(' ') };
   }
 
-  moveProblem(): string | null {
-    return 'Moving a job needs a reassign route on the server (not in the contract yet).';
+  async approve(proposal: Proposal, optionId: string | null, at: MarketMs): Promise<string> {
+    const actions = actionsFor(proposal, optionId, at);
+    if (actions.length === 0) return 'Nothing to move.';
+    const first = actions[0]!;
+    const out = await this.postMoves({ moves: actions.map((a) => a.move), reason: first.reason, proposalId: proposal.id, ai: first.ai.provider === 'fake' ? null : first.ai });
+    if (!out.ok) return `The server refused: ${out.problem}`;
+    this.approved = [...this.approved, ...actions];
+    return `Approved. ${out.note}`;
   }
 
-  async move(): Promise<string | null> {
-    return this.moveProblem();
+  moveProblem(jobId: string, toQueuerId: string, at: MarketMs): string | null {
+    const w = this.last?.world;
+    const job = w?.jobs.find((j) => j.id === jobId);
+    if (!w || !job) return 'This job is no longer on the board.';
+    return moveProblem(w, job, toQueuerId, at);
+  }
+
+  async move(jobId: string, toQueuerId: string, at: MarketMs): Promise<string | null> {
+    const problem = this.moveProblem(jobId, toQueuerId, at);
+    if (problem) return problem;
+    const w = this.last!.world;
+    const ask = targetAsk(w, w.jobs.find((j) => j.id === jobId)!, toQueuerId);
+    if (!ask) return 'No open offer to move to.';
+    const out = await this.postMoves({ moves: [{ kind: 'reassign', jobId, toAskId: ask.id }], reason: 'Dragged on the board by ops.', proposalId: null, ai: null });
+    return out.ok ? null : out.problem;
   }
 }
 

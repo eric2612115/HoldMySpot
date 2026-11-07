@@ -106,12 +106,15 @@ function jobChip(job: Job): BarRecord['chip'] {
   return { text: 'Held', tone: 'held' };
 }
 
-export function buildBars(bundle: BoardBundle, proposals: Proposal[], now: MarketMs): BarRecord[] {
+const GHOST_CHIP: Record<string, string> = { reassign: 'Move here', release: 'Re-offered here', release_job: 'Takes them', extend: 'Shift window' };
+
+/** `preview` maps a proposal id to the option to draw instead of the chosen one (hovered in the panel). */
+export function buildBars(bundle: BoardBundle, proposals: Proposal[], now: MarketMs, preview: Record<string, string | null> = {}): BarRecord[] {
   const bars: BarRecord[] = [];
   const atRisk = new Map<string, 'at_risk' | 'payment'>();
   for (const p of proposals) {
     if (p.status !== 'open') continue;
-    for (const id of p.affectedJobIds) atRisk.set(id, p.kind === 'payment_failed' ? 'payment' : 'at_risk');
+    for (const id of p.affectedJobIds) atRisk.set(id, p.kind === 'hold' ? 'payment' : 'at_risk');
   }
 
   for (const e of bundle.board.events) {
@@ -212,10 +215,13 @@ export function buildBars(bundle: BoardBundle, proposals: Proposal[], now: Marke
     }
   }
 
-  // Ghost bars: where the rescheduler would move work if an operator approves.
+  // Ghost bars: the dry run of the chosen (or hovered) option, not real until an operator approves.
   for (const p of proposals) {
     if (p.status !== 'open') continue;
-    for (const m of p.moves) {
+    const option = p.options.find((o) => o.id === (preview[p.id] ?? p.chosenId));
+    if (!option) continue;
+    const pick = option.id === p.chosenId ? (p.decidedBy === 'model' ? 'Agent pick' : 'Rules pick') : 'Option';
+    for (const m of option.ghosts) {
       bars.push({
         id: `ghost-${p.id}-${m.jobId}`,
         resourceId: m.queuerId,
@@ -226,8 +232,8 @@ export function buildBars(bundle: BoardBundle, proposals: Proposal[], now: Marke
         status: 'proposed',
         tone: 'ghost',
         title: `${m.requesterName}${m.qty > 1 ? ` x${m.qty}` : ''}`,
-        sub: `Proposed at ${usd(m.feeCents)}${m.qty > 1 ? ' each' : ''}`,
-        chip: { text: 'Needs approval', tone: 'grape' },
+        sub: `${pick}: ${usd(m.feeCents)}${m.qty > 1 ? ' each' : ''}, needs approval`,
+        chip: { text: GHOST_CHIP[option.kind] ?? 'Proposed', tone: 'grape' },
         steps: null,
         progress: 0,
         issue: null,
@@ -236,6 +242,29 @@ export function buildBars(bundle: BoardBundle, proposals: Proposal[], now: Marke
         draggable: false,
         resizable: false,
         cls: 'hms-bar hms-ghost',
+      });
+    }
+    if (option.window) {
+      bars.push({
+        id: `ghost-${p.id}-window`,
+        resourceId: option.window.queuerId,
+        name: 'Shifted window',
+        startDate: toWall(option.window.from),
+        endDate: toWall(option.window.to),
+        kind: 'proposal',
+        status: 'proposed',
+        tone: 'ghost',
+        title: `+${option.window.minutes} min`,
+        sub: `${pick}: check in by ${clockText(option.window.to)}`,
+        chip: null,
+        steps: null,
+        progress: 0,
+        issue: null,
+        shopId: p.shopId,
+        jobId: null,
+        draggable: false,
+        resizable: false,
+        cls: 'hms-bar hms-ghost hms-ghost-window',
       });
     }
   }

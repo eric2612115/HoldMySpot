@@ -1,0 +1,29 @@
+{
+  "op": "payouts.create",
+  "method": "POST",
+  "path": "/v1/payments/payouts",
+  "status": 400,
+  "debugId": "f9949934bfc24",
+  "body": {
+    "name": "USER_BUSINESS_ERROR",
+    "message": "User business error.",
+    "debug_id": "f9949934bfc24",
+    "information_link": "https://developer.paypal.com/docs/api/payments.payouts-batch/#errors",
+    "details": [
+      {
+        "field": "SENDER_BATCH_ID",
+        "location": "body",
+        "issue": "Batch with given sender_batch_id already exists",
+        "link": [
+          {
+            "href": "https://api.sandbox.paypal.com/v1/payments/payouts/JMYKU2MVUQH6Q",
+            "rel": "self",
+            "method": "GET",
+            "encType": "application/json"
+          }
+        ]
+      }
+    ],
+    "links": []
+  }
+}

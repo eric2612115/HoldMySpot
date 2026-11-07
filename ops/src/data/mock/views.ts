@@ -1,7 +1,6 @@
-import { SEED_SHOPS, bidDepth, distanceMeters, epochToZonedLocal, formatUsd, maxSteps, opsDatasets, travelMinutes } from '@holdmyspot/shared';
+import { SEED_SHOPS, bidDepth, epochToZonedLocal, formatUsd, maxSteps, opsDatasets, travelMinutes } from '@holdmyspot/shared';
 import type {
   AgentAction,
-  AiStamp,
   AskQuote,
   AskTask,
   BidTask,
@@ -13,6 +12,7 @@ import type {
   Claim,
   Hold,
   Job,
+  LedgerEntry,
   LngLat,
   MarketMs,
   OpsDataset,
@@ -20,10 +20,9 @@ import type {
   Shop,
   UserId,
 } from '@holdmyspot/shared';
-import { HERO_DAY, HERO_TZ, MINUTE, clockText, sf } from '../time.ts';
+import { HERO_DAY, HERO_TZ, MINUTE, sf } from '../time.ts';
 import { W } from '../vocab.ts';
-import { DAY_END, DAY_START, PROPOSAL_JO, PROPOSAL_NOOR, worldAt } from './heroDay.ts';
-import type { Approvals } from './heroDay.ts';
+import { DAY_END, DAY_START } from './heroDay.ts';
 import { itemById, shopById } from './world.ts';
 import type { World } from './world.ts';
 
@@ -39,43 +38,10 @@ export interface BoardBundle {
   positions: Record<UserId, LngLat>;
 }
 
-/** A change the rescheduler wants an operator to approve. */
-export interface Proposal {
-  id: string;
-  kind: 'missed_check_in' | 'payment_failed';
-  severity: 'warning' | 'critical';
-  title: string;
-  /** One plain sentence. */
-  summary: string;
-  facts: string[];
-  queuerId: UserId;
-  shopId: string;
-  raisedAt: MarketMs;
-  /** When the market rules act on their own if nobody approves. */
-  rulesActAt: MarketMs | null;
-  affectedJobIds: string[];
-  moves: ProposedMove[];
-  status: 'open' | 'approved' | 'applied_by_rules';
-  approvedAt: MarketMs | null;
-  ai: AiStamp;
-}
-
-export interface ProposedMove {
-  jobId: string;
-  queuerId: UserId;
-  queuerName: string;
-  requesterName: string;
-  qty: number;
-  feeCents: number;
-  startAt: MarketMs;
-  endAt: MarketMs;
-}
-
 /** The San Francisco queuers: one board row each. */
 const SF_QUEUERS = ['wei', 'rex', 'lin', 'ava', 'rin', 'jo'];
 /** Shops on the board: the Japantown shops where the day's lines are. */
 const BOARD_SHOPS = ['paper-moon-toys', 'little-lantern-toys', 'sugar-cloud-bakery', 'steam-lantern-ramen'];
-const RULES_STAMP: AiStamp = { provider: 'fake', model: 'rules', mode: 'fake', latencyMs: 0 };
 
 function openAt(shop: Shop, t: MarketMs): MarketMs {
   return sf(shop.hours.opens, epochToZonedLocal(t, HERO_TZ).slice(0, 10));
@@ -96,7 +62,8 @@ function claimBuyAt(w: World, claim: Claim): MarketMs | null {
   return times.length > 0 ? Math.min(...times) : null;
 }
 
-function jobEnd(w: World, job: Job, now: MarketMs): MarketMs {
+/** When a job's bar ends on the board: its failure, its verification, or its expected purchase plus a few minutes. */
+export function jobEnd(w: World, job: Job, now: MarketMs): MarketMs {
   if (job.failure) return job.failure.at;
   const verified = historyAt(job, 'verified');
   if (verified !== null) return verified;
@@ -343,122 +310,40 @@ export function namesOf(w: World): Record<UserId, string> {
 
 export function datasetsAt(w: World, t: MarketMs, books: BookSnapshot[] = booksAt(w, t)): Record<OpsDatasetName, OpsDataset> {
   const view = { bids: w.bids, holds: w.holds, asks: w.asks, matches: w.matches, jobs: w.jobs, ledger: w.ledger, payouts: w.payouts, books, names: namesOf(w) };
-  return opsDatasets(view, t, { words: W, slotFloor: DAY_START });
+  const out = opsDatasets(view, t, { words: W, slotFloor: DAY_START });
+  return { ...out, ledger: withPayPalIds(out.ledger, w.ledger) };
 }
 
-// ---------------------------------------------------------------------------
-// The rescheduler (fake mode: rules only, deterministic)
-// ---------------------------------------------------------------------------
-
-function diffMoves(base: World, next: World, t: MarketMs, exclude: Set<string>): ProposedMove[] {
-  const known = new Set(base.jobs.map((j) => j.id));
-  return next.jobs
-    .filter((j) => !known.has(j.id) && !exclude.has(j.id))
-    .map((j) => ({
-      jobId: j.id,
-      queuerId: j.queuerId,
-      queuerName: j.queuerName,
-      requesterName: j.requesterName,
-      qty: j.qty,
-      feeCents: j.feeCents,
-      startAt: t,
-      endAt: jobEnd(next, j, t),
-    }));
+/** The PayPal object a ledger line is about and its id, most specific first (capture before its authorization). */
+export function paypalRef(e: LedgerEntry | undefined): { object: string; id: string } | null {
+  const p = e?.paypal;
+  if (!p) return null;
+  if (p.captureId) return { object: 'Capture', id: p.captureId };
+  if (p.refundId) return { object: 'Refund', id: p.refundId };
+  if (p.payoutItemId) return { object: 'Payout item', id: p.payoutItemId };
+  if (p.payoutBatchId) return { object: 'Payout batch', id: p.payoutBatchId };
+  if (p.authorizationId) return { object: 'Authorization', id: p.authorizationId };
+  if (p.orderId) return { object: 'Order', id: p.orderId };
+  return null;
 }
 
 /**
- * Looks for work that will not happen as planned and proposes where it should
- * go instead, using the same rules the server applies (matchBook through the
- * mock's commands). Each proposal carries a dry run: the jobs the change
- * would create, drawn as ghost bars on the board.
+ * The console's ledger rows also carry the PayPal id of each money event, for
+ * the dashboard's ledger grid (the shared rows stay as the server serves them).
  */
-export function proposalsAt(t: MarketMs, approvals: Approvals): Proposal[] {
-  const out: Proposal[] = [];
-  const w = worldAt(t, approvals);
-
-  // 1. A queuer who cannot reach the shop before the arrival window closes.
-  const joClaim = w.claims.find((c) => c.id === 'claim-jo-ll');
-  const joApproved = approvals[PROPOSAL_JO];
-  const shopLL = shopById('little-lantern-toys');
-  const joPos = positionsAt(w, t).jo;
-  if (joClaim && joPos) {
-    const travel = travelMinutes(joPos, shopLL.lngLat);
-    const raisedAt = Math.max(sf('11:00'), joClaim.windowEndsAt - (travel + 1) * MINUTE);
-    if (t >= raisedAt) {
-      const away = (distanceMeters(joPos, shopLL.lngLat) / 1000).toFixed(1);
-      const leoJob = w.jobs.find((j) => j.claimId === joClaim.id);
-      const preview = joApproved === undefined && joClaim.status === 'awaiting_arrival' ? worldAt(t, { ...approvals, [PROPOSAL_JO]: t }) : null;
-      const status: Proposal['status'] = joApproved !== undefined && joApproved <= t ? 'approved' : joClaim.status === 'lapsed' ? 'applied_by_rules' : 'open';
-      const moves = preview ? diffMoves(w, preview, t, new Set()) : [];
-      const target = moves[0];
-      out.push({
-        id: PROPOSAL_JO,
-        kind: 'missed_check_in',
-        severity: 'warning',
-        title: 'Jo will miss check-in',
-        summary: target
-          ? `Jo is ${away} km from Little Lantern Toys and needs ${travel} min, but his window closes at ${clockText(joClaim.windowEndsAt)}. Move Leo's plush to ${target.queuerName} at ${formatUsd(target.feeCents, { exact: true })} now?`
-          : `Jo is ${away} km from Little Lantern Toys and needs ${travel} min, but his window closes at ${clockText(joClaim.windowEndsAt)}.`,
-        facts: [
-          `Still near home, ${away} km away (demo walk)`,
-          target
-            ? `${target.queuerName} is already in line and asks ${formatUsd(target.feeCents, { exact: true })}, under Leo's max of $10.00`
-            : 'No other offer at Little Lantern Toys yet',
-        ],
-        queuerId: 'jo',
-        shopId: shopLL.id,
-        raisedAt,
-        rulesActAt: joClaim.windowEndsAt,
-        affectedJobIds: leoJob ? [leoJob.id] : [],
-        moves,
-        status,
-        approvedAt: joApproved ?? null,
-        ai: RULES_STAMP,
-      });
-    }
-  }
-
-  // 2. A hold that can no longer pay for work already in line.
-  const noorBid = w.bids.find((b) => b.id === 'bid-sc-noor');
-  const noorHold = noorBid ? w.holds.find((h) => h.id === noorBid.holdId) : undefined;
-  if (noorBid && noorHold?.renewalRequired) {
-    const noorApproved = approvals[PROPOSAL_NOOR];
-    const job = w.jobs.find((j) => j.bidId === noorBid.id);
-    const pending = job && ['claimed', 'checked_in', 'queueing'].includes(job.status) && noorApproved === undefined;
-    const preview = pending ? worldAt(t, { ...approvals, [PROPOSAL_NOOR]: t }) : null;
-    const moves = preview ? diffMoves(w, preview, t, new Set()) : [];
-    const failed = job?.failure?.reason === 'payment_failed';
-    const status: Proposal['status'] = noorApproved !== undefined && noorApproved <= t ? 'approved' : failed ? 'applied_by_rules' : 'open';
-    const names = moves.map((m) => m.requesterName.split(' ')[0]).join(' and ');
-    const fee = moves[0]?.feeCents ?? job?.feeCents ?? 0;
-    out.push({
-      id: PROPOSAL_NOOR,
-      kind: 'payment_failed',
-      severity: 'critical',
-      title: "Noor's PayPal hold needs a new approval",
-      summary: failed
-        ? 'Rin bought the cakes but PayPal declined the capture: the hold was past its honor period and never renewed.'
-        : moves.length
-          ? `PayPal could not renew Noor's Venmo hold, and Rin is in line for her 2 cakes. Give them to ${names} at ${formatUsd(fee, { exact: true })} each?`
-          : "PayPal could not renew Noor's Venmo hold.",
-      facts: [
-        `Hold of ${formatUsd(noorHold.amount.cents, { exact: true })} approved Nov 8 with Venmo; its honor period is over`,
-        'Rin buys the cakes at noon: on a hold that may not capture',
-        moves.length ? `${names} have usable holds and accept ${formatUsd(fee, { exact: true })}` : 'No other request can take the cakes now',
-      ],
-      queuerId: 'rin',
-      shopId: 'sugar-cloud-bakery',
-      raisedAt: noorHold.updatedAt,
-      rulesActAt: null,
-      affectedJobIds: job ? [job.id] : [],
-      moves,
-      status,
-      approvedAt: noorApproved ?? null,
-      ai: RULES_STAMP,
-    });
-  }
-  return out;
+function withPayPalIds(ds: OpsDataset, entries: readonly LedgerEntry[]): OpsDataset {
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  return {
+    ...ds,
+    fields: [
+      ...ds.fields,
+      { name: 'paypalObject', type: 'string', label: 'PayPal object' },
+      { name: 'paypalId', type: 'string', label: 'PayPal id' },
+      { name: 'events', type: 'number', label: 'Events' },
+    ],
+    rows: ds.rows.map((r) => {
+      const ref = paypalRef(byId.get(String(r.entryId)));
+      return { ...r, paypalObject: ref?.object ?? null, paypalId: ref?.id ?? null, events: 1 };
+    }),
+  };
 }
-
-/** Ids every view shares, so the console and the tests agree on them. */
-export const PROPOSAL_IDS = [PROPOSAL_JO, PROPOSAL_NOOR];

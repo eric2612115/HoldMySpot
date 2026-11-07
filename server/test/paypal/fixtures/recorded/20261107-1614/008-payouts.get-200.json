@@ -1,0 +1,67 @@
+{
+  "op": "payouts.get",
+  "method": "GET",
+  "path": "/v1/payments/payouts/JMYKU2MVUQH6Q",
+  "status": 200,
+  "debugId": "f7917222a1168",
+  "body": {
+    "batch_header": {
+      "payout_batch_id": "JMYKU2MVUQH6Q",
+      "batch_status": "PROCESSING",
+      "time_created": "2026-11-07T08:14:11Z",
+      "sender_batch_header": {
+        "sender_batch_id": "HMS-GATE-20261107-1614-G6",
+        "email_subject": "HoldMySpot sandbox gate payout",
+        "email_message": "A $1.00 test payout from the HoldMySpot sandbox gates."
+      },
+      "funding_source": "BALANCE",
+      "amount": {
+        "currency": "USD",
+        "value": "1.00"
+      },
+      "fees": {
+        "currency": "USD",
+        "value": "0.25"
+      }
+    },
+    "items": [
+      {
+        "payout_item_id": "WAV227NGAQN44",
+        "transaction_status": "PENDING",
+        "payout_item_fee": {
+          "currency": "USD",
+          "value": "0.25"
+        },
+        "payout_batch_id": "JMYKU2MVUQH6Q",
+        "payout_item": {
+          "recipient_type": "EMAIL",
+          "amount": {
+            "currency": "USD",
+            "value": "1.00"
+          },
+          "note": "HoldMySpot sandbox gate G6",
+          "receiver": "redacted@example.com",
+          "sender_item_id": "G6-20261107-1614",
+          "recipient_wallet": "PAYPAL",
+          "purpose": "GOODS"
+        },
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/WAV227NGAQN44",
+            "rel": "item",
+            "method": "GET",
+            "encType": "application/json"
+          }
+        ]
+      }
+    ],
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v1/payments/payouts/JMYKU2MVUQH6Q",
+        "rel": "self",
+        "method": "GET",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

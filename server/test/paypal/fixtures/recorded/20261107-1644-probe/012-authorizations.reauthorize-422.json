@@ -1,0 +1,24 @@
+{
+  "op": "authorizations.reauthorize",
+  "method": "POST",
+  "path": "/v2/payments/authorizations/6BY23435E1186474T/reauthorize",
+  "status": 422,
+  "debugId": "ca56b0f7aeebd",
+  "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "ca56b0f7aeebd",
+    "details": [
+      {
+        "issue": "REAUTHORIZATION_TOO_SOON",
+        "description": "A reauthorization is only allowed once from Day 4 to Day 29 since the date of the original authorization."
+      }
+    ],
+    "links": [
+      {
+        "href": "https://developer.paypal.com/docs/api/payments/v2/#error-REAUTHORIZATION_TOO_SOON",
+        "rel": "information_link"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 import type { Cents, FeeClock, Item, MarketRules } from './contract.ts';
 import { DEFAULT_RULES } from './contract.ts';
-import { bidLimitCents, formatUsd, platformFeeCents } from './money.ts';
+import { PAYPAL_PRICING, PROCESSING_LABEL, bidLimitCents, formatUsd, platformFeeCents, processingReserveCents } from './money.ts';
 
 /**
  * Estimate formulas from docs/AI-SERVICES.md sections 4.3 and 4.4. Every
@@ -94,18 +94,29 @@ export function shippingNumbers(item: Pick<Item, 'weightGrams' | 'retailCents' |
   return { parcelGrams, shippingCents, dutyCents, budgetCents, service: SHIPPING_SERVICE, days: { ...SHIPPING_DAYS } };
 }
 
+/** "3.49% + $0.49 per charge, $0.25 per payout": the processing schedule in words (D-105). */
+export function processingScheduleText(): string {
+  const p = PAYPAL_PRICING;
+  return `${p.captureBps / 100}% + ${formatUsd(p.captureFixedCents, { exact: true })} per charge, ${formatUsd(p.payoutItemCents, { exact: true })} per payout`;
+}
+
 /** The sentences the bid form must show (docs/DOMAIN.md section 9), with the numbers filled in. */
 export function bidDisclosures(
   b: { qty: number; retailCapCents: Cents; maxFeeCents: Cents; shippingBudgetCents: Cents; mode: 'local' | 'ship' },
   rules: Pick<MarketRules, 'platformFeeBps'> = DEFAULT_RULES,
 ): string[] {
-  const limit = formatUsd(bidLimitCents(b), { exact: true });
+  const limit = formatUsd(bidLimitCents(b, b.mode), { exact: true });
+  const reserve = formatUsd(processingReserveCents(b, b.mode), { exact: true });
   const pct = `${rules.platformFeeBps / 100}%`;
   const first =
     b.mode === 'ship'
-      ? `PayPal holds up to ${limit}. You pay the receipt price, the matched fee and the actual shipping, never more than this. The rest is released.`
-      : `PayPal holds up to ${limit}. You pay the receipt price and the matched fee, never more than this. The rest is released.`;
-  return [first, `HoldMySpot keeps ${pct} of the queue fee. Shop price and shipping are passed through at cost.`];
+      ? `PayPal holds up to ${limit}. You pay the receipt price, the matched fee, the actual shipping and processing at cost, never more than this. The rest is released.`
+      : `PayPal holds up to ${limit}. You pay the receipt price, the matched fee and processing at cost, never more than this. The rest is released.`;
+  return [
+    first,
+    `HoldMySpot keeps ${pct} of the queue fee. Shop price${b.mode === 'ship' ? ', shipping' : ''} and processing are passed through at cost.`,
+    `${PROCESSING_LABEL}: up to ${reserve}, what taking your payment and paying the queuer costs (${processingScheduleText()}). HoldMySpot makes nothing on it.`,
+  ];
 }
 
 /** The platform fee line of a quote. */

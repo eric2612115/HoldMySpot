@@ -11,7 +11,8 @@
     "typecheck": "tsc -b",
     "test": "node --test \"src/**/*.test.ts\"",
     "shots": "node scripts/shots.mjs",
-    "shots:live": "node scripts/shots-live.mjs"
+    "shots:live": "node scripts/shots-live.mjs",
+    "licence:check": "node scripts/licence-check.mjs"
   },
   "engines": {
     "node": ">=22.18.0"

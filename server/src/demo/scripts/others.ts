@@ -1,4 +1,4 @@
-import { DAY_MS, DEMO_TIME_ZONE, HERO, findShop } from '@holdmyspot/shared';
+import { DAY_MS, DEMO_TIME_ZONE, HERO, findShop, formatUsd } from '@holdmyspot/shared';
 import { checkIn } from '../../app/asks.ts';
 import { authorizeBid, claimBid, createBid, quoteBid } from '../../app/bids.ts';
 import { handover, markBought, submitProof } from '../../app/jobs.ts';
@@ -11,7 +11,8 @@ const petal = findShop('petal-crumb-bakery')!;
 export const localErrandScript: DemoScript = {
   id: 'local-errand',
   title: 'Shortcake errand in New York',
-  description: 'Jun asks for a shortcake; Dana takes it at $9, checks in, buys at $38.00 and hands it over with Jun\'s code. One capture of $47.00; Dana is paid $46.10.',
+  description:
+    "Jun asks for a shortcake; Dana takes it at $9, checks in, buys at $38.00 and hands it over with Jun's code. One capture of $49.47 ($47.00 plus $2.47 processing at cost); Dana is paid $46.10.",
   startsAt: '2026-11-12T09:30:00-05:00',
   timeZone: 'America/New_York',
   speed: 60,
@@ -94,11 +95,15 @@ export const localErrandScript: DemoScript = {
     {
       at: '10:30',
       kind: 'job.handover',
-      label: "Handover with Jun's code: one capture of $47.00",
+      label: "Handover with Jun's code: one capture of $49.47",
       async run(ctx) {
         const job = ctx.job('dana', 'jun');
         await handover(ctx.app, ctx.user('dana'), job.id, job.handoverCode ?? '');
-        ctx.cue({ name: 'show_ledger', target: 'jun', text: 'Held $49.00. Charged $47.00. Dana paid $46.10.' });
+        // Built from the ledger: held $51.54, charged $49.47, Dana paid $46.10.
+        const hold = ctx.app.store.holds.must(ctx.app.store.bids.must(ctx.ref('junBid')).holdId!);
+        const paid = ctx.app.store.payouts.where('job_id = ?', job.id).reduce((s, p) => s + p.amount.cents, 0);
+        const usd = (c: number) => formatUsd(c, { exact: true });
+        ctx.cue({ name: 'show_ledger', target: 'jun', text: `Held ${usd(hold.amount.cents)}. Charged ${usd(hold.capturedCents)}. Dana paid ${usd(paid)}.` });
       },
     },
   ],

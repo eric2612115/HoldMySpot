@@ -18,6 +18,8 @@ import type {
   Job,
   MarketMs,
   MarketRules,
+  OpsAgentTurnRequest,
+  OpsAgentTurnResponse,
   PurchaseVerdict,
   ShippingEstimate,
   Shop,
@@ -156,6 +158,8 @@ export interface AiPort {
   dHash?(bytes: Uint8Array, contentType?: string): Promise<string | null>;
   /** Optional: one run of the bidding agent for one bid (docs/AI-SERVICES.md 4.5). The core schedules runs and applies decisions. */
   biddingAgent?(input: AgentRunInput): Promise<AgentRunResult>;
+  /** Optional: one model turn for an ops console agent (D-100); throws when no live model can answer. */
+  opsAgentTurn?(input: OpsAgentTurnRequest): Promise<OpsAgentTurnResponse>;
 }
 
 export interface AiPortOptions {

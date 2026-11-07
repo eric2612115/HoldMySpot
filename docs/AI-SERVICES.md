@@ -16,20 +16,14 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 |---|---|---|---|
 | `anthropic` | `claude-opus-5-5` (`HMS_ANTHROPIC_MODEL`) | `ANTHROPIC_API_KEY` | Official SDK `@anthropic-ai/sdk` |
 | `muse` | `muse-spark-1.3` (`HMS_MUSE_MODEL`) | `MODEL_API_KEY` | `POST https://api.meta.ai/v1/chat/completions` (`HMS_MUSE_URL`), Bearer key |
+| `openai` | `gpt-6.1-sol` (`HMS_AI_MODEL`) | `OPENAI_API_KEY` | Any OpenAI-compatible Chat Completions endpoint: `POST <HMS_AI_BASE_URL>/chat/completions` (default `https://api.openai.com/v1`), Bearer key. `MODEL_API_KEY` is sent only to Meta's own host, so it serves this provider only when `HMS_AI_BASE_URL` points there. Not yet called with a real OpenAI key. |
 | `fake` | `rules-v1` | none | In process |
 
-**Where keys are read.** Only these names, only from: the process environment, `~/.config/paypal-hackathon/ai.env` (written by the owner's secrets script), and any extra dotenv files listed in `HMS_AI_KEY_FILES` (comma-separated; from those files the loader reads `ANTHROPIC_API_KEY` and `MODEL_API_KEY` and ignores every other line). Values are never logged, printed, returned by the API or written to fixtures. At boot the server logs one line built from `AiKeyReport`, for example: `AI: anthropic key absent, muse key present (ai.env); using muse muse-spark-1.3, mode live`.
+**Where keys are read.** Only these names, only from: the process environment, `ai.env` in the secrets folder (`$HMS_SECRETS_DIR`, default `~/.config/paypal-hackathon/`), and any extra dotenv files listed in `HMS_AI_KEY_FILES` (comma-separated; from those files the loader reads `ANTHROPIC_API_KEY`, `MODEL_API_KEY` and `OPENAI_API_KEY` and ignores every other line; `path#NAME` narrows a file to one name). Values are never logged, printed, returned by the API or written to fixtures. At boot the server logs one line built from `AiKeyReport`, for example: `AI: anthropic key absent, muse key present (ai.env); using muse muse-spark-1.3, mode live`.
 
-**Default:** `HMS_AI_PROVIDER=auto` picks `anthropic` when its key is present, else `muse`, else `fake`. `HMS_AI_MODE` defaults to `replay` in fake mode (so fake mode makes no network calls; without a fixture it falls back to `fake`) and to `live` in sandbox mode; it is forced to `fake` when the provider is `fake`. Setting `HMS_AI_MODE=live` in fake mode is allowed on purpose (live AI with simulated PayPal) and is the only way fake mode touches the network.
+**Default:** `HMS_AI_PROVIDER=auto` picks `anthropic` when its key is present, else `muse`, else `openai` (with its own `OPENAI_API_KEY`), else `fake`. `HMS_AI_MODE` defaults to `replay` in fake mode (so fake mode makes no network calls; without a fixture it falls back to `fake`) and to `live` in sandbox mode; it is forced to `fake` when the provider is `fake`. Setting `HMS_AI_MODE=live` in fake mode is allowed on purpose (live AI with simulated PayPal) and is the only way fake mode touches the network.
 
-**What exists on this machine (checked 2026-11-07 by name only, values never read into the session):**
-
-| Key | Found |
-|---|---|
-| `ANTHROPIC_API_KEY` | Not set in the shell environment. The name exists in `Paypal/backend/.env` with an empty value. `~/.config/paypal-hackathon/ai.env` does not exist yet (the secrets script writes it only if the owner types an Anthropic key). |
-| `MODEL_API_KEY` | Present, non-empty, in `<local .env outside the repo>` (Muse Spark). |
-
-Since the v2 pass (owner approved Meta's model for this entry), the git-ignored `server/.env.local` sets `HMS_AI_KEY_FILES=<file>#MODEL_API_KEY`: the `#MODEL_API_KEY` suffix makes the loader read that one name from the file and nothing else, at run time, and the key is never printed or logged (startup says only "muse key present"). `auto` therefore resolves to `muse`. `server/.env.local` is read by `server/src/localenv.ts` and may set `HMS_*` names only; the shell environment wins over it. Without the file the server falls back to the rules-only fake, as before.
+**A key kept in another dotenv file:** set `HMS_AI_KEY_FILES=<file>#MODEL_API_KEY` in the git-ignored `server/.env.local`. The `#MODEL_API_KEY` suffix makes the loader read that one name from the file and nothing else, at run time, and the key is never printed or logged (startup says only "muse key present"). `auto` then resolves to `muse`. `server/.env.local` is read by `server/src/localenv.ts` and may set `HMS_*` names only; the shell environment wins over it. Without the file the server falls back to the rules-only fake, as before.
 
 ## 3. Modes and fixtures
 
@@ -77,7 +71,7 @@ Since the v2 pass (owner approved Meta's model for this entry), the git-ignored 
 | `generator_metadata` | soft | No image-generator metadata (C2PA or EXIF software) |
 
   Any hard failure: `failed`. Any soft failure: `needs_review` (ops decides). Otherwise `passed`.
-- **Amounts:** retail = sum of matching lines in US cents (a receipt in another currency would be converted with `localToUsdCents` at the job's locked rate; no seeded shop needs it); capture = `receiptCapture(caps, retail)`.
+- **Amounts:** retail = sum of matching lines in US cents (a receipt in another currency would be converted with `localToUsdCents` at the job's locked rate; no seeded shop needs it); capture = `receiptCapture(caps, retail, mode)`: retail after the cap, the matched fee and processing at cost (D-105). Code computes all of it; the model only reads the lines.
 - **Effect:** passed moves the job to `verified` and triggers the capture (ship) or unlocks the handover (local). Failed: job `failed` with `proof_rejected`, nothing captured, quantity re-offered.
 
 ### 4.3 Fee and ETA estimator
@@ -96,7 +90,7 @@ Since the v2 pass (owner approved Meta's model for this entry), the git-ignored 
 ### 4.5 Bidding agent (Best Use of Agentic Commerce)
 
 - **Mandate:** a bid with `agent: { goal }`, for example "2 Lucky Cat plush by Thursday noon San Francisco time, as cheap as possible". The PayPal hold is the mandate: the requester approves once, for the limit.
-- **Ceiling:** the most the agent may set as max fee = floor((limit - shipping budget) / qty) - retail cap. The server enforces it on `PATCH /api/bids/:bidId`; PayPal holds only the limit.
+- **Ceiling:** the most the agent may set as max fee: the highest fee whose worst case, qty x (retail cap + fee) + shipping budget + the processing reserve (`bidLimitCents`, D-105), still fits in the hold (`maxFeeWithinLimitCents`). The server enforces it on `PATCH /api/bids/:bidId`; PayPal holds only the limit.
 - **Tools** (ours, run inside the server with these checks): `get_book` (best ask fee now, next clock step and price, asks' ETAs, depth, my position), `get_fee_estimate`, `set_max_fee { maxFeeCents, reason }`, `reduce_qty { qty, reason }`, `cancel_bid { reason }`, `keep { reason }`. The agent cannot capture, pay out, see PayPal ids or create holds.
 - **Runs:** at creation, every 15 market minutes, when a compatible ask appears or a clock step brings an ask near its max (debounced 1 minute), and 60 and 15 minutes before the deadline. At most 4 tool steps per run, 30-second timeout; on any failure it keeps the current max and logs a note.
 - **Policy (prompt):** fill before the deadline at the lowest fee; wait when a checked-in clock will step to the current max soon; raise gradually as the deadline nears and nothing is in reach; cancel only when sold out or the goal cannot be met. Every action is logged as an `AgentAction` with one plain sentence, shown on the bid screen and the ops board.
@@ -145,7 +139,9 @@ When a job fails and its quantity is re-offered, one sentence for the board, for
 - No `temperature`, `top_p` or `top_k` (rejected).
 - Bidding agent: tool use with `strict: true` tool schemas and `tool_choice: auto`; the SDK's tool runner or a manual loop capped at 4 steps.
 
-**Muse Spark** (from the owner's earlier server code): Chat Completions body with `model`, `messages` (images as `image_url` data URLs), `response_format: { type: "json_schema", json_schema: { name, schema } }` and `reasoning_effort`. Tool calling through `tools` is not proven in our code (**probe**); if it is not supported, the agent runs in decision mode: one JSON call per run returns `{ action, maxFeeCents, qty, reason }` and the server applies it through the same checks.
+**Muse Spark** (Meta's Chat Completions endpoint, a preset of the OpenAI-compatible client in `server/src/ai/openai.ts`): Chat Completions body with `model`, `messages` (images as `image_url` data URLs), `response_format: { type: "json_schema", json_schema: { name, schema } }` and `reasoning_effort`. Tool calling through `tools` is not proven in our code (**probe**); if it is not supported, the agent runs in decision mode: one JSON call per run returns `{ action, maxFeeCents, qty, reason }` and the server applies it through the same checks.
+
+**OpenAI-compatible (`openai`)** (`server/src/ai/openai.ts`): the same body against `HMS_AI_BASE_URL` with `HMS_AI_MODEL` and `OPENAI_API_KEY`. Our own validator checks every answer against the schema (the request does not set `strict`). A model that answers HTTP 400 to `reasoning_effort` is asked once more without it, and that client stops sending it. Instructions go as a `developer` message to api.openai.com and as a `system` message to any other host. No tool calling: the bidding agent runs in decision mode. The key goes only in the Authorization header and never into an error message.
 
 ## 7. Evaluation
 
@@ -153,7 +149,7 @@ Fixtures in `server/fixtures/proofs/` (our own rendered fictional receipts and i
 
 | Fixture | Expected |
 |---|---|
-| `paper-moon-mia-genuine`, `paper-moon-priya-genuine` | passed, retail $34.00 (captures $46.00 and $44.00) |
+| `paper-moon-mia-genuine`, `paper-moon-priya-genuine` | passed, retail $34.00 (captures $48.69 and $46.62; $46.00 and $44.00 before processing at cost, D-105) |
 | `little-lantern-2plush-genuine` | passed, 2 x $26.00 |
 | `sugar-cloud-cake-genuine`, `petal-crumb-shortcake-usd` | passed (no QR, printed name match) |
 | `paper-moon-rex-fake` | failed: shop_match, time_window, totals_add_up, duplicate_photo |
@@ -188,4 +184,4 @@ Muse Spark (`muse-spark-1.3`, owner approved), live, on the receipts re-rendered
 
 The three misses: the people-ahead count on two line photos was more than 20% low (28 for 38, 30 for 46; an estimate only, never a pass condition), and one store ID digit was misread (41580017 for 41500017) on a receipt whose QR already identifies the shop. An earlier live run on the previous renders (same day) got 21/21 verdicts and 160/164 fields.
 
-`npm test` in `server/` runs them with the rules only, plus the hero on the recorded answers (no network). `npm run ai:eval` replays them; `npm run ai:eval -- --live` runs them live against the configured provider and prints the pass rate, and `--record` also saves the answers; both spend model credits, so they run only when the owner says so.
+`npm test` in `server/` runs them with the rules only, plus the hero on the recorded answers (no network). `npm run ai:eval` replays them and its summary says where the answers came from, counted from each case's stamp: without a key, "Answers: 21 replayed from recorded muse/muse-spark-1.3 answers. No model was called in this run." (a photo without a recording would be counted as read by the rules-only reader). `npm run ai:eval -- --live` runs them live against the configured provider (`--provider auto|anthropic|muse|openai|fake`) and prints the pass rate, and `--record` also saves the answers; both spend model credits, so they run only when the owner says so. The money column checks the full capture: the fixture's shop price plus fee, grossed up for processing at cost (D-105).

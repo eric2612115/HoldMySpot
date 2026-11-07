@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { CreateOrderInput } from '@holdmyspot/shared/ports';
 import type { FakePaymentsControls, PaymentsPort } from '../../src/ports/payments.ts';
-import { createFakePayPal, parseFailures, PayPalError, type FakePayPal, type FakePayPalOptions } from '../../src/paypal/index.ts';
+import { createFakePayPal, isDuplicatePayout, parseFailures, PayPalError, type FakePayPal, type FakePayPalOptions } from '../../src/paypal/index.ts';
 import { heroOrderInput, localOrderInput } from './helpers.ts';
 
 /**
@@ -93,8 +93,9 @@ describe('fake adapter: the hero hold', () => {
     assert.equal(p1.batchId, 'FAKE-BATCH-0001');
     assert.equal(p1.batchStatus, 'PENDING');
     const b1 = await fake.getPayoutBatch(p1.batchId);
-    assert.equal(b1.batchStatus, 'SUCCESS');
-    assert.deepEqual(b1.items, [{ itemId: 'FAKE-ITEM-0001', senderItemId: 'po_0001', status: 'SUCCESS', amountCents: 2_160 }]);
+    // Like the sandbox on 11-07: the item is paid while the batch still reads PROCESSING.
+    assert.equal(b1.batchStatus, 'PROCESSING');
+    assert.deepEqual(b1.items, [{ itemId: 'FAKE-ITEM-0001', senderItemId: 'po_0001', status: 'SUCCESS', amountCents: 2_160, feeCents: 25 }]);
     const p2 = await fake.createPayout({
       senderBatchId: 'payout:job_0001:reimb',
       emailSubject: 'You have a payout from HoldMySpot',
@@ -184,7 +185,8 @@ describe('fake adapter: PayPal capture rules', () => {
     const { auth } = await hold(fake);
     await fake.captureAuthorization(auth.authorizationId, cap('c1', 1_000, false, 'HMS-job_0003-R'));
     const err = await rejectsWith(fake.captureAuthorization(auth.authorizationId, cap('c2', 1_000, false, 'HMS-job_0003-R')));
-    assert.equal(err.issue, 'DUPLICATE_INVOICE_ID');
+    assert.equal(err.issue, 'DUPLICATE_TRANSACTION', "PayPal's issue name on 11-07");
+    assert.equal(err.httpStatus, 422);
   });
 
   it('refunds up to what was captured', async () => {
@@ -217,7 +219,7 @@ describe('fake adapter: honor period, validity and renewals on the market clock'
 
     advance(1 * DAY);
     const early = await rejectsWith(fake.reauthorize(auth.authorizationId, { requestId: 'reauth:hold_0001:1', amountCents: 11_500 }));
-    assert.equal(early.issue, 'FAKE_HONOR_PERIOD_NOT_OVER');
+    assert.equal(early.issue, 'REAUTHORIZATION_TOO_SOON', "PayPal's issue name on 11-07");
 
     advance(2 * DAY + 60_000); // day 4 starts after three full days
     const r1 = await fake.reauthorize(auth.authorizationId, { requestId: 'reauth:hold_0001:2', amountCents: 11_500 });
@@ -331,22 +333,59 @@ describe('fake adapter: payouts', () => {
     assert.equal(read.receiver, 'later@unknown-receiver.invalid');
   });
 
-  it('the same sender_batch_id returns the first batch; HMS_FAKE_FAIL payout:unclaimed holds a known receiver', async () => {
+  it('refuses the same sender_batch_id again as a duplicate, like the sandbox; HMS_FAKE_FAIL payout:unclaimed holds a known receiver', async () => {
     const { fake } = setup({ failures: 'payout:unclaimed' });
     const input = { senderBatchId: 'payout:job_0001:fee', emailSubject: 's', emailMessage: 'm', items: [{ receiverEmail: 'wei@holdmyspot.test', amountCents: 2_160, note: 'n', senderItemId: 'po_0001' }] };
     const a = await fake.createPayout(input);
-    const b = await fake.createPayout(input);
-    assert.equal(b.batchId, a.batchId);
+    // 11-07: PayPal refused a resend with the same sender_batch_id and the same PayPal-Request-Id (HTTP 400).
+    const dup = await rejectsWith(fake.createPayout(input));
+    assert.ok(isDuplicatePayout(dup));
+    assert.deepEqual([dup.httpStatus, dup.paypalName, dup.code], [400, 'USER_BUSINESS_ERROR', 'PAYPAL_ERROR']);
+    assert.equal(fake.emulator.exportState().batches[a.batchId]?.itemIds.length, 1, 'nothing was paid twice');
     assert.equal((await fake.getPayoutBatch(a.batchId)).items[0]?.status, 'UNCLAIMED');
   });
 });
 
 describe('fake adapter: disputes', () => {
-  it('lists, takes evidence, then settles in the seller favour (sandbox adjudicate)', async () => {
+  it("opens a buyer's claim the way the sandbox did on 11-07: under PayPal's review, money held, adjudicate refused", async () => {
     const { fake, now } = setup();
     const { auth } = await hold(fake);
     const c = await fake.captureAuthorization(auth.authorizationId, cap('c1', 7_601, false, 'HMS-job_0001-R'));
     const id = fake.openDispute(c.captureId);
+    // The list item names no invoice: the client reads the dispute itself to keep only ours.
+    const listed = await fake.listDisputes(now() - 60_000);
+    assert.deepEqual(
+      listed.map((d) => [d.disputeId, d.status, d.invoiceIds[0], d.captureIds[0], d.amountCents]),
+      [[id, 'UNDER_REVIEW', 'HMS-job_0001-R', c.captureId, 7_601]],
+    );
+    const refused = await rejectsWith(fake.adjudicate(id, 'SELLER_FAVOR'));
+    assert.deepEqual([refused.httpStatus, refused.paypalName, refused.issue], [400, 'INVALID_REQUEST', 'ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE']);
+    assert.equal((await rejectsWith(fake.adjudicate(id, 'BUYER_FAVOR'))).issue, 'ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE');
+    assert.equal((await fake.getDispute(id)).status, 'UNDER_REVIEW');
+  });
+
+  it('offers adjudicate about 20 minutes after the claim opened; PayPal may apply it later (disputeSettleMs)', async () => {
+    const { fake, advance } = setup({ disputeSettleMs: 5 * 60_000 });
+    const { auth } = await hold(fake);
+    const c = await fake.captureAuthorization(auth.authorizationId, cap('c1', 7_601, false, 'HMS-job_0001-R'));
+    const id = fake.openDispute(c.captureId);
+    advance(13 * 60_000);
+    assert.equal((await rejectsWith(fake.adjudicate(id, 'SELLER_FAVOR'))).issue, 'ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE', 'refused 13 minutes in, as on 11-07');
+    advance(10 * 60_000);
+    const accepted = await fake.adjudicate(id, 'SELLER_FAVOR');
+    assert.equal(accepted.status, 'UNDER_REVIEW', 'accepted with 200, not resolved yet');
+    assert.equal((await rejectsWith(fake.adjudicate(id, 'SELLER_FAVOR'))).issue, 'ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE', 'no second adjudication');
+    advance(5 * 60_000);
+    const settled = await fake.getDispute(id);
+    assert.deepEqual([settled.status, settled.outcome], ['RESOLVED', 'RESOLVED_SELLER_FAVOUR']);
+    assert.equal((await fake.getCapture(c.captureId)).status, 'COMPLETED', 'the seller keeps the money');
+  });
+
+  it('lists, takes evidence, then settles in the seller favour (documented inquiry flow, sandbox adjudicate)', async () => {
+    const { fake, now, advance } = setup();
+    const { auth } = await hold(fake);
+    const c = await fake.captureAuthorization(auth.authorizationId, cap('c1', 7_601, false, 'HMS-job_0001-R'));
+    const id = fake.openDispute(c.captureId, { stage: 'INQUIRY' });
     assert.equal(id, 'FAKE-DISPUTE-0001');
     const listed = await fake.listDisputes(now() - 60_000);
     assert.deepEqual(
@@ -357,22 +396,26 @@ describe('fake adapter: disputes', () => {
     assert.equal(tooSoon.issue, 'FAKE_DISPUTE_NOT_UNDER_REVIEW');
     const reviewed = await fake.provideEvidence(id, { note: 'Receipt verified; tracked parcel.', files: [{ name: 'receipt.png', contentType: 'image/png', bytes: new Uint8Array([137, 80, 78, 71]) }] });
     assert.equal(reviewed.status, 'UNDER_REVIEW');
-    const settled = await fake.adjudicate(id, 'SELLER_FAVOR');
+    assert.equal((await fake.adjudicate(id, 'SELLER_FAVOR')).status, 'UNDER_REVIEW', 'PayPal answers 200 and resolves later');
+    advance(3 * 60_000);
+    const settled = await fake.getDispute(id);
     assert.equal(settled.status, 'RESOLVED');
     assert.equal(settled.outcome, 'RESOLVED_SELLER_FAVOUR');
     assert.equal((await fake.getCapture(c.captureId)).status, 'COMPLETED', 'seller keeps the money');
   });
 
   it('escalates then settles for the buyer, or accepts the claim; both refund the buyer', async () => {
-    const { fake } = setup();
+    const { fake, advance } = setup();
     const { auth } = await hold(fake);
     const c = await fake.captureAuthorization(auth.authorizationId, cap('c1', 3_000, false, 'HMS-job_0001-R'));
-    const d1 = fake.openDispute(c.captureId, { amountCents: 1_000 });
+    const d1 = fake.openDispute(c.captureId, { amountCents: 1_000, stage: 'INQUIRY' });
     assert.equal((await fake.escalateDispute(d1, 'Escalating to a claim.')).status, 'UNDER_REVIEW');
-    const buyer = await fake.adjudicate(d1, 'BUYER_FAVOR');
+    await fake.adjudicate(d1, 'BUYER_FAVOR');
+    advance(3 * 60_000);
+    const buyer = await fake.getDispute(d1);
     assert.equal(buyer.outcome, 'RESOLVED_BUYER_FAVOUR');
     assert.equal((await fake.getCapture(c.captureId)).status, 'PARTIALLY_REFUNDED');
-    const d2 = fake.openDispute(c.captureId);
+    const d2 = fake.openDispute(c.captureId, { stage: 'INQUIRY' });
     const accepted = await fake.acceptClaim(d2, 'Refunding the rest.');
     assert.equal(accepted.status, 'RESOLVED');
     assert.equal(accepted.outcome, 'ACCEPTED');

@@ -22,6 +22,7 @@ export interface CaseExpectation {
   hard: ProofCheckCode[];
   soft: ProofCheckCode[];
   retailCents?: number;
+  /** Shop price after the cap plus the matched fee; PayPal captures it with processing at cost on top (D-105). */
   captureCents?: number;
   peopleAhead?: number;
 }

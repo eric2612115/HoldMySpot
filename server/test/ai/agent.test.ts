@@ -16,12 +16,18 @@ function run(bid: BidTask, now: number, asks: BookAsk[] = [], extra: Partial<Age
   return { bid, item, shop, now, book: { status: 'open', bids: [], asks, askNames: { 'ask-wei': 'Wei' } }, ...extra };
 }
 
+/** The hold a 2-plush request needs at this max fee, processing included (D-105). */
+const holdAt = (maxFeeCents: number) => bidLimitCents({ qty: 2, retailCapCents: 2800, maxFeeCents, shippingBudgetCents: 3500 });
+
 const earlier: AgentAction = { id: 'a1', bidId: 'bid-mia', at: T0, kind: 'lower_fee', fromFeeCents: 1200, toFeeCents: 900, reason: 'Starting low.', ai: { provider: 'fake', model: 'rules-v1', mode: 'fake', latencyMs: 0 } };
 
 describe('mandate', () => {
-  it('derives the ceiling from the hold: floor((limit - shipping) / qty) - retail cap', () => {
+  it('derives the ceiling from the hold: the highest fee whose worst case, processing included, fits', () => {
     assert.equal(agentCeilingCents(mia()), 1200);
-    assert.equal(agentCeilingCents(mia({ limitCents: 11_900 })), 1400);
+    assert.equal(holdAt(1400), 12_636);
+    assert.equal(agentCeilingCents(mia({ limitCents: holdAt(1400) })), 1400);
+    // The old formula, floor((limit - shipping) / qty) - retail cap, would allow $14.00 on $119.00; processing leaves $10.44.
+    assert.equal(agentCeilingCents(mia({ limitCents: 11_900 })), 1044);
   });
 
   it('reads the urgency of a goal', () => {
@@ -41,7 +47,7 @@ describe('written policy (rules-only mode)', () => {
   });
 
   it('raises step by step as the deadline nears', async () => {
-    const r = await runAgent(run(mia({ maxFeeCents: 900, limitCents: 11_500 }), T0 + 105 * MIN, [], { history: [earlier] }), null);
+    const r = await runAgent(run(mia({ maxFeeCents: 900, limitCents: holdAt(1200) }), T0 + 105 * MIN, [], { history: [earlier] }), null);
     assert.deepEqual([r.decision.kind, r.decision.toFeeCents], ['raise_fee', 1000]);
     assert.match(r.decision.reason, /No offer is in reach yet/);
   });
@@ -58,7 +64,7 @@ describe('written policy (rules-only mode)', () => {
   });
 
   it('takes an offer within the ceiling when the deadline is close', async () => {
-    const bid = mia({ limitCents: 11_900, maxFeeCents: 1200 });
+    const bid = mia({ limitCents: holdAt(1400), maxFeeCents: 1200 });
     const r = await runAgent(run(bid, bid.deadlineAt - 40 * MIN, [ask('ask-wei', { feeCents: 1350 })], { history: [earlier] }), null);
     assert.deepEqual([r.decision.kind, r.decision.toFeeCents], ['raise_fee', 1350]);
   });

@@ -67,6 +67,8 @@ export interface DepthLevel {
   feeCents: Cents;
   qty: number;
   count: number;
+  /** Server books: what PayPal still holds for the requests at this fee. */
+  heldCents?: Cents;
 }
 
 export interface TaskPoint {

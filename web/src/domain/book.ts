@@ -1,4 +1,4 @@
-import { askFeeAt, matchBook, type BookAsk, type BookBid, type Fill } from '@holdmyspot/shared';
+import { askFeeAt, bidLimitCents, matchBook, type BookAsk, type BookBid, type Fill } from '@holdmyspot/shared';
 import { formatUsd, type Cents } from './money';
 import type { Bid, DepthLevel, FeeOffer, ItemKind, TaskPoint } from './types';
 
@@ -74,10 +74,11 @@ export function supplyLabel(n: number): string {
 /**
  * What PayPal holds for a request: per unit the shop price cap (the shop price
  * plus 5%, rounded up to a dollar) plus the max fee, plus a shipping budget
- * for a shipped request.
+ * for a shipped request, plus the most processing and payouts it can cost at
+ * cost (the shared `bidLimitCents`, the same number the server holds; D-105).
  */
 export function holdFor(point: Pick<TaskPoint, 'retailCents'>, maxFeeCents: Cents, qty = 1, shippingBudgetCents = 0): Cents {
-  return qty * (retailCapFor(point.retailCents) + maxFeeCents) + shippingBudgetCents;
+  return bidLimitCents({ qty, retailCapCents: retailCapFor(point.retailCents), maxFeeCents, shippingBudgetCents });
 }
 
 /** The suggested retail cap per unit: shop price plus 5%, rounded up to a whole dollar (same rule as the server's quote). */

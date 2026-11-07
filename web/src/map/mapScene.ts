@@ -2,8 +2,8 @@ import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapLibreMap 
 import * as THREE from 'three';
 import type { CityConfig } from '../config/cities';
 import type { TaskPoint } from '../domain/types';
-import { Chibi } from '../three/characters/chibi';
-import { castSpec, QUEUER_VARIANTS } from '../three/characters/presets';
+import { Chibi, type ChibiSpec } from '../three/characters/chibi';
+import { castSpec, crowdSpec, lookOfName, lookOfUser, specOf, userOfName } from '../three/characters/presets';
 import { PathDots, TapMarker } from '../three/effects/effects';
 import { TaskBeacon } from '../three/items/beacon';
 import { createOutlineSettings } from '../three/materials/toon';
@@ -25,7 +25,8 @@ const WALKABLE_PATHS = new Set(['pedestrian', 'path', 'living_street']);
  */
 const LINE_START = 13;
 const LINE_START_NEAR = 26;
-const LINE_GAP = 7.5;
+/** A head is about 10 m wide at map scale; this gap keeps every head, ear and tail in its own outline. */
+const LINE_GAP = 10.5;
 const LINE_SIDE = 6;
 /** Items stand on the sidewalk next to their line, so people walking the street pass beside them. */
 const SHOP_SIDE = 6.5;
@@ -107,6 +108,8 @@ interface Npc {
   lineIndex?: number;
   /** Where the walker is drawn (eased, so stepping aside is a glide, not a jump). */
   shown?: Vec2;
+  /** The demo user this character is (people in a line), so the server's walker for them reuses it. */
+  userId?: string;
 }
 
 interface QueueLine {
@@ -362,6 +365,8 @@ export class MapScene implements CustomLayerInterface {
   private readonly serverWalkers = new Map<string, Npc>();
   /** Server walkers who reached a shop's line, by task point, in the order they arrived. */
   private readonly lineWalkers = new Map<string, string[]>();
+  /** The walker carrying an ask, and the demo user whose look it wears (null for a crowd name). */
+  private tagWalker: { npc: Npc; userId: string | null } | null = null;
 
   /**
    * Follows the server's walking queuers (queuer.moved: synthetic demo walks).
@@ -386,6 +391,16 @@ export class MapScene implements CustomLayerInterface {
     if (!graph) return;
     const raw = this.frame.toLocal(lngLat[0], lngLat[1]);
     let npc = this.serverWalkers.get(userId);
+    // Someone already standing in a line (from the book) becomes the server's walker: one character per person.
+    if (!npc) {
+      const inLine = this.npcs.find((n) => n.mode === 'queue' && n.userId === userId);
+      if (inLine) {
+        inLine.mode = 'server';
+        inLine.speed = 9;
+        this.serverWalkers.set(userId, inLine);
+        npc = inLine;
+      }
+    }
     // Only the neighbourhood this view has streets for.
     if (Math.hypot(raw.x - graph.center.x, raw.z - graph.center.z) > GRAPH_RADIUS) {
       if (npc) npc.chibi.root.visible = false;
@@ -407,8 +422,9 @@ export class MapScene implements CustomLayerInterface {
       lineDir = { x: -b.line.dir.x, z: -b.line.dir.z };
     }
     if (!npc) {
-      const variant = QUEUER_VARIANTS[(this.serverWalkers.size + 2) % QUEUER_VARIANTS.length];
-      const chibi = new Chibi({ ...castSpec('queuer', 70 + this.serverWalkers.size), ...variant, palette: { ...variant.palette } }, this.outline);
+      // Each demo person keeps their own look (human or animal-person, presets.ts).
+      this.unmaskTagWalker(userId);
+      const chibi = new Chibi(specOf(lookOfUser(userId), userId, 70 + this.serverWalkers.size), this.outline);
       chibi.root.scale.setScalar(CHAR_SCALE * 0.92);
       chibi.root.position.set(goal.x, 0, goal.z);
       this.scene.add(chibi.root);
@@ -818,15 +834,14 @@ export class MapScene implements CustomLayerInterface {
     const { line } = placed;
     const names = p.queue.queuers.slice(0, 3);
     names.forEach((name, k) => {
-      const variant = QUEUER_VARIANTS[(index + k) % QUEUER_VARIANTS.length];
-      const spec = { ...castSpec('queuer', 10 + index * 3 + k), ...variant, palette: { ...variant.palette }, name };
-      const chibi = new Chibi(spec, this.outline);
+      // Demo queuers in line wear their own look; anyone else gets the crowd look of their name.
+      const chibi = new Chibi(specOf(lookOfName(name), name, 10 + index * 3 + k), this.outline);
       chibi.root.scale.setScalar(CHAR_SCALE * 0.92);
       const npcPos = this.lineSpot(line, k);
       chibi.root.position.set(npcPos.x, 0, npcPos.z);
       chibi.faceTowards(-line.dir.x, -line.dir.z, true);
       this.scene.add(chibi.root);
-      this.npcs.push({ id: `${p.id}:${name}`, chibi, pos: npcPos, path: null, pathIdx: 0, home: npcPos, wait: 1e9, mode: 'queue', speed: 0, pointId: p.id });
+      this.npcs.push({ id: `${p.id}:${name}`, chibi, pos: npcPos, path: null, pathIdx: 0, home: npcPos, wait: 1e9, mode: 'queue', speed: 0, pointId: p.id, userId: userOfName(name)?.id });
     });
     line.end = this.lineSpot(line, names.length);
   }
@@ -836,7 +851,13 @@ export class MapScene implements CustomLayerInterface {
     if (!this.graph) return;
     const near = [...this.beacons.keys()].map((id) => this.pointsById.get(id)).filter((p): p is TaskPoint => !!p);
     const asks = (near.find((p) => p.offers.some((o) => !o.checkedIn)) ?? near.find((p) => p.offers.length > 0 && p.id !== near[0]?.id))?.id;
-    const looks: Array<{ role: 'passerby' | 'buyer'; tag?: string }> = [{ role: 'passerby', tag: asks }, { role: 'buyer' }];
+    // The walker with the ask is the queuer named on its tag (TaskLabels); the other is a crowd animal-person.
+    const askPoint = asks ? this.pointsById.get(asks) : undefined;
+    const asker = askPoint ? (askPoint.offers.find((o) => !o.checkedIn) ?? askPoint.offers[0])?.queuerName : undefined;
+    const looks: Array<{ spec: () => ChibiSpec; tag?: string }> = [
+      { spec: () => (asker ? specOf(lookOfName(asker), asker, 30) : castSpec('passerby', 30)), tag: asks },
+      { spec: () => crowdSpec(1, 31) },
+    ];
     const { forward, right } = bearingAxes(this.city.bearing);
     const onStreet = ([r, f]: [number, number]): Vec2 => {
       const raw = { x: this.playerPos.x + right.x * r + forward.x * f, z: this.playerPos.z + right.z * r + forward.z * f };
@@ -844,7 +865,7 @@ export class MapScene implements CustomLayerInterface {
       return snap ? { ...snap.point } : raw;
     };
     looks.forEach((look, i) => {
-      const chibi = new Chibi(castSpec(look.role, 30 + i), this.outline);
+      const chibi = new Chibi(look.spec(), this.outline);
       chibi.root.scale.setScalar(CHAR_SCALE * 0.95);
       // The queuer with an ask walks a set route back and forth, carrying the ask in
       // view; the other walker wanders the streets.
@@ -854,8 +875,31 @@ export class MapScene implements CustomLayerInterface {
       const pos = patrol ? onStreet([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]) : onStreet([-50, 140]);
       chibi.root.position.set(pos.x, 0, pos.z);
       this.scene.add(chibi.root);
-      this.npcs.push({ id: `walker-${i}`, chibi, pos, path: null, pathIdx: 0, home: pos, wait: 0.5 + i, mode: 'wander', speed: 9, tagPointId: look.tag, patrol });
+      const npc: Npc = { id: `walker-${i}`, chibi, pos, path: null, pathIdx: 0, home: pos, wait: 0.5 + i, mode: 'wander', speed: 9, tagPointId: look.tag, patrol };
+      this.npcs.push(npc);
+      if (look.tag && asker) this.tagWalker = { npc, userId: userOfName(asker)?.id ?? null };
     });
+  }
+
+  /**
+   * The walker carrying an ask wears the asking queuer's look. When the server
+   * walks that same person over (queuer.moved), the carrier changes into the
+   * generic passer-by, so nobody is on the map twice.
+   */
+  private unmaskTagWalker(userId: string) {
+    const t = this.tagWalker;
+    if (!t || t.userId !== userId) return;
+    this.tagWalker = null;
+    const old = t.npc.chibi;
+    const chibi = new Chibi(castSpec('passerby', 30), this.outline);
+    chibi.root.scale.copy(old.root.scale);
+    chibi.root.position.copy(old.root.position);
+    chibi.face(old.root.rotation.y, true);
+    chibi.walking = old.walking;
+    this.scene.remove(old.root);
+    old.dispose();
+    this.scene.add(chibi.root);
+    t.npc.chibi = chibi;
   }
 
   private decorate(p: TaskPoint, line: QueueLine) {
@@ -1189,9 +1233,9 @@ export class MapScene implements CustomLayerInterface {
     }
     for (const npc of this.npcs) {
       if (!npc.tagPointId) continue;
-      // A walker's tag shows only while the walker is on screen, right above their head.
+      // A walker's tag shows only while the walker is on screen, right above their head (or ears, or tail).
       const drawn = npc.chibi.root.position;
-      const top = this.project(drawn.x, 2.08 * CHAR_SCALE, drawn.z);
+      const top = this.project(drawn.x, (npc.chibi.top + 0.08) * npc.chibi.root.scale.y, drawn.z);
       const base = this.project(drawn.x, 0, drawn.z);
       const visible = this.onScreen(top, 16) && this.onScreen(base, 16);
       sink.place(`walker:${npc.tagPointId}`, { x: top?.x ?? 0, y: top?.y ?? 0, scale: top ? shrink(top.w) : 1, visible });

@@ -30,11 +30,15 @@ const rgbB = { r: 0, g: 0, b: 0 };
 /**
  * A soft ink shade for a colour's outline: the colour mixed (in sRGB) with a
  * deep plum, so pale skin gets a muted mauve line rather than a hot orange one.
+ * Pale colours (cream fur, white shoes) mix in more plum, up to 75%, so they
+ * keep a clear edge on the pale map (cream gets #5F566A, about 6:1).
  */
 export function inkFor(color: THREE.Color, target = new THREE.Color()): THREE.Color {
   color.getRGB(rgbA, THREE.SRGBColorSpace);
   INK.getRGB(rgbB, THREE.SRGBColorSpace);
-  const k = 0.58;
+  // Relative luminance from the linear working colour.
+  const lum = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+  const k = 0.58 + 0.17 * THREE.MathUtils.clamp((lum - 0.6) / 0.2, 0, 1);
   return target.setRGB(rgbA.r + (rgbB.r - rgbA.r) * k, rgbA.g + (rgbB.g - rgbA.g) * k, rgbA.b + (rgbB.b - rgbA.b) * k, THREE.SRGBColorSpace);
 }
 

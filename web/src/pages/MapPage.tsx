@@ -12,6 +12,7 @@ import { useMarket } from '../state/market';
 import { NEAR_CITY_METERS, usePosition } from '../state/position';
 import { clock, params } from '../state/services';
 import { BottomSheet } from '../ui/BottomSheet';
+import { OrderBookLayer, openBook } from '../ui/book';
 import { Attribution, Hint, LoadingVeil, PlayerChip, Toasts } from '../ui/Chrome';
 import { MapControls } from '../ui/MapControls';
 import { MoneyChip, MoneyPanel } from '../ui/MoneyPanel';
@@ -20,6 +21,7 @@ import { SimulatedPayPal } from '../ui/SimulatedPayPal';
 import { TaskLabels } from '../ui/TaskLabels';
 import { TaskSheet } from '../ui/TaskSheet';
 import { useNow } from '../ui/hooks';
+import { QueuerLayer, QueuerTaskSheet, useQueuerPhone } from '../ui/queuer';
 
 /** How long the first screen waits for tiles before it shows the map anyway. */
 const IDLE_TIMEOUT_MS = 9000;
@@ -47,6 +49,8 @@ export function MapPage() {
   const select = useMarket((s) => s.select);
   const toast = useMarket((s) => s.toast);
   const take = useMarket((s) => s.take);
+  // The queuer's phone (server only) shows the queuer's task card and errand (ui/queuer).
+  const queuerPhone = useQueuerPhone();
   const palette = useLook((s) => s.palette);
   const me = usePosition((s) => s.lngLat);
   const now = useNow(1000);
@@ -294,6 +298,11 @@ export function MapPage() {
           setMoneyOpen(false);
           select(id);
         }}
+        onBook={(id) => {
+          setHint(false);
+          setMoneyOpen(false);
+          openBook(id, 'label');
+        }}
       />
       <Overview map={map} active={overview && camera === 'overview'} points={points} listOpen={listOpen} onListOpen={setListOpen} onPick={pick} />
 
@@ -317,7 +326,18 @@ export function MapPage() {
       <Attribution />
 
       <BottomSheet open={!!selected} onClose={close} onHeight={onSheetHeight} label={selected ? selected.itemName : 'Task'}>
-        {selected && (
+        {selected && queuerPhone && (
+          <QueuerTaskSheet
+            point={selected}
+            reach={reach}
+            onClose={close}
+            onTaken={() => {
+              close();
+              scene?.walkToPoint(selected.id);
+            }}
+          />
+        )}
+        {selected && !queuerPhone && (
           <TaskSheet
             point={selected}
             reach={reach}
@@ -333,6 +353,8 @@ export function MapPage() {
           />
         )}
       </BottomSheet>
+      <QueuerLayer scene={scene} />
+      <OrderBookLayer />
       <SimulatedPayPal />
       <LoadingVeil state={status} step={step} onRetry={() => setAttempt((n) => n + 1)} />
     </div>

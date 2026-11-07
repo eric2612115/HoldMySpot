@@ -17,17 +17,26 @@ export function ItemIcon({ look, size = 56 }: { look: ItemLook; size?: number })
       )}
       {look === 'bunny' && (
         <g strokeLinejoin="round" strokeLinecap="round">
-          <ellipse cx="23" cy="17" rx="6" ry="14" fill="#FFF8F2" stroke="#E2C9BE" strokeWidth="2" transform="rotate(-10 23 17)" />
-          <ellipse cx="23" cy="18" rx="2.8" ry="9.5" fill="#FFB8CC" transform="rotate(-10 23 18)" />
-          <ellipse cx="41" cy="17" rx="6" ry="14" fill="#FFF8F2" stroke="#E2C9BE" strokeWidth="2" transform="rotate(12 41 17)" />
-          <ellipse cx="41" cy="18" rx="2.8" ry="9.5" fill="#FFB8CC" transform="rotate(12 41 18)" />
-          <circle cx="46" cy="9" r="3.4" fill="#FF8FB8" />
-          <ellipse cx="32" cy="40" rx="18" ry="16" fill="#FFF8F2" stroke="#E2C9BE" strokeWidth="2" />
-          <ellipse cx="25.5" cy="40" rx="2" ry="2.6" fill="#3A2B33" />
-          <ellipse cx="38.5" cy="40" rx="2" ry="2.6" fill="#3A2B33" />
+          {/* Sakura mochi: a pale pink bunny with a small cream muzzle (never a face framed like a hood), the cast's eyes and "w" mouth, a blossom on a ribbon at the neck. */}
+          <ellipse cx="23" cy="17" rx="6" ry="14" fill="#FFD9E2" stroke="#E6AFBF" strokeWidth="2" transform="rotate(-10 23 17)" />
+          <ellipse cx="23" cy="18" rx="2.8" ry="9.5" fill="#FFB0C4" transform="rotate(-10 23 18)" />
+          <ellipse cx="41" cy="17" rx="6" ry="14" fill="#FFD9E2" stroke="#E6AFBF" strokeWidth="2" transform="rotate(12 41 17)" />
+          <ellipse cx="41" cy="18" rx="2.8" ry="9.5" fill="#FFB0C4" transform="rotate(12 41 18)" />
+          <ellipse cx="32" cy="40" rx="18" ry="16" fill="#FFD9E2" stroke="#E6AFBF" strokeWidth="2" />
+          <ellipse cx="32" cy="45.3" rx="5.6" ry="3.9" fill="#FFF6EC" />
+          <ellipse cx="25.5" cy="40" rx="2" ry="2.6" fill="#2B2340" />
+          <ellipse cx="38.5" cy="40" rx="2" ry="2.6" fill="#2B2340" />
+          <circle cx="26.2" cy="38.9" r="0.8" fill="#FFFFFF" />
+          <circle cx="39.2" cy="38.9" r="0.8" fill="#FFFFFF" />
           <ellipse cx="21" cy="46" rx="3.2" ry="2" fill="#FF9DB4" opacity="0.8" />
           <ellipse cx="43" cy="46" rx="3.2" ry="2" fill="#FF9DB4" opacity="0.8" />
-          <path d="M30 45q2 2 4 0" fill="none" stroke="#7A3F52" strokeWidth="1.8" />
+          <ellipse cx="32" cy="44" rx="1.5" ry="1.1" fill="#FF8FA8" />
+          <path d="M29.6 46q1.2 1.3 2.4 0q1.2 1.3 2.4 0" fill="none" stroke="#7A3F52" strokeWidth="1.5" />
+          <path d="M19 55.5q13 6 26 0" fill="none" stroke="#7CC88A" strokeWidth="4" />
+          {[0, 1, 2, 3, 4].map((i) => (
+            <circle key={i} cx={39.5 + Math.cos((i / 5) * Math.PI * 2 - Math.PI / 2) * 2.2} cy={57.6 + Math.sin((i / 5) * Math.PI * 2 - Math.PI / 2) * 2.2} r="1.9" fill="#FF8FB8" />
+          ))}
+          <circle cx="39.5" cy="57.6" r="1.2" fill="#F7C948" />
         </g>
       )}
       {look === 'cat' && (
@@ -37,8 +46,12 @@ export function ItemIcon({ look, size = 56 }: { look: ItemLook; size?: number })
           <path d="M17 22 L19 13 L24 19 Z" fill="#FFB3C1" />
           <path d="M47 22 L45 13 L40 19 Z" fill="#FFB3C1" />
           <ellipse cx="32" cy="36" rx="19" ry="17" fill="#FFFFFF" stroke="#D9D2C4" strokeWidth="2" />
-          <path d="M23 34q2.5-3 5 0M36 34q2.5-3 5 0" fill="none" stroke="#2D2A26" strokeWidth="2.2" />
-          <path d="M29 41q3 2.5 6 0" fill="none" stroke="#2D2A26" strokeWidth="1.8" />
+          <ellipse cx="25.5" cy="34" rx="2" ry="2.6" fill="#2B2340" />
+          <ellipse cx="38.5" cy="34" rx="2" ry="2.6" fill="#2B2340" />
+          <circle cx="26.2" cy="32.9" r="0.8" fill="#FFFFFF" />
+          <circle cx="39.2" cy="32.9" r="0.8" fill="#FFFFFF" />
+          <ellipse cx="32" cy="38.6" rx="1.4" ry="1" fill="#FF9DB4" />
+          <path d="M29.6 40.6q1.2 1.3 2.4 0q1.2 1.3 2.4 0" fill="none" stroke="#7A3F52" strokeWidth="1.5" />
           <path d="M18 50q14 7 28 0" fill="none" stroke="#E5484D" strokeWidth="4" />
           <circle cx="32" cy="54" r="3.6" fill="#F7C948" stroke="#B5891A" strokeWidth="1.5" />
         </g>

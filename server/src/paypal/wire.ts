@@ -566,6 +566,7 @@ export function mapPayoutBatch(data: unknown, debugId: string | null, op = 'payo
         senderItemId: str(inner.sender_item_id) ?? '',
         status: pick(it.transaction_status, ITEM_STATUSES, 'PENDING'),
         amountCents: centsOrNull(inner.amount) ?? 0,
+        feeCents: centsOrNull(it.payout_item_fee),
       };
     }),
     debugId,

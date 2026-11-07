@@ -1,5 +1,21 @@
 import { askFeeAt, bidDisclosures, shippingNumbers } from '@holdmyspot/shared';
-import type { AppConfig, BidDetail, BookSnapshot, ClockState, Destination, EventEnvelope, HelloEvent, Item, LedgerEntry, Shop, User } from '@holdmyspot/shared';
+import type {
+  AppConfig,
+  BidDetail,
+  BidQuote,
+  BidResult,
+  BookSnapshot,
+  CheckoutFunding,
+  ClockState,
+  CreateBidResponse,
+  Destination,
+  EventEnvelope,
+  HelloEvent,
+  Item,
+  LedgerEntry,
+  Shop,
+  User,
+} from '@holdmyspot/shared';
 import type { CityConfig } from '../config/cities';
 import type { AppParams } from '../config/params';
 import { bestOffer, holdFor, units } from '../domain/book';
@@ -8,7 +24,9 @@ import { reachOf, travelText } from '../domain/earning';
 import { formatUsd, type Cents } from '../domain/money';
 import type { FeeOffer, TaskPoint } from '../domain/types';
 import { api, ApiError, eventsUrl } from '../services/api';
-import { isOpenOrder, patchOrder, setOrder, useMarket, type ActivityRow, type MarketDriver, type OrderStatus, type UserOrder } from './market';
+import { createCheckout, startBidApproval, type BidApprovalOutcome, type CheckoutService } from '../services/payments';
+import { isOpenOrder, patchOrder, setOrder, useMarket, type ActivityRow, type BidChoice, type MarketDriver, type UserOrder } from './market';
+import { orderOf } from './orderOf';
 import { playerLngLat } from './position';
 import { clock } from './services';
 
@@ -47,6 +65,8 @@ let cityId: 'sf' | 'nyc' = 'sf';
 let bootId: string | null = null;
 let shops: Shop[] = [];
 let approval: ((ok: boolean) => void) | null = null;
+/** Sandbox mode: PayPal's own buttons (JS SDK v6). Null in fake mode, which keeps the Simulated PayPal sheet. */
+let checkout: CheckoutService | null = null;
 const orderTimers = new Map<string, number>();
 
 const hhmm = (t: number, tz: string) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(t);
@@ -109,34 +129,13 @@ function applyBook(book: BookSnapshot) {
   if (before && (before.bidCount !== next.bidCount || before.offers.length !== next.offers.length)) get().bump(next.id);
 }
 
-/** The order card of one of my requests, from the bid, its hold and its jobs. */
-function orderOf(d: BidDetail): UserOrder {
-  const { bid, hold } = d;
-  const job = d.jobs.find((j) => j.status !== 'failed') ?? d.jobs.at(-1) ?? null;
-  const done = d.jobs.some((j) => ['verified', 'shipped', 'delivered'].includes(j.status));
-  const settling = d.jobs.some((j) => j.status === 'proof_submitted') || d.ledger.some((e) => e.status === 'pending');
-  let status: OrderStatus;
-  if (bid.status === 'awaiting_approval') status = 'approving';
-  else if (bid.status === 'failed') status = 'error';
-  else if (bid.status === 'cancelled' || bid.status === 'expired') status = bid.closeReason === 'sold_out' ? 'missed' : 'released';
-  else if (done && (bid.status === 'settled' || bid.status === 'matched' || bid.status === 'closing')) status = 'filled';
-  else if (settling) status = 'settling';
-  else if (job && !['failed', 'refunded'].includes(job.status)) status = 'booked';
-  else status = 'resting';
-  return {
-    pointId: bid.itemId,
-    kind: 'max',
-    status,
-    mode: bid.destination.mode,
-    maxFeeCents: bid.maxFeeCents,
-    holdId: hold?.id,
-    holdCents: hold?.amount.cents ?? bid.limitCents,
-    bidId: bid.id,
-    fillFeeCents: job?.feeCents,
-    queuerName: job?.queuerName,
-    chargedCents: hold?.capturedCents,
-    releasedCents: hold?.releasedCents,
-  };
+/** Requests whose "receipt checked" moment was already shown (or was past when the page loaded). */
+const receiptShown = new Set<string>();
+
+/** The order card of one of my requests (state/orderOf.ts), with the shop and item names for its sentences. */
+function orderFor(d: BidDetail): UserOrder {
+  const p = get().points.find((x) => x.id === d.bid.itemId);
+  return orderOf(d, p ? { shopName: p.shop.name, itemShort: p.itemShort } : undefined);
 }
 
 async function refreshOrder(bidId: string) {
@@ -146,16 +145,36 @@ async function refreshOrder(bidId: string) {
     const prev = get().orders[d.bid.itemId];
     // A newer request for the same item wins over an older one.
     if (prev?.bidId && prev.bidId !== d.bid.id && prev.bidId > d.bid.id) return;
-    const next = orderOf(d);
+    const next = orderFor(d);
+    // This screen ended that request's approval (closed window, refused order): what the server says until
+    // approval-failed lands ("awaiting approval", then "failed") does not replace the words shown for it.
+    if (endedHere.has(d.bid.id) && (next.status === 'approving' || next.status === 'error')) return;
+    // A new request is on its way to the server (no id yet): an older, finished one does not replace it.
+    if (prev && !prev.bidId && prev.status === 'approving' && isOpenOrder(next)) return;
+    // The same request as on screen (its id may not be back from POST /api/bids yet).
+    if (prev && (prev.bidId === d.bid.id || (!prev.bidId && prev.status === 'approving'))) {
+      // A request that ended in PayPal's window keeps the words shown for it: the server only says "failed".
+      if (prev.message && isOpenOrder(prev) && next.status === 'error') return;
+      // "Book now" stays "now" while PayPal approves it (the server's record does not say which button).
+      next.kind = prev.kind;
+    }
     setOrder(next);
+    const pastReceipt = next.status === 'bought' || next.status === 'filled';
     if (prev && prev.status !== next.status) {
       const p = get().points.find((x) => x.id === next.pointId);
       if (next.status === 'booked' && p) get().toast(`Matched: ${next.queuerName ?? 'a queuer'} will queue for you for a ${formatUsd(next.fillFeeCents ?? 0)} fee.`, 'money');
-      if (next.status === 'filled' && p) {
+      const who = next.queuerName ?? 'The queuer';
+      // The receipt is the win, once per request (a shipped errand's hold stays open until tracking, D-115);
+      // the last capture, which closes the hold, gets its own line.
+      if (p && pastReceipt && !receiptShown.has(d.bid.id)) {
         get().celebrate(p.id);
-        get().toast(`Receipt checked. ${next.queuerName ?? 'The queuer'} bought your ${p.itemShort}.`, 'win');
+        get().toast(`Receipt checked. ${who} bought your ${p.itemShort}.`, 'win');
+      } else if (p && next.status === 'filled') {
+        const back = next.releasedCents ?? 0;
+        get().toast(`${who} ${next.mode === 'ship' ? 'shipped' : 'handed over'} your ${p.itemShort}. ${back > 0 ? `${formatUsd(back, { exact: true })} of your hold went back to you.` : 'Nothing more is held.'}`, 'money');
       }
     }
+    if (pastReceipt) receiptShown.add(d.bid.id);
   } catch {
     /* The next event or reload brings it back. */
   }
@@ -211,12 +230,43 @@ async function loadAll() {
   queuerRows = payouts.entries.map((e) => rowOf(e, queuerName));
   publishActivity();
   useMarket.setState({ orders: {} });
+  receiptShown.clear();
   const mine = bids.filter((b) => points.some((p) => p.id === b.itemId)).sort((a, b) => (a.id < b.id ? -1 : 1));
   for (const b of mine) await refreshOrder(b.id);
 }
 
+/**
+ * Every record event of the two persona streams, for screens that follow more
+ * than the map: the queuer's errand (web/src/ui/queuer) reads its claims, jobs,
+ * proofs and payouts from here instead of opening more streams.
+ */
+export type StreamEvent = { who: 'requester' | 'queuer'; type: string; data: unknown };
+const streamListeners = new Set<(e: StreamEvent) => void>();
+const FORWARDED = ['hello', 'resync', 'claim.updated', 'ask.updated', 'match.created', 'job.updated', 'proof.updated', 'payout.updated', 'ledger.appended'];
+
+export function onStreamEvent(fn: (e: StreamEvent) => void): () => void {
+  streamListeners.add(fn);
+  return () => void streamListeners.delete(fn);
+}
+
+function forward(es: EventSource, who: StreamEvent['who']) {
+  for (const type of FORWARDED) {
+    es.addEventListener(type, (ev) => {
+      let data: unknown;
+      try {
+        data = (JSON.parse((ev as MessageEvent).data) as EventEnvelope).data;
+      } catch {
+        return;
+      }
+      for (const fn of streamListeners) fn({ who, type, data });
+    });
+  }
+}
+
 function listen() {
   const es = new EventSource(eventsUrl(requester));
+  forward(es, 'requester');
+  if (queuer === requester) forward(es, 'queuer');
   const on = (type: string, fn: (data: never) => void) =>
     es.addEventListener(type, (e) => {
       try {
@@ -251,6 +301,7 @@ function listen() {
   // The queuer persona's own stream carries their payouts (each ledger line goes only to its owner).
   if (queuer !== requester) {
     const qs = new EventSource(eventsUrl(queuer));
+    forward(qs, 'queuer');
     qs.addEventListener('ledger.appended', (ev) => {
       try {
         const e = (JSON.parse((ev as MessageEvent).data) as EventEnvelope).data as LedgerEntry;
@@ -285,27 +336,9 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
   }
   setOrder({ pointId, kind, status: 'approving', mode: destination.mode, maxFeeCents, holdCents: holdFor(p, maxFeeCents, 1, get().shippingFor(pointId)) });
   try {
-    const quote = await api('POST /api/bids/quote', {}, { shopId: p.shop.id, itemId: p.id, qty: 1, destination }, { as: requester });
-    const created = await api(
-      'POST /api/bids',
-      {},
-      {
-        shopId: p.shop.id,
-        itemId: p.id,
-        qty: 1,
-        retailCapCents: quote.suggested.retailCapCents,
-        maxFeeCents,
-        shippingBudgetCents: destination.mode === 'ship' ? quote.suggested.shippingBudgetCents : 0,
-        destination,
-        deadlineAt: clock.now() + 2 * DAY,
-        funding: 'paypal',
-        agent: null,
-      },
-      { as: requester, idempotencyKey: crypto.randomUUID() },
-    );
-    patchOrder(pointId, { bidId: created.bid.id, holdCents: created.bid.limitCents, holdId: created.hold.id });
+    const created = await createRequest(p, destination, maxFeeCents, 'paypal');
     if (created.checkout.next !== 'fake_approve') {
-      patchOrder(pointId, { status: 'error', message: 'This server runs the PayPal sandbox: approve the hold with PayPal’s own buttons (not wired in this build).' });
+      patchOrder(pointId, { status: 'error', message: 'This server runs the PayPal sandbox now: reload the page to get PayPal’s own buttons.' });
       return;
     }
     const what = destination.mode === 'ship' ? `${units(p.kind, 1)} shipped to you` : units(p.kind, 1);
@@ -314,7 +347,7 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
       checkout: {
         pointId,
         amountCents: b.limitCents,
-        description: `${what} from ${p.shop.name}: the shop price at cost, a queue fee of up to ${formatUsd(maxFeeCents)}${destination.mode === 'ship' ? ' and shipping at cost' : ''}`,
+        description: `${what} from ${p.shop.name}: the shop price at cost, a queue fee of up to ${formatUsd(maxFeeCents)}${destination.mode === 'ship' ? ', shipping at cost' : ''} and processing at cost`,
         disclosures: bidDisclosures({ qty: b.qty, retailCapCents: b.retailCapCents, maxFeeCents: b.maxFeeCents, shippingBudgetCents: b.shippingBudgetCents, mode: destination.mode }),
       },
     });
@@ -328,19 +361,220 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
       return;
     }
     await api('POST /api/fake/paypal/orders/:orderId/approve', { orderId: created.checkout.orderId }, { funding: 'paypal', outcome: 'approve' });
-    const result = await api('POST /api/bids/:bidId/authorize', { bidId: created.bid.id }, { orderId: created.checkout.orderId }, { as: requester, idempotencyKey: `auth-${created.bid.id}` });
-    get().toast(
-      result.matches.length > 0
-        ? `${formatUsd(result.hold.amount.cents, { exact: true })} held. Matched at once.`
-        : `${formatUsd(result.hold.amount.cents, { exact: true })} held. A queuer takes it when an offer reaches your ${formatUsd(maxFeeCents)} fee.`,
-      'money',
-    );
+    const result = await authorizeRequest(created.bid.id, created.checkout.orderId);
+    get().toast(heldText(result, maxFeeCents), 'money');
     await refreshOrder(created.bid.id);
   } catch (err) {
     useMarket.setState({ checkout: null });
     patchOrder(pointId, { status: 'error', message: message(err) });
     get().toast(message(err), 'info');
   }
+}
+
+/** Quote, then create the request: the server creates the PayPal order (intent AUTHORIZE) for its whole limit. */
+async function createRequest(p: TaskPoint, destination: Destination, maxFeeCents: Cents, funding: CheckoutFunding, live: () => boolean = () => true): Promise<CreateBidResponse> {
+  // Sandbox: the quote was asked for when the sheet opened (its live estimates take seconds while PayPal's window waits).
+  const quote = await (checkout ? quoteFor(p, destination) : api('POST /api/bids/quote', {}, { shopId: p.shop.id, itemId: p.id, qty: 1, destination }, { as: requester }));
+  const created = await api(
+    'POST /api/bids',
+    {},
+    {
+      shopId: p.shop.id,
+      itemId: p.id,
+      qty: 1,
+      retailCapCents: quote.suggested.retailCapCents,
+      maxFeeCents,
+      shippingBudgetCents: destination.mode === 'ship' ? quote.suggested.shippingBudgetCents : 0,
+      destination,
+      deadlineAt: clock.now() + 2 * DAY,
+      funding,
+      agent: null,
+    },
+    { as: requester, idempotencyKey: crypto.randomUUID() },
+  );
+  if (live()) patchOrder(p.id, { bidId: created.bid.id, holdCents: created.bid.limitCents, holdId: created.hold.id });
+  return created;
+}
+
+/** Sandbox: quotes asked for ahead of the click, by point (the shop price cap and the shipping budget). */
+const quotes = new Map<string, { key: string; at: number; quote: Promise<BidQuote> }>();
+const QUOTE_TTL_MS = 10 * 60_000;
+
+function quoteFor(p: TaskPoint, destination: Destination): Promise<BidQuote> {
+  const key = JSON.stringify(destination);
+  const hit = quotes.get(p.id);
+  if (hit && hit.key === key && Date.now() - hit.at < QUOTE_TTL_MS) return hit.quote;
+  const quote = api('POST /api/bids/quote', {}, { shopId: p.shop.id, itemId: p.id, qty: 1, destination }, { as: requester });
+  quotes.set(p.id, { key, at: Date.now(), quote });
+  quote.catch(() => {
+    if (quotes.get(p.id)?.quote === quote) quotes.delete(p.id);
+  });
+  return quote;
+}
+
+/** Sandbox: a sheet opened, so its quote starts now and PayPal's window does not wait for it after the click. */
+function primeQuote(pointId: string | null) {
+  const p = pointId ? get().points.find((x) => x.id === pointId) : undefined;
+  const destination = p ? destinationFor(p) : null;
+  if (!checkout || !p || !destination) return;
+  quoteFor(p, destination).catch(() => undefined);
+}
+
+/** The buyer approved: the hold exists once this answers, and matching has run. */
+function authorizeRequest(bidId: string, orderId: string): Promise<BidResult> {
+  return api('POST /api/bids/:bidId/authorize', { bidId }, { orderId }, { as: requester, idempotencyKey: `auth-${bidId}` });
+}
+
+function heldText(result: BidResult, maxFeeCents: Cents): string {
+  const held = formatUsd(result.hold.amount.cents, { exact: true });
+  return result.matches.length > 0 ? `${held} held. Matched at once.` : `${held} held. A queuer takes it when an offer reaches your ${formatUsd(maxFeeCents)} fee.`;
+}
+
+// ---- sandbox: PayPal's own buttons (JS SDK v6) -------------------------------------------------
+
+/** Points whose request waits in PayPal's window right now. */
+const inPayPal = new Set<string>();
+/**
+ * Requests whose approval ended on this screen (closed window, refused order). The server
+ * still says "awaiting approval" until approval-failed lands, then only "failed": neither
+ * replaces the words already shown.
+ */
+const endedHere = new Set<string>();
+/** Points where the buyer pressed Stop while PayPal's window was open. */
+const stoppedHere = new Set<string>();
+const STOPPED_TEXT = 'You stopped waiting for PayPal. Nothing was held.';
+
+function loadPayPal() {
+  const c = checkout;
+  if (!c) return;
+  useMarket.setState({ paypalButtons: { status: 'loading', buttons: [], message: null } });
+  c.prepare().then(
+    (buttons) =>
+      useMarket.setState({
+        paypalButtons:
+          buttons.length > 0
+            ? { status: 'ready', buttons, message: null }
+            : { status: 'failed', buttons: [], message: 'PayPal offers no button for this account and browser right now.' },
+      }),
+    (err: unknown) => useMarket.setState({ paypalButtons: { status: 'failed', buttons: [], message: message(err) } }),
+  );
+}
+
+/**
+ * A click on one of PayPal's own buttons. Everything up to checkout.start runs inside that
+ * click, so PayPal's window may open; the request is created while the window loads.
+ */
+function payWithPayPal(pointId: string, choice: BidChoice, funding: CheckoutFunding) {
+  const p = get().points.find((x) => x.id === pointId);
+  if (!p || !checkout || !isOpenOrder(get().orders[pointId])) return;
+  if (checkout.busy()) {
+    get().toast('PayPal’s window is already open for another request. Finish or close it first.', 'info');
+    return;
+  }
+  const destination = destinationFor(p);
+  if (!destination) {
+    get().toast(`${p.itemShort} is a local errand: only for requesters in ${p.cityId === 'sf' ? 'San Francisco' : 'New York'}.`, 'info');
+    return;
+  }
+  let maxFeeCents: Cents;
+  if (choice.kind === 'now') {
+    const offer = bestOffer(p, clock.now());
+    if (!offer) return;
+    maxFeeCents = askFeeAt(offer, clock.now());
+  } else maxFeeCents = choice.maxFeeCents;
+  setOrder({ pointId, kind: choice.kind, status: 'approving', mode: destination.mode, maxFeeCents, holdCents: holdFor(p, maxFeeCents, 1, get().shippingFor(pointId)) });
+  inPayPal.add(pointId);
+  let over = false; // this attempt's outcome is on screen
+  let bidId: string | null = null;
+  startBidApproval(
+    checkout,
+    funding,
+    {
+      async createBid(f) {
+        const created = await createRequest(p, destination, maxFeeCents, f, () => !over);
+        bidId = created.bid.id;
+        if (over) endedHere.add(bidId); // closed before the server answered: the screen keeps its words
+        if (created.checkout.next !== 'js_sdk') {
+          await api('POST /api/bids/:bidId/approval-failed', { bidId: created.bid.id }, { reason: 'error', detail: 'not a sandbox order' }, { as: requester }).catch(() => undefined);
+          throw new Error('This server is not in PayPal sandbox mode any more. Reload the page.');
+        }
+        return { bidId: created.bid.id, orderId: created.checkout.orderId };
+      },
+      authorize: authorizeRequest,
+      async approvalFailed(id, reason, detail) {
+        await api('POST /api/bids/:bidId/approval-failed', { bidId: id }, { reason, detail }, { as: requester });
+      },
+      recheck(id) {
+        endedHere.delete(id);
+        void refreshOrder(id);
+      },
+    },
+    (out) => {
+      over = true;
+      inPayPal.delete(pointId);
+      if (bidId && (out.kind === 'cancelled' || out.kind === 'failed')) endedHere.add(bidId);
+      endApproval(pointId, maxFeeCents, out);
+    },
+  );
+}
+
+function endApproval(pointId: string, maxFeeCents: Cents, out: BidApprovalOutcome) {
+  const stopped = stoppedHere.delete(pointId);
+  switch (out.kind) {
+    case 'held': {
+      // Shown at once; the server's full record (with the queuer's name) follows.
+      const fill = out.result.matches[0];
+      patchOrder(pointId, {
+        status: fill ? 'booked' : 'resting',
+        bidId: out.bidId,
+        holdId: out.result.hold.id,
+        holdCents: out.result.hold.amount.cents,
+        fillFeeCents: fill?.feeCents,
+        message: undefined,
+      });
+      get().toast(heldText(out.result, maxFeeCents), 'money');
+      void refreshOrder(out.bidId);
+      return;
+    }
+    case 'cancelled':
+      patchOrder(pointId, { status: 'released', releasedCents: 0, message: stopped ? STOPPED_TEXT : out.message });
+      return;
+    case 'failed':
+      patchOrder(pointId, { status: 'error', message: out.message });
+      get().toast(out.message, 'info');
+      return;
+    case 'check':
+      patchOrder(pointId, { status: 'error', message: out.message });
+      get().toast(out.message, 'info');
+      void refreshOrder(out.bidId);
+  }
+}
+
+/** Stop waiting: PayPal's window closes; with no window (a reload), the server ends the request. */
+function cancelApproval(pointId: string) {
+  const order = get().orders[pointId];
+  if (!order || order.status !== 'approving') return;
+  if (inPayPal.has(pointId) && checkout?.busy()) {
+    stoppedHere.add(pointId);
+    checkout.cancel();
+    return;
+  }
+  inPayPal.delete(pointId);
+  const bidId = order.bidId;
+  if (!bidId) {
+    patchOrder(pointId, { status: 'released', releasedCents: 0, message: STOPPED_TEXT });
+    return;
+  }
+  api('POST /api/bids/:bidId/approval-failed', { bidId }, { reason: 'cancelled', detail: 'stopped waiting in the app' }, { as: requester }).then(
+    () => {
+      endedHere.add(bidId);
+      patchOrder(pointId, { status: 'released', releasedCents: 0, message: STOPPED_TEXT });
+    },
+    (err: unknown) => {
+      patchOrder(pointId, { status: 'error', message: `${message(err)} Showing the request as the server has it.` });
+      void refreshOrder(bidId);
+    },
+  );
 }
 
 const driver: MarketDriver = {
@@ -403,6 +637,9 @@ const driver: MarketDriver = {
     approval = null;
     done?.(ok);
   },
+  payWith: payWithPayPal,
+  cancelApproval,
+  loadPayPal,
 };
 
 /** Connects to the server, loads the city, then follows its events. Throws when the server cannot be used. */
@@ -414,6 +651,17 @@ export async function bootServerMarket(city: CityConfig, params: AppParams): Pro
   queuer = params.queuer ?? defaults.queuer;
   const config: AppConfig = await api('GET /api/config', {}, null);
   clock.follow(config.clock);
+  // Sandbox: PayPal's script starts loading now, so its buttons are ready when a sheet opens.
+  checkout = createCheckout(config.mode, config.paypal);
+  if (checkout) {
+    loadPayPal();
+    // The quote of a sheet's item starts when the sheet opens (see primeQuote).
+    useMarket.subscribe((s, before) => {
+      if (s.selectedId !== before.selectedId) primeQuote(s.selectedId);
+    });
+  } else if (config.mode === 'sandbox') {
+    useMarket.setState({ paypalButtons: { status: 'failed', buttons: [], message: 'This server runs the PayPal sandbox but sent no client id, so PayPal’s buttons cannot load.' } });
+  }
   const [r, q] = await Promise.all([api('GET /api/me', {}, null, { as: requester }), api('GET /api/me', {}, null, { as: queuer })]);
   requesterUser = r.user;
   requesterName = r.user.displayName;

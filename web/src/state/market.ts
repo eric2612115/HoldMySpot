@@ -1,4 +1,4 @@
-import type { FulfilmentMode, LedgerKind, LedgerStatus } from '@holdmyspot/shared';
+import type { CheckoutFunding, FulfilmentMode, LedgerKind, LedgerStatus } from '@holdmyspot/shared';
 import { create } from 'zustand';
 import type { Cents } from '../domain/money';
 import type { TaskPoint } from '../domain/types';
@@ -16,9 +16,10 @@ export type OrderStatus =
   | 'resting' // a max fee is held and waits in the book for an offer to reach it
   | 'booked' // a queuer is booked; waiting for the receipt
   | 'settling' // capturing and paying out
+  | 'bought' // receipt checked: shipped, the rest stays held until tracking; local, held until the handover code (D-115)
   | 'releasing' // giving the hold back
-  | 'filled'
-  | 'released' // cancelled by the requester, hold released
+  | 'filled' // the last capture is in and the hold is closed
+  | 'released' // cancelled by the requester or closed by a sell-out, hold released
   | 'missed' // the offer filled up while PayPal was approving, hold released
   | 'error';
 
@@ -96,6 +97,17 @@ export interface Persona {
   queuerName: string;
 }
 
+/** Sandbox only: PayPal's own buttons (JS SDK v6), as far as they have loaded. */
+export interface PayPalButtons {
+  status: 'off' | 'loading' | 'ready' | 'failed';
+  /** The eligible buttons the server allows, in order (PayPal first; Venmo only when eligible). */
+  buttons: { funding: CheckoutFunding; productCode?: string; countryCode?: string }[];
+  message: string | null;
+}
+
+/** What a click on PayPal's button asks for: book the best offer now, or rest at a max fee. */
+export type BidChoice = { kind: 'now' } | { kind: 'max'; maxFeeCents: Cents };
+
 export interface MarketDriver {
   requestNow(pointId: string): Promise<void>;
   setMax(pointId: string, maxFeeCents: Cents): Promise<void>;
@@ -105,6 +117,12 @@ export interface MarketDriver {
   approve(ok: boolean): void;
   /** The shipping budget a request by the viewer adds to the hold (0 for a local errand). */
   shippingFor?(pointId: string): Cents;
+  /** Sandbox: a click on one of PayPal's own buttons. Opens PayPal's window inside that click. */
+  payWith?(pointId: string, choice: BidChoice, funding: CheckoutFunding): void;
+  /** Sandbox: stop waiting for PayPal's approval of this point's request. */
+  cancelApproval?(pointId: string): void;
+  /** Sandbox: load PayPal's buttons again after a failure. */
+  loadPayPal?(): void;
 }
 
 export interface MarketState {
@@ -127,6 +145,8 @@ export interface MarketState {
   /** Increments when the viewer wins something, so the characters can hop. */
   celebration: Celebration;
   checkout: Checkout | null;
+  /** Sandbox: PayPal's own buttons for the bid confirm step. */
+  paypalButtons: PayPalButtons;
   /** Server mode: queuers the server walks over (queuer.moved, synthetic demo walks), by user id. */
   walkers: Record<string, { lngLat: [number, number]; at: number } | undefined>;
   driver: MarketDriver | null;
@@ -137,6 +157,12 @@ export interface MarketState {
   cancelMax(pointId: string): Promise<void>;
   take(pointId: string): Promise<void>;
   approveCheckout(ok: boolean): void;
+  /** Sandbox: a click on one of PayPal's own buttons (call it inside the click). */
+  payWith(pointId: string, choice: BidChoice, funding: CheckoutFunding): void;
+  /** Sandbox: stop waiting for PayPal's approval. */
+  cancelApproval(pointId: string): void;
+  /** Sandbox: load PayPal's buttons again. */
+  loadPayPal(): void;
   /** The shipping budget a request by the viewer adds to the hold (0 for a local errand). */
   shippingFor(pointId: string): Cents;
   /** Clears a finished order so the viewer can ask again. */
@@ -170,6 +196,7 @@ export const useMarket = create<MarketState>()((set, get) => ({
   bumps: {},
   celebration: { n: 0, pointId: null },
   checkout: null,
+  paypalButtons: { status: 'off', buttons: [], message: null },
   walkers: {},
   driver: null,
 
@@ -190,6 +217,15 @@ export const useMarket = create<MarketState>()((set, get) => ({
   },
   approveCheckout(ok) {
     get().driver?.approve(ok);
+  },
+  payWith(pointId, choice, funding) {
+    get().driver?.payWith?.(pointId, choice, funding);
+  },
+  cancelApproval(pointId) {
+    get().driver?.cancelApproval?.(pointId);
+  },
+  loadPayPal() {
+    get().driver?.loadPayPal?.();
   },
   shippingFor(pointId) {
     return get().driver?.shippingFor?.(pointId) ?? 0;

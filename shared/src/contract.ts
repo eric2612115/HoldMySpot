@@ -294,7 +294,10 @@ export interface BidTask {
   maxFeeCents: Cents;
   /** Whole bid: shipping and duty budget, charged at cost up to this. 0 for local errands. */
   shippingBudgetCents: Cents;
-  /** The user's own limit and the hold amount: qty * (retailCap + maxFee) + shippingBudget. */
+  /**
+   * The user's own limit and the hold amount: qty * (retailCap + maxFee) +
+   * shippingBudget + the processing reserve (`bidLimitCents`, D-105).
+   */
   limitCents: Cents;
   destination: Destination;
   /** Latest purchase time. */
@@ -462,14 +465,20 @@ export interface Job {
   /** Rate locked at match time for receipts in TWD. */
   fx: { twdPerUsd: number; lockedAt: MarketMs } | null;
   /** The most this job may capture for each part. */
-  caps: { retailCents: Cents; feeCents: Cents; shippingCents: Cents };
+  /** `processingCents`: the most processing the job's captures can carry (D-105; absent on older records). */
+  caps: { retailCents: Cents; feeCents: Cents; shippingCents: Cents; processingCents?: Cents };
   amounts: {
     /** Retail from the verified receipt, in USD, after the cap. */
     retailCents: Cents | null;
     shippingCents: Cents | null;
+    /** Everything captured, processing included. */
     capturedCents: Cents;
     refundedCents: Cents;
     paidOutCents: Cents;
+    /** The requester's processing and payouts line so far, part of capturedCents (D-105). */
+    processingCents?: Cents;
+    /** PayPal's fees on this job's captures and payout items, as PayPal reported them (D-105). */
+    paypalFeesCents?: Cents;
   };
   shipment: { carrierName: string; trackingNumber: string; addedAt: MarketMs } | null;
   /** When each status was entered. */
@@ -568,6 +577,8 @@ export interface LedgerEntry {
     payoutBatchId?: string;
     payoutItemId?: string;
     debugId?: string;
+    /** PayPal's fee on this capture (seller_receivable_breakdown.paypal_fee) or payout item (payout_item_fee), as PayPal reported it (D-105). */
+    feeCents?: number;
   } | null;
 }
 
@@ -591,6 +602,8 @@ export interface Payout {
   status: PayoutStatus;
   paypalBatchId: string | null;
   paypalItemId: string | null;
+  /** PayPal's Payouts fee for this item (payout_item_fee), once PayPal reports it; paid by the requester's processing line (D-105). */
+  paypalFeeCents?: Cents | null;
   createdAt: MarketMs;
   updatedAt: MarketMs;
 }
@@ -633,7 +646,7 @@ export interface FileRef {
   createdAt: MarketMs;
 }
 
-export const AI_PROVIDERS = ['anthropic', 'muse', 'fake'] as const;
+export const AI_PROVIDERS = ['anthropic', 'muse', 'openai', 'fake'] as const;
 export type AiProviderId = (typeof AI_PROVIDERS)[number];
 
 export const AI_MODES = ['live', 'record', 'replay', 'fake'] as const;
@@ -713,8 +726,10 @@ export interface Proof {
     fxTwdPerUsd: number | null;
     /** Receipt retail in USD before the cap. */
     retailCents: Cents | null;
-    /** What the receipt capture will take (retail after cap plus the matched fee). */
+    /** What the receipt (or handover) capture will take: retail after cap, the matched fee and processing. */
     captureCents: Cents | null;
+    /** The processing and payouts part of captureCents (D-105). */
+    processingCents?: Cents | null;
   } | null;
   /** People ahead counted from a line photo, when the model could tell. */
   peopleAhead: number | null;
@@ -754,8 +769,10 @@ export interface ShippingEstimate {
 export interface BidQuote {
   retailCents: Cents;
   suggested: { retailCapCents: Cents; maxFeeCents: Cents; shippingBudgetCents: Cents };
-  /** Hold amount for the suggested values. */
+  /** Hold amount for the suggested values, the processing reserve included. */
   limitCents: Cents;
+  /** The most processing and payouts the suggested bid can be charged, part of limitCents (D-105). */
+  processingReserveCents: Cents;
   fee: FeeEstimate;
   shipping: ShippingEstimate | null;
   platformFee: { bps: number; perUnitCents: Cents };
@@ -786,6 +803,8 @@ export interface DepthLevel {
   feeCents: Cents;
   qty: number;
   count: number;
+  /** What PayPal still holds for the requests at this fee (each hold less its captures and releases; D-111). Book snapshots only. */
+  heldCents?: Cents;
 }
 
 /** Same field names as web/src/domain/types.ts `QueueInfo`. */
@@ -937,6 +956,83 @@ export interface OpsRecords {
   ledger: LedgerEntry[];
   payouts: Payout[];
   agentActions: AgentAction[];
+}
+
+// ---------------------------------------------------------------------------
+// Ops agents (D-100 to D-102): one model turn, and the moves an operator approves
+// ---------------------------------------------------------------------------
+
+/** One tool call in an ops agent's turn. `arguments` is a JSON object, encoded. */
+export interface OpsAgentToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
+/** One line of an ops agent's conversation; `tool` lines answer the call named by `callId`. */
+export interface OpsAgentMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  text: string;
+  calls?: OpsAgentToolCall[];
+  callId?: string;
+}
+
+export interface OpsAgentToolSpec {
+  name: string;
+  description: string;
+  /** JSON Schema of the arguments. */
+  parameters: Record<string, unknown>;
+}
+
+/**
+ * POST /api/ops/agents/turn: the next turn of an ops console agent (the
+ * market desk, an AG Studio built-in agent it delegates to, or the
+ * rescheduler), answered by the server's AI port. Tools run in the console.
+ */
+export interface OpsAgentTurnRequest {
+  /** Who is asking, for example "market-desk", "rescheduler", or a Studio agent id ("data", "page", "widget"). */
+  agent: string;
+  instructions: string;
+  messages: OpsAgentMessage[];
+  tools: OpsAgentToolSpec[];
+  toolChoice: 'auto' | 'none' | 'required' | { name: string };
+}
+
+export interface OpsAgentTurnResponse {
+  /** Text for the operator; may be empty when the turn only calls tools. */
+  say: string;
+  calls: OpsAgentToolCall[];
+  ai: AiStamp;
+}
+
+/**
+ * A rescheduling move. `reassign` moves a job not yet bought to another
+ * queuer's open offer at that offer's fee now; `extend` shifts a late
+ * queuer's arrival window (and ETA) later; `release` lets a late queuer go,
+ * so the jobs go back to the line-up and the rules re-offer them;
+ * `release_job` frees a queuer's units from a request whose PayPal hold
+ * cannot pay, for the next requests.
+ */
+export type OpsMove =
+  | { kind: 'reassign'; jobId: JobId; toAskId: AskId }
+  | { kind: 'extend'; claimId: ClaimId; minutes: number }
+  | { kind: 'release'; claimId: ClaimId }
+  | { kind: 'release_job'; jobId: JobId };
+
+export interface OpsMovesRequest {
+  moves: OpsMove[];
+  /** Why, in one plain sentence (the rescheduler's reason or "Dragged by ops"). */
+  reason: string;
+  proposalId: string | null;
+  /** Who chose the moves; null for a person (a drag on the board). */
+  ai: AiStamp | null;
+}
+
+/** Moves run in order; one the rules refuse is skipped with the reason (none applied answers 409 CONFLICT). */
+export interface OpsMovesResult {
+  applied: { move: OpsMove; note: string; jobIds: JobId[] }[];
+  skipped: { move: OpsMove; problem: string }[];
+  actions: AgentAction[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1457,6 +1553,8 @@ export interface ApiSpec {
     { outcome: 'buyer_favor' | 'seller_favor' },
     { dispute: Dispute }
   >;
+  'POST /api/ops/agents/turn': Endpoint<NoParams, NoQuery, OpsAgentTurnRequest, OpsAgentTurnResponse>;
+  'POST /api/ops/moves': Endpoint<NoParams, NoQuery, OpsMovesRequest, OpsMovesResult>;
   // fake PayPal (fake mode only)
   'POST /api/fake/paypal/orders/:orderId/approve': Endpoint<{ orderId: string }, NoQuery, FakeApproveRequest, { orderId: string; status: string }>;
   // demo (demo mode only)
@@ -1551,6 +1649,8 @@ export const ENDPOINTS: Readonly<Record<ApiKey, EndpointMeta>> = {
   'POST /api/ops/disputes/:disputeId/evidence': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'Send proof photos, receipt fields and tracking.' },
   'POST /api/ops/disputes/:disputeId/accept': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'Accept the claim.' },
   'POST /api/ops/disputes/:disputeId/adjudicate': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'Sandbox only: settle a dispute.' },
+  'POST /api/ops/agents/turn': { phase: 'P1', auth: 'admin', idempotent: false, summary: "One model turn for an ops console agent; 503 AI_UNAVAILABLE without a live model." },
+  'POST /api/ops/moves': { phase: 'P1', auth: 'admin', idempotent: true, summary: 'Apply rescheduling moves (reassign, shift a window, release), each checked with the market rules.' },
   'POST /api/fake/paypal/orders/:orderId/approve': { phase: 'P0', auth: 'fake', idempotent: true, summary: 'Fake mode: simulate the buyer approving.' },
   'GET /api/demo/scripts': { phase: 'P1', auth: 'demo', idempotent: false, summary: 'Demo scripts.' },
   'GET /api/demo/state': { phase: 'P1', auth: 'demo', idempotent: false, summary: 'Demo director state.' },

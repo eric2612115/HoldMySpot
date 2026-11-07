@@ -1,0 +1,25 @@
+{
+  "op": "orders.authorize",
+  "method": "POST",
+  "path": "/v2/checkout/orders/4YN92854KP1948610/authorize",
+  "status": 422,
+  "debugId": "ca56b0ee3e947",
+  "body": {
+    "name": "UNPROCESSABLE_ENTITY",
+    "details": [
+      {
+        "issue": "ORDER_ALREADY_AUTHORIZED",
+        "description": "Order already authorized.If 'intent=AUTHORIZE' only one authorization per order is allowed."
+      }
+    ],
+    "message": "The requested action could not be performed, semantically incorrect, or failed business validation.",
+    "debug_id": "ca56b0ee3e947",
+    "links": [
+      {
+        "href": "https://developer.paypal.com/api/rest/reference/orders/v2/errors/#ORDER_ALREADY_AUTHORIZED",
+        "rel": "information_link",
+        "method": "GET"
+      }
+    ]
+  }
+}

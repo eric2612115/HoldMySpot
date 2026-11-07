@@ -4,6 +4,7 @@ import { REASON_TEXT, distanceText, rateText, travelText, type Reach } from '../
 import { formatUsd } from '../domain/money';
 import type { TaskPoint } from '../domain/types';
 import { useMarket, type Persona } from '../state/market';
+import { BookStrip } from './book/BookStrip';
 import { ago, useNow } from './hooks';
 import { ItemIcon } from './ItemIcon';
 import { OfferCard } from './OfferCard';
@@ -19,8 +20,10 @@ function listNames(names: string[]) {
   return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
 }
 
-/** Why the viewer cannot ask for this item (server persona in another city, local errand only), or null. */
+/** Why the viewer cannot ask for this item (sold out; server persona in another city, local errand only), or null. */
 function requestBlock(point: TaskPoint, persona: Persona | null): string | null {
+  // The server refuses new requests on a sold-out book (D-116), so the max-fee picker stays hidden.
+  if (point.status === 'sold_out') return 'No new requests: requests that were still waiting were closed and their PayPal holds released, with nothing charged.';
   if (!persona) return null;
   const here = point.cityId === 'sf' ? 'San Francisco' : 'New York';
   if (!point.modes.includes('ship') && persona.requesterCity !== here) {
@@ -76,6 +79,8 @@ export function TaskSheet({
           <li key={t}>{t}</li>
         ))}
       </ul>
+
+      <BookStrip point={point} from="sheet" />
 
       {reach && (
         <section className={`earn${reach.claimable ? '' : ' is-blocked'}`} aria-label="For queuers">
@@ -159,7 +164,9 @@ export function TaskSheet({
           </div>
           <p>
             {q.queuers.length === 0
-              ? 'No queuer in line yet. Requests are waiting for one.'
+              ? point.status === 'sold_out'
+                ? 'Sold out here: no queuer is buying it now.'
+                : 'No queuer in line yet. Requests are waiting for one.'
               : q.queuers.length === 1
                 ? `${q.queuers[0]} is in line now.`
                 : `${listNames(q.queuers)} are queueing together.`}
