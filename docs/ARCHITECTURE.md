@@ -110,7 +110,7 @@ Package wiring: `server`, `web` and `ops` depend on `"@holdmyspot/shared": "file
 | PayPal time | Honor period and validity on the market clock (a renewal can be demoed) | Real time |
 | Banner | "Simulated PayPal" | "PayPal sandbox: no real money" |
 
-If `HMS_MODE=sandbox` but `~/.config/paypal-hackathon/sandbox.env` is missing or incomplete, the server refuses to start: it prints one line naming the missing variables (never a value) and exits with code 2, and it also refuses when the sandbox adapter cannot be built (D-108). Only the explicit opt-in `HMS_SANDBOX_FALLBACK=fake` (tests, and the settings probe behind `npm run doctor` and the launcher) runs the simulated PayPal instead, with the reason in `GET /api/config` `modeReason`. The server never talks to PayPal's live environment.
+If `HMS_MODE=sandbox` but `sandbox.env` in the secrets folder (`HMS_SECRETS_DIR`, else the repo's `.secrets/`, D-131) is missing or incomplete, the server refuses to start: it prints one line naming the missing variables (never a value) and exits with code 2, and it also refuses when the sandbox adapter cannot be built (D-108). Only the explicit opt-in `HMS_SANDBOX_FALLBACK=fake` (tests, and the settings probe behind `npm run doctor` and the launcher) runs the simulated PayPal instead, with the reason in `GET /api/config` `modeReason`. The server never talks to PayPal's live environment.
 
 ## 5. Server internals
 
@@ -204,7 +204,7 @@ With the jump, the run takes about 3 minutes at speed 60.
 | `HMS_HOST` / `HMS_PORT` | `127.0.0.1` / `8796` | 8795 was taken by another local server |
 | `HMS_DB_PATH` | `server/data/holdmyspot.sqlite` | `:memory:` in tests |
 | `HMS_UPLOAD_DIR` | `server/data/uploads` | |
-| `HMS_SECRETS_DIR` | `~/.config/paypal-hackathon` | reads `sandbox.env` and `ai.env` |
+| `HMS_SECRETS_DIR` | `.secrets/` in the repo (written by `npm run keys`) | reads `sandbox.env`, `ai.env` and the AG licence files; no folder outside the repo is read unless this names it (D-131) |
 | `HMS_AI_KEY_FILES` | empty | extra dotenv files, comma separated; only `ANTHROPIC_API_KEY`, `MODEL_API_KEY` and `OPENAI_API_KEY` are read from them, and `path#MODEL_API_KEY` narrows a file to that one name. `server/.env.local` (git-ignored, `HMS_*` names only) can set it |
 | `HMS_AI_PROVIDER` | `auto` | `auto` (Anthropic, else Muse, else OpenAI-compatible with its own key, else rules only), `anthropic`, `muse`, `openai`, `fake` |
 | `HMS_AI_MODE` | `replay` (fake mode), `live` (sandbox mode) | `live`, `record`, `replay`, `fake` |
@@ -234,13 +234,13 @@ With the jump, the run takes about 3 minutes at speed 60.
 | `HMS_ADMIN_KEY` | empty | required when `HMS_HOST` is not a loopback address |
 | `HMS_LOG_LEVEL` | `info` | |
 
-**`~/.config/paypal-hackathon/sandbox.env`** (written by `scripts/setup-sandbox-secrets.mjs`, mode 600): `PAYPAL_ENV` (must be `sandbox`), `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID`, `PAYPAL_BUYER_EMAIL`, `PAYPAL_TW_PAYOUT_EMAIL`; optional `PAYPAL_WEBHOOK_ID` (only with a public URL).
+**`sandbox.env`** in the secrets folder (written by `npm run keys`, mode 600): `PAYPAL_ENV` (must be `sandbox`), `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID`, `PAYPAL_BUYER_EMAIL`, `PAYPAL_PAYOUT_EMAIL` (its older name `PAYPAL_TW_PAYOUT_EMAIL` is still read); optional `PAYPAL_WEBHOOK_ID` (only with a public URL).
 
-**`~/.config/paypal-hackathon/ai.env`**: optional `ANTHROPIC_API_KEY`, optional `MODEL_API_KEY`, optional `OPENAI_API_KEY`.
+**`ai.env`** in the secrets folder: optional `ANTHROPIC_API_KEY`, optional `MODEL_API_KEY`, optional `OPENAI_API_KEY`, and the provider settings `HMS_AI_PROVIDER`, `HMS_AI_BASE_URL`, `HMS_AI_MODEL`.
 
 **web/**: `VITE_HMS_API` (default empty: same origin through the Vite proxy to `http://127.0.0.1:8796`); a switch between the in-browser mock and the server (the web agent names it; `VITE_BACKEND=mock|server` is suggested). The PayPal client ID comes from `GET /api/config`, never from a web env file.
 
-**ops/**: `VITE_HMS_API`, `VITE_HMS_ADMIN_KEY` (only for a non-loopback server). The AG licence is read by `ops/vite.config.ts` at dev-server or build time: `VITE_AG_LICENSE_KEY` in the git-ignored `ops/.env.local`, else a key file (`HMS_AG_LICENSE_FILE`, default `~/.config/paypal-hackathon/aggrid-license.txt`, mode 600). It is never printed or committed. Bryntum installs as `@bryntum/scheduler-community` and `@bryntum/scheduler-react-community` 8.0.0 (MIT) from the public npm registry.
+**ops/**: `VITE_HMS_API`, `VITE_HMS_ADMIN_KEY` (only for a non-loopback server). The AG licence is read by `ops/vite.config.ts` at dev-server or build time: `VITE_AG_LICENSE_KEY` in the git-ignored `ops/.env.local`, else a key file (`HMS_AG_LICENSE_FILE`, default `aggrid-license.txt` in the secrets folder, mode 600); the AG Studio key the same way (`VITE_AG_STUDIO_LICENSE_KEY`, `HMS_AG_STUDIO_LICENSE_FILE`, `agstudio-license.txt`). `HMS_AG_TRIAL=1` (the launcher's `--no-ag-licence`) ignores every key. It is never printed or committed. Bryntum installs as `@bryntum/scheduler-community` and `@bryntum/scheduler-react-community` 8.0.0 (MIT) from the public npm registry.
 
 ## 11. Ports and processes
 

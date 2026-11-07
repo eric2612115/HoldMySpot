@@ -34,11 +34,25 @@ const PILL_FIELDS = new Set(['status', 'kind', 'stage', 'payState', 'funding']);
 /** Money that sums to zero rather than "N/A" when nothing happened yet. */
 const ZERO_MONEY = new Set<OpsDatasetName>(['holds', 'payouts', 'ledger', 'fills', 'jobs']);
 
+/**
+ * Notes Studio's agents read on the fields they confuse (D-130): holds are one row per request, captures
+ * are ledger rows, and a count is a sum of events, never a count of a dollar field.
+ */
+const FIELD_NOTES: Record<string, string> = {
+  'holds.capturedUsd': 'Captured so far from this request\'s hold: one row per request, zero when nothing was captured. Not one row per capture: for capture amounts, counts or an average capture use ledger rows with kind Captured and status succeeded (ledger.amountUsd).',
+  'holds.heldUsd': 'The hold of one request (one row per request).',
+  'ledger.amountUsd': 'The amount of one money event. Filter ledger.kind (Captured, Released, Paid out, Held) and ledger.status (succeeded) before summing or averaging.',
+  'ledger.events': '1 per row: sum it to count money events (never count a dollar field).',
+  'payouts.amountUsd': 'One PayPal payout to a queuer.',
+  'fills.qty': 'Units matched: sum it to count units.',
+};
+
 /** Shorter column names for the dashboard's grids, where the shared label is long. */
 const SHORT_NAME: Record<string, string> = { 'ledger.slot': 'Time', 'fills.slot': 'Time', 'ledger.paypalObject': 'PayPal object' };
 
 function fieldFor(dataset: OpsDatasetName, f: OpsDataset['fields'][number]): AgFieldDefinition {
-  const base = { id: f.name, name: SHORT_NAME[`${dataset}.${f.name}`] ?? f.label };
+  const note = FIELD_NOTES[`${dataset}.${f.name}`];
+  const base = { id: f.name, name: SHORT_NAME[`${dataset}.${f.name}`] ?? f.label, ...(note ? { description: note } : {}) };
   if (f.type === 'number') {
     if (f.name.endsWith('Usd')) {
       return { ...base, format: 'currencyFormat', formatOptions: { format: usdFormat }, context: { cell: 'money' }, ...(ZERO_MONEY.has(dataset) ? { blankValue: '$0.00' } : {}) } as AgFieldDefinition;

@@ -142,3 +142,54 @@ export function noOfferNote(
   }
   return resting ? 'No queuer has offered yet. Your request rests at your max fee: the first offer that reaches it takes it.' : 'No queuer has offered yet. Set your max fee: the first offer that reaches it takes your request.';
 }
+
+/** A list of names: "Wei", "Wei and Lin", "Wei, Lin and Rex". */
+function names(list: readonly string[]): string {
+  return list.length <= 1 ? list.join('') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+}
+
+/** Job statuses after the purchase (the queuer has left the line). */
+const AFTER_PURCHASE = ['bought', 'proof_submitted', 'verified', 'shipped', 'delivered', 'payment_failed', 'disputed', 'refunded'];
+
+/**
+ * The sentence under "The line" in the shop sheet (D-132): who is in this line now, from the book's
+ * checked-in queuers, the viewer's own job and the offers on the way. It never says nobody is in line
+ * while the viewer's own queuer is on the way, checking in, in line or has just bought.
+ */
+export function lineSentence(
+  point: Pick<TaskPoint, 'status' | 'queue' | 'offers' | 'shop'>,
+  order: { status: string; queuerName?: string; jobStatus?: string } | undefined,
+  hhmm: (t: number) => string = (t) => new Date(t).toISOString().slice(11, 16),
+): string {
+  const inLine = point.queue.queuers;
+  const mine = order?.queuerName && order.jobStatus && order.status !== 'released' && order.status !== 'error' ? order.queuerName : null;
+  const others = inLine.filter((n) => n !== mine);
+  const alsoHere = others.length > 0 ? ` ${names(others)} ${others.length === 1 ? 'is' : 'are'} in line too.` : '';
+  if (mine && order?.jobStatus) {
+    if (order.jobStatus === 'claimed') return `${mine} took your request and is on the way to the line.${alsoHere}`;
+    if (order.jobStatus === 'checked_in') return `${mine} is at ${point.shop.name}; the line photo is being checked.${alsoHere}`;
+    if (order.jobStatus === 'queueing' || inLine.includes(mine)) return `${mine} is in line for you now.${alsoHere}`;
+    if (AFTER_PURCHASE.includes(order.jobStatus)) return `${mine} bought yours and left the line.${alsoHere || (point.status === 'sold_out' ? '' : ' No other queuer is in line right now.')}`;
+  }
+  if (inLine.length === 1) return `${inLine[0]} is in line now.`;
+  if (inLine.length > 1) return `${names(inLine)} are queueing together.`;
+  if (point.status === 'sold_out') return 'Sold out here: no queuer is buying it now.';
+  const coming = point.offers.filter((o) => !o.checkedIn);
+  if (coming.length > 0) return `No queuer is in line yet. ${names(coming.map((o) => o.queuerName))} ${coming.length === 1 ? 'is' : 'are'} on the way (arriving ${hhmm(coming[0]!.etaAt)}).`;
+  return 'No queuer is in line right now. Requests wait here for one.';
+}
+
+/**
+ * The max-fee picker's grid (D-132): the slider, the -/+ buttons and the label share one value on a
+ * half-dollar grid (the book's levels: $10.50, $11.00, ...). The first value is one step above the best
+ * request, or three dollars under an offer's fee, and never off the grid, so the slider and the label agree.
+ */
+export function maxFeeGrid(point: Pick<TaskPoint, 'minFeeCents' | 'bestFeeCents'>, offerFee: Cents | null): { unit: Cents; lo: Cents; hi: Cents; initial: Cents } {
+  const unit = 50;
+  const up = (c: number) => Math.ceil(c / unit) * unit;
+  const down = (c: number) => Math.floor(c / unit) * unit;
+  const lo = up(point.minFeeCents);
+  const hi = Math.max(lo, down(offerFee !== null ? offerFee - 100 : Math.max(2500, (point.bestFeeCents ?? 0) + 800)));
+  const suggested = offerFee !== null ? offerFee - 300 : (point.bestFeeCents ?? lo) + 100;
+  return { unit, lo, hi, initial: Math.min(hi, Math.max(lo, Math.round(suggested / unit) * unit)) };
+}

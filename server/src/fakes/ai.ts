@@ -26,13 +26,15 @@ import { lineReading, purchaseReading } from './scenarios.ts';
  * Rules-only AI for fake mode and tests (provider "fake", model "rules-v1",
  * mode "fake"). Photo readings come from simulated scenarios
  * (fakes/scenarios.ts); every decision and amount comes from the shared rules
- * and formulas, the same code the real AI services use.
+ * and formulas, the same code the real AI services use. Each photo verdict's
+ * stamp names the simulated reading (`ai.simulated`, D-128), so no screen
+ * says a model checked the photo.
  */
 export class FakeAi implements AiPort {
   readonly info = { provider: 'fake' as const, model: 'rules-v1', mode: 'fake' as const };
 
-  #stamp(): AiStamp {
-    return { ...this.info, latencyMs: 0 };
+  #stamp(simulated?: string): AiStamp {
+    return { ...this.info, latencyMs: 0, ...(simulated ? { simulated } : {}) };
   }
 
   async checkInPhoto(input: CheckInPhotoInput): Promise<CheckInPhotoResult> {
@@ -42,11 +44,12 @@ export class FakeAi implements AiPort {
       geofence: input.geofence,
       duplicateOf: input.duplicateOf,
     });
-    return { ...verdict, ai: this.#stamp() };
+    // No model read this photo: the stamp names the simulated reading the rules got (D-128).
+    return { ...verdict, ai: this.#stamp(input.photo.scenario ?? 'line_ok') };
   }
 
   async purchaseProof(input: PurchaseProofInput): Promise<PurchaseProofResult> {
-    const scenarios = [input.receipt.scenario, input.itemPhoto.scenario].filter((s): s is string => s !== null);
+    const scenarios = [...new Set([input.receipt.scenario, input.itemPhoto.scenario].filter((s): s is string => s !== null))];
     const reading = purchaseReading(scenarios, input);
     const verdict = evaluatePurchase(reading, {
       shop: input.shop,
@@ -61,7 +64,7 @@ export class FakeAi implements AiPort {
       uploadedAt: input.uploadedAt,
       duplicateOf: input.duplicateOf,
     });
-    return { ...verdict, ai: this.#stamp() };
+    return { ...verdict, ai: this.#stamp(scenarios.join('+') || 'genuine') };
   }
 
   async feeEstimate(input: FeeEstimateInput): Promise<FeeEstimate> {

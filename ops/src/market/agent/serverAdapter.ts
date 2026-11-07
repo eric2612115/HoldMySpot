@@ -68,14 +68,39 @@ export function toTurnRequest(agent: string, request: AgLlmRequest): OpsAgentTur
   };
 }
 
+/**
+ * Plain words for the panel (D-130): Studio's agents write references as @field[ledger.kind],
+ * @table[ledger] and @widget[w-1], and sometimes a line about page ids; the chat shows them raw.
+ */
+export function plainRefs(text: string): string {
+  return text
+    .replace(/@(?:field|table|widget|page)\[([^\]]+)\]/g, '$1')
+    .replace(/\s*Page id is [\w-]+ for (?:the )?Widget agents?\.?/gi, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+/** A delegate's complete_task summary (what the desk and the panel read), in plain words. */
+function plainCall(name: string, args: string): string {
+  if (name !== 'complete_task') return args;
+  try {
+    const parsed = JSON.parse(args) as { summary?: unknown };
+    if (typeof parsed.summary !== 'string') return args;
+    return JSON.stringify({ ...parsed, summary: plainRefs(parsed.summary) });
+  } catch {
+    return args;
+  }
+}
+
 /** The server's turn as Studio's output items: the message first, then the tool calls in order. */
 export function toOutput(turn: OpsAgentTurnResponse): AgAiOutputItem[] {
   const items: AgAiOutputItem[] = [];
-  if (turn.say) {
-    items.push({ id: nextId('msg'), kind: 'output', type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'text', text: turn.say, annotations: [] }] });
+  const say = turn.say ? plainRefs(turn.say) : '';
+  if (say) {
+    items.push({ id: nextId('msg'), kind: 'output', type: 'message', role: 'assistant', status: 'completed', content: [{ type: 'text', text: say, annotations: [] }] });
   }
   for (const c of turn.calls) {
-    items.push({ id: nextId('fc'), kind: 'output', type: 'function_call', callId: c.id, name: c.name, arguments: c.arguments, status: 'completed' });
+    items.push({ id: nextId('fc'), kind: 'output', type: 'function_call', callId: c.id, name: c.name, arguments: plainCall(c.name, c.arguments), status: 'completed' });
   }
   return items;
 }

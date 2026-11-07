@@ -484,8 +484,33 @@ export function localMoneyText(m: LocalMoney | null): string {
   return `NT$${m.minor.toLocaleString('en-US')}`;
 }
 
-/** "Checked by AI and rules · muse-spark-1.3 (replay)" (docs/DOMAIN.md section 9). */
+/** What each simulated reading reads a photo as (zero-key demo, D-128). */
+const SIMULATED_AS: Record<string, string> = {
+  line_ok: 'a line with your code',
+  no_code: 'no code in the photo',
+  no_line: 'no line in the photo',
+  genuine: 'a genuine receipt',
+  fake_receipt: 'a fake receipt',
+  totals_off: 'totals that do not add up',
+  over_cap: 'a price over the cap',
+  wrong_seller: 'another shop',
+  time_before_checkin: 'a time before check-in',
+  generated: 'an AI-generated image',
+  unreadable: 'unreadable',
+};
+
+/**
+ * "Checked by AI and rules · muse-spark-1.3 (replay)" (docs/DOMAIN.md section 9). A photo no model and
+ * no recording read says so: "Simulated reading, no AI: read as a genuine receipt · the rules decided" (D-128).
+ */
 export function stampText(ai: Proof['ai']): string {
+  if (ai.simulated) {
+    const as = ai.simulated
+      .split('+')
+      .map((x) => SIMULATED_AS[x] ?? x)
+      .join(' and ');
+    return `Simulated reading, no AI: read as ${as} · the rules decided`;
+  }
   const how = ai.mode === 'live' ? 'live' : ai.mode === 'record' ? 'live, recorded' : ai.mode === 'replay' ? 'replay of a saved answer' : 'rules only';
   return `Checked by AI and rules · ${ai.provider} ${ai.model} (${how})`;
 }
@@ -570,7 +595,8 @@ export function purchaseCheckView(
       value: lines.length > 0 ? lines.map((l) => `${l.qty} × ${l.name} ${localMoneyText(l.total)}`).join('; ') : '–',
       ...items,
     },
-    { label: 'Totals', value: r?.total ? `total ${localMoneyText(r.total)}${r.qr ? ', QR read' : ''}` : '–', ...totals },
+    // "QR read" only when the QR was decoded from the pixels; a simulated reading has no real QR (D-128).
+    { label: 'Totals', value: r?.total ? `total ${localMoneyText(r.total)}${r.qr ? (proof.ai.simulated ? ', QR simulated' : ', QR read') : ''}` : '–', ...totals },
     { label: 'Job code', value: r?.codeSeen ? `${r.codeSeen}${job.proofCode ? ` (yours: ${job.proofCode})` : ''}` : job.proofCode ? `expected ${job.proofCode}` : '–', ...code },
     { label: 'Photos', value: photos.ok === false ? 'flagged' : photos.ok ? 'new, no generator marks' : '–', ...photos },
     proof.status === 'failed'

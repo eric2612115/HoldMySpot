@@ -207,9 +207,12 @@ function stepdownsText(snap: MarketSnapshot, shop?: string): string {
     const matched = matches.length ? ` Matched ${matches.map((j) => `${j.requesterName} at ${cents(j.feeCents)} (${clockText(j.createdAt)})`).join(', ')}.` : '';
     if (a.clock.startsAt === null) return `${a.queuerName} at ${shopName}: opens at ${cents(a.feeCents)}, ${step}; the clock starts at check-in (ETA ${clockText(a.etaAt)}).${matched}`;
     const now = askFeeAt(a, t);
-    const next = a.status === 'open' ? askNextDropAt(a, t) : null;
-    const nextText = next !== null ? ` Next step at ${clockText(next)}: ${cents(askFeeAt(a, next))}.` : now <= a.clock.floorCents ? ' At the floor.' : '';
-    const state = a.status === 'open' ? `fee now ${cents(now)}` : `${a.status} at ${cents(matches.at(-1)?.feeCents ?? now)}`;
+    const open = a.status === 'open';
+    const next = open ? askNextDropAt(a, t) : null;
+    // A clock stops at the match that took its last unit (D-132): "at the floor" only for a clock still running there.
+    const nextText = next !== null ? ` Next step at ${clockText(next)}: ${cents(askFeeAt(a, next))}.` : open && now <= a.clock.floorCents ? ' At the floor.' : '';
+    const last = matches.slice().sort((x, y) => x.createdAt - y.createdAt).at(-1);
+    const state = open ? `fee now ${cents(now)}` : last ? `${a.status} at ${cents(last.feeCents)} when matched` : `${a.status}`;
     return `${a.queuerName} at ${shopName}: opened at ${cents(a.feeCents)} at check-in (${clockText(a.clock.startsAt)}), ${step}; ${state}.${nextText}${matched}`;
   });
   return `${lines.join(' ')} A step-down never goes below the floor, and a request fills at the first step at or under its max fee.`;
@@ -297,8 +300,56 @@ export function topicOf(text: string): Topic | 'help' {
   return 'help';
 }
 
+/** Every topic a question touches, in topicOf's order (the offline planner answers the first). */
+export function topicsIn(text: string): Topic[] {
+  const t = text.toLowerCase();
+  const tests: [Topic, RegExp][] = [
+    ['disputes', /(dispute|chargeback|reject|fake|fraud|failed capture|declin)/],
+    ['stepdowns', /(step|clock|step-down|stepdown|drop|floor)/],
+    ['fills', /(fill|fill rate|matched|match rate)/],
+    ['payouts', /(payout|paid out|paid to|pay out)/],
+    ['captures', /(captur|charged|charge)/],
+    ['gaps', /(spread|gap|widest|difference|apart)/],
+    ['depth', /(depth|deep|ladder|how many.*wait)/],
+    ['holds', /(hold|held|releas)/],
+    ['earnings', /(earn|best queuer|top earner|who made)/],
+  ];
+  return tests.filter(([, re]) => re.test(t)).map(([topic]) => topic);
+}
+
 /** A shop named in a question, if any. */
 export function shopIn(snap: MarketSnapshot, text: string): string | undefined {
   const t = text.toLowerCase();
   return snap.shops.find((x) => t.includes(x.name.toLowerCase()) || t.includes(x.name.split(' ').slice(0, 2).join(' ').toLowerCase()))?.name;
 }
+
+const TOPIC_WORDS: Record<Topic, string> = {
+  overview: 'the overview',
+  gaps: `the ${W.widestSpread}`,
+  depth: `the ${W.depth.toLowerCase()}`,
+  holds: 'holds and releases',
+  captures: 'captures',
+  payouts: 'payouts',
+  fills: 'fill rates',
+  stepdowns: 'step-downs',
+  disputes: 'disputes',
+  earnings: 'queuer earnings ("Top earner")',
+};
+
+/** The offline planner answers one topic: it says which, and names the other parts of the question to ask on their own. */
+export function otherTopicsNote(question: string, answered: Topic): string {
+  // The holds answer has the held, captured and released totals, so "holds and captures" needs no second question.
+  const covers: Partial<Record<Topic, Topic[]>> = { holds: ['captures'], overview: [...TOPICS] };
+  const others = topicsIn(question).filter((t) => t !== answered && !(covers[answered] ?? []).includes(t));
+  if (others.length === 0) return '';
+  return ` (Offline planner: I answered ${TOPIC_WORDS[answered]}. Ask about ${others.map((t) => TOPIC_WORDS[t]).join(' and ')} on its own for that part.)`;
+}
+
+/** The market day and time for Studio's agents, which otherwise read the browser's real date as "today". */
+export function marketClockNote(snap: MarketSnapshot): string {
+  const local = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .format(snap.at)
+    .replace(', ', ' ');
+  return `Market clock: ${local} (America/Los_Angeles). "Today" and "so far" mean this market day; every time in the data is market time. Do not filter on the real date.`;
+}
+

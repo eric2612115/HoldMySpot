@@ -1,7 +1,7 @@
 import { askSchedule, bidDisclosures, fillPriceForMax, nextDropAt, nextPriceAfter, reachesAt } from '@holdmyspot/shared';
 import type { CheckoutFunding, StepDownSchedule } from '@holdmyspot/shared';
 import { useState } from 'react';
-import { bestOffer, holdFor, noOfferNote, offerFeeAt, retailCapFor, supplyLabel } from '../domain/book';
+import { bestOffer, holdFor, maxFeeGrid, noOfferNote, offerFeeAt, retailCapFor, supplyLabel } from '../domain/book';
 import { formatUsd, type Cents } from '../domain/money';
 import type { FeeOffer, TaskPoint } from '../domain/types';
 import { isOpenOrder, useMarket, type UserOrder } from '../state/market';
@@ -226,9 +226,14 @@ function ActionZone({
       <div className="auction__actions">
         <PayPalButton state="done" label={`Paid ${charged} with PayPal`} onClick={() => {}} />
         <OrderStatus point={point} order={order!} offer={offer} now={now} onCancel={onCancel} />
-        <button type="button" className="text-button auction__again" onClick={onAgain}>
-          Ask for another
-        </button>
+        {/* The shop's per-person limit counts the one already bought (D-132; the server refuses more too). */}
+        {point.perPersonLimit > 1 ? (
+          <button type="button" className="text-button auction__again" onClick={onAgain}>
+            Ask for another
+          </button>
+        ) : (
+          <p className="auction__caption">One per customer: {point.shop.name} sells you no second one.</p>
+        )}
       </div>
     );
   }
@@ -401,11 +406,9 @@ function MaxPicker({
   onPay: (c: Cents, funding: CheckoutFunding) => void;
   onStopWaiting: () => void;
 }) {
-  const unit = 100; // whole dollars
-  const lo = Math.ceil(point.minFeeCents / unit) * unit;
-  const hi = Math.max(lo, offerFee !== null ? offerFee - unit : Math.max(2500, (point.bestFeeCents ?? 0) + 800));
-  const suggested = offerFee !== null ? offerFee - 3 * unit : (point.bestFeeCents ?? lo) + unit;
-  const [value, setValue] = useState(() => Math.min(hi, Math.max(lo, suggested)));
+  // One grid for the slider, the buttons and the label (D-132): half dollars, like the book's levels.
+  const { unit, lo, hi, initial } = maxFeeGrid(point, offerFee);
+  const [value, setValue] = useState(initial);
   const v = Math.min(hi, Math.max(lo, value));
   const sched = offer ? scheduleOf(offer) : null;
   const at = sched ? reachesAt(sched.schedule, v) : null;

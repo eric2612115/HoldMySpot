@@ -4,6 +4,8 @@ import { formatUsd } from '../domain/money';
 import { useMarket } from '../state/market';
 import { params } from '../state/services';
 import { PersonaFace } from './queuer/faces';
+import { usePhone } from './queuer/phone';
+import { chipValue } from './stage';
 
 /** The money states people see, in plain words. Same kinds as the server's ledger. */
 export const STATE_WORDS: Record<LedgerKind, { label: string; plain: string }> = {
@@ -28,9 +30,13 @@ export function useModeBanner(): string {
 
 export function MoneyChip({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const held = useMarket((s) => s.heldCents);
+  const charged = useMarket((s) => s.chargedCents);
+  const paidOut = useMarket((s) => s.paidOutCents);
+  const persona = useMarket((s) => s.persona);
   const latest = useMarket((s) => s.activity[0]);
+  const phone = usePhone((s) => s.phone);
   const banner = useModeBanner();
-  const value = held > 0 ? `${formatUsd(held, { exact: true })} held` : latest ? STATE_WORDS[latest.kind].label : 'Nothing held';
+  const value = chipValue({ persona: Boolean(persona), phone, held, charged, paidOut, latest: latest?.kind ?? null });
   return (
     <button
       type="button"

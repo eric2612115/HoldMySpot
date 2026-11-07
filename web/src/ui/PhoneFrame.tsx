@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarket } from '../state/market';
 import { MAIN_STATES, STATE_WORDS, useModeBanner } from './MoneyPanel';
+import { introFine } from './stage';
 
 /**
  * On a phone the app fills the screen. On a desktop it sits in a phone
@@ -17,6 +18,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
   const isNyc = search.get('city') === 'nyc';
   // The server owns the market clock, so the speed link only applies to the in-browser market.
   const backend = useMarket((s) => s.backend);
+  const serverMode = useMarket((s) => s.serverMode);
   const banner = useModeBanner();
 
   return (
@@ -34,7 +36,7 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
           <a href={isNyc ? with_('city', 'sf') : with_('city', 'nyc')}>{isNyc ? 'Switch to San Francisco' : 'Switch to New York'}</a>
           <Link to={`/characters${window.location.search}`}>Meet the characters</Link>
         </nav>
-        <p className="stage__fine">Prototype. Talks to the HoldMySpot server (Simulated PayPal) when it runs, else to an in-browser market.</p>
+        <p className="stage__fine">{introFine(backend, serverMode)}</p>
       </aside>
 
       <div className="phone">

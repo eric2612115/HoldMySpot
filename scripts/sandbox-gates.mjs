@@ -13,12 +13,14 @@
 //   node scripts/sandbox-gates.mjs lifecycle     One full job through the server's HTTP API on the sandbox (own server on
 //                                                port 8798), then GET the authorization, captures and payouts from PayPal
 //                                                and compare them with the server's ledger (scripts/lib/sandbox-lifecycle.mjs).
+//                                                --by-hand: you approve PayPal's link yourself; no stored password.
 //   node scripts/sandbox-gates.mjs record G4 pass --note "..."   Record a gate checked by hand (Venmo, Pay Later).
 //
 // Add --fake to run against the in-process fake PayPal (no network, no credentials); its page goes to a
 // temporary file unless --out is given, never to docs/.
 //
-// Credentials come only from ~/.config/paypal-hackathon/sandbox.env (scripts/setup-sandbox-secrets.mjs).
+// Credentials come only from sandbox.env in the secrets folder: --dir, else HMS_SECRETS_DIR, else the repo's
+// .secrets/ written by npm run keys (D-131).
 // The script never prints secrets. Without --auto-approve every approval is the owner's, on PayPal's own
 // pages. With --auto-approve (owner's permission, 11-07) scripts/lib/sandbox-buyer.mjs signs in on
 // www.sandbox.paypal.com as the sandbox buyer (PAYPAL_BUYER_EMAIL, password from sandbox-buyers.json, read at
@@ -66,13 +68,15 @@ Options:
   --fake               Use the in-process fake PayPal (no network, no credentials).
   --out <file>         Results page (default docs/SANDBOX-GATES.md; with --fake a temporary file).
   --only G1,G2         run: only these gates.
-  --wait <minutes>     run: how long to wait for approvals (default 15).
-  --open               run: open the approval links in the browser (macOS).
+  --wait <minutes>     run, lifecycle --by-hand: how long to wait for approvals (default 15).
+  --open               run: open the approval links in the browser (macOS). lifecycle: implies --by-hand.
+  --by-hand            lifecycle: print PayPal's approval link and wait while you approve it in your own
+                       browser as your sandbox buyer, instead of signing in with a saved password.
   --auto-approve       run: approve every order in a headless browser as the sandbox buyer (stops at any challenge).
   --headed             With --auto-approve or --open-as-buyer: show the browser window.
   --shots <dir>        Where the buyer browser saves screenshots of a challenge (default: a temporary folder).
   --payout-to <label>  Payout receiver from sandbox-buyers.json (for example person-1) when sandbox.env has no
-                       PAYPAL_TW_PAYOUT_EMAIL. Never the buyer. The email is never printed.
+                       PAYPAL_PAYOUT_EMAIL. Never the buyer. The email is never printed.
   --yes                run: do not ask before creating sandbox orders.
   --no-record          run: do not save sanitized responses as test fixtures.
   --force-early        reauthorize: try before day 4 too (records PayPal's answer).
@@ -85,7 +89,7 @@ Options:
   --port <n>           lifecycle: the port of the server it starts (default 8798).
   --keep               lifecycle: keep the temporary database, uploads and server log.
   --verbose            Print one line per PayPal call (with debug ids).
-  --dir <dir>          Secrets folder (default $HMS_SECRETS_DIR or ~/.config/paypal-hackathon).
+  --dir <dir>          Secrets folder (default $HMS_SECRETS_DIR, else .secrets/ in this repo).
 `;
 
 // ---------------------------------------------------------------------------
@@ -118,8 +122,9 @@ function errText(e) {
   return e && e.message ? e.message : String(e);
 }
 
+/** --dir, else HMS_SECRETS_DIR, else the repo's .secrets/ written by npm run keys (D-131). */
 function secretsDirFrom(args) {
-  const d = args.dir || process.env.HMS_SECRETS_DIR || path.join(os.homedir(), '.config', 'paypal-hackathon');
+  const d = args.dir || process.env.HMS_SECRETS_DIR || path.join(REPO, '.secrets');
   return d.startsWith('~/') ? path.join(os.homedir(), d.slice(2)) : d;
 }
 
@@ -339,13 +344,13 @@ async function connect(args, runId, record) {
   if (!loaded.ok) {
     console.error(`\nNo usable sandbox credentials: ${loaded.reason}.`);
     if (loaded.missing.length > 0) console.error(`Missing: ${loaded.missing.join(', ')}.`);
-    console.error('The owner runs `node scripts/setup-sandbox-secrets.mjs` first (or use --fake to try the script offline).');
+    console.error('Save the sandbox keys with `npm run keys` first (or use --fake to try the script offline).');
     process.exit(2);
   }
   for (const w of loaded.warnings) console.log(`  Warning: ${w}`);
   const receiverLabel = await payoutReceiverFrom(args, loaded.settings);
   if (receiverLabel) console.log(`  Payouts go to sandbox account ${receiverLabel} (--payout-to).`);
-  const missing = loaded.missingRecommended.filter((k) => !(k === 'PAYPAL_TW_PAYOUT_EMAIL' && receiverLabel));
+  const missing = loaded.missingRecommended.filter((k) => !(k === 'PAYPAL_PAYOUT_EMAIL' && receiverLabel));
   if (missing.length > 0) console.log(`  Not set (some gates will wait): ${missing.join(', ')}`);
   const port = pp.createSandboxPayPal({
     settings: loaded.settings,
@@ -556,7 +561,7 @@ const STEPS = { A: stepsA, B: stepsB, C: stepsC, D1: stepsD, D2: stepsD };
 async function payoutGate(ctx, runId) {
   const { port, state, settings } = ctx;
   if (!settings.twPayoutEmail) {
-    setGate(state, 'G6', 'waiting', 'No payout receiver: set PAYPAL_TW_PAYOUT_EMAIL (scripts/setup-sandbox-secrets.mjs --payout-email) or pass --payout-to <label from sandbox-buyers.json>');
+    setGate(state, 'G6', 'waiting', 'No payout receiver: set PAYPAL_PAYOUT_EMAIL (npm run keys) or pass --payout-to <label from sandbox-buyers.json>');
     return;
   }
   try {
@@ -1137,6 +1142,10 @@ async function cmdLifecycle(ctx, args) {
       shotDir,
       keep: Boolean(args.keep),
       serverPort: Number(args.port ?? 8798),
+      // --by-hand (or --open): print PayPal's link and wait while the person approves it; no stored password (D-129).
+      byHand: Boolean(args['by-hand'] || args.open),
+      openLink: args.open ? openInBrowser : null,
+      waitMinutes: Number(args.wait),
       log: (line) => console.log(line),
     });
     ctx.state.lifecycle = { at: started, ok: r.ok, ai: r.ai ? `${r.ai.provider}/${r.ai.model} ${r.ai.mode}` : null, ids: r.ids, checks: r.checks, ledger: r.server.ledger.map((e) => ({ kind: e.kind, cents: e.cents, status: e.status })), paypal: r.paypal, payouts: r.server.payouts.map((p) => ({ purpose: p.purpose, cents: p.cents, status: p.status, batchId: p.batchId, itemId: p.itemId })) };
@@ -1204,6 +1213,7 @@ async function main() {
         dir: { type: 'string' },
         port: { type: 'string' },
         keep: { type: 'boolean' },
+        'by-hand': { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
       },
     });

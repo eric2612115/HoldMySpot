@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  askClockStopsAt,
   askFeeAt,
   askNextDropAt,
   clockProblem,
@@ -112,5 +113,28 @@ describe('ask fee clock', () => {
     assert.match(clockProblem(usd(7), clock) ?? '', /floor/);
     assert.match(clockProblem(usd(15), { ...clock, stepCents: 0 }) ?? '', /step/);
     assert.match(clockProblem(usd(15), { ...clock, intervalMs: 1_000 }) ?? '', /interval/);
+  });
+});
+
+describe('askClockStopsAt (D-132)', () => {
+  const T = Date.UTC(2026, 10, 12, 18, 50);
+  const wei = { feeCents: 1500, clock: { stepCents: 100, intervalMs: 5 * MIN, floorCents: 800, startsAt: T }, remainingCapacity: 1, updatedAt: T };
+  it('runs to the floor while the offer is open', () => {
+    assert.equal(askClockStopsAt({ ...wei, status: 'open' }, null), T + 35 * MIN);
+  });
+  it('stops at the match that took the last unit, even after the ask closes later', () => {
+    const matchedAt = T + 15 * MIN;
+    assert.equal(askClockStopsAt({ ...wei, status: 'filled', remainingCapacity: 0, updatedAt: matchedAt }, matchedAt), matchedAt);
+    // The visit ends at 11:40 (ask closed): the clock still stopped at the 11:05 match, at $12.
+    const closed = { ...wei, status: 'closed', remainingCapacity: 0, updatedAt: T + 50 * MIN };
+    assert.equal(askClockStopsAt(closed, matchedAt), matchedAt);
+    assert.equal(askFeeAt(closed, askClockStopsAt(closed, matchedAt)!), 1200);
+  });
+  it('stops when an unfilled offer stopped selling, never past the floor', () => {
+    assert.equal(askClockStopsAt({ ...wei, status: 'withdrawn', updatedAt: T + 7 * MIN }, null), T + 7 * MIN);
+    assert.equal(askClockStopsAt({ ...wei, status: 'closed', updatedAt: T + 90 * MIN }, null), T + 35 * MIN);
+  });
+  it('is null before the clock starts', () => {
+    assert.equal(askClockStopsAt({ ...wei, clock: { ...wei.clock, startsAt: null }, status: 'open' }, null), null);
   });
 });

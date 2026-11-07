@@ -1,4 +1,4 @@
-import { ContractError, OPS_DATASETS, reachesAt, epochToZonedLocal, zonedLocalToEpoch, askSchedule, opsDatasets } from '@holdmyspot/shared';
+import { ContractError, OPS_DATASETS, epochToZonedLocal, zonedLocalToEpoch, askClockStopsAt, askSchedule, opsDatasets } from '@holdmyspot/shared';
 import type { BoardData, BoardEvent, BoardTimeRange, CityId, OpsDataset, OpsDatasetName, OpsRecords } from '@holdmyspot/shared';
 import { OPS_VIEWER, type App } from './app.ts';
 import { viewUser } from './views.ts';
@@ -49,8 +49,9 @@ export function board(app: App, q: { from?: string; to?: string; cityId?: CityId
     if (!ids.has(a.queuerId)) continue;
     const s = askSchedule(a);
     if (!s) continue;
-    const floorAt = reachesAt(s, s.floorCents) ?? s.startsAt;
-    const end = a.status === 'open' ? floorAt : Math.min(floorAt, a.updatedAt);
+    // The clock stops at the match that took its last unit, not when the ask record last changed (D-132).
+    const lastMatchAt = app.store.matches.where('ask_id = ?', a.id).reduce<number | null>((t, m) => (t === null || m.at > t ? m.at : t), null);
+    const end = askClockStopsAt(a, lastMatchAt) ?? s.startsAt;
     if (overlaps(s.startsAt, Math.max(end, s.startsAt + 60_000))) {
       events.push({
         id: `clock-${a.id}`,

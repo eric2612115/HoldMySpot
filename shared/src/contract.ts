@@ -659,6 +659,12 @@ export interface AiStamp {
   model: string;
   mode: AiMode;
   latencyMs: number;
+  /**
+   * Set only when no model and no recording read the photo: the simulated reading the rules got
+   * instead (a scenario such as `genuine`, `fake_receipt` or `line_ok`), so screens never say a
+   * model checked it (D-128).
+   */
+  simulated?: string | null;
 }
 
 export const PROOF_STATUSES = ['verifying', 'passed', 'failed', 'needs_review'] as const;

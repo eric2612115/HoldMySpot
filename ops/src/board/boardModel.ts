@@ -88,6 +88,13 @@ function clockSteps(ask: AskTask, start: MarketMs, end: MarketMs, now: MarketMs)
     }));
 }
 
+/** The fee of the latest job matched to this ask (a fill is always at the ask's fee then), or null. */
+function matchedFee(bundle: BoardBundle, askId: string): number | null {
+  let last: Job | null = null;
+  for (const j of Object.values(bundle.jobs)) if (j.askId === askId && (!last || j.createdAt >= last.createdAt)) last = j;
+  return last ? last.feeCents : null;
+}
+
 const FAILURE_TEXT: Record<string, string> = {
   proof_rejected: 'Receipt failed, $0 moved',
   no_show: 'No-show, re-offered',
@@ -162,14 +169,19 @@ export function buildBars(bundle: BoardBundle, proposals: Proposal[], now: Marke
         cls: `hms-bar hms-line${planned ? ' is-planned' : ''}`,
       });
     } else if (e.kind === 'fee_clock' && ask?.clock) {
-      const steps = clockSteps(ask, e.startDate, e.endDate, now);
-      const fee = askFeeAt(ask, now);
+      // A clock whose ask stopped selling (its last unit matched, or the visit ended) stops at the bar's end:
+      // no step is drawn after the match, and the price shown is the price it stopped at (D-132).
+      const stopped = ask.status !== 'open' && ask.clock.startsAt !== null;
+      const at = stopped ? Math.min(now, e.endDate) : now;
+      const steps = clockSteps(ask, e.startDate, e.endDate, at);
+      const fee = askFeeAt(ask, at);
       const planned = e.status === 'planned';
+      const matched = stopped ? matchedFee(bundle, ask.id) : null;
       bars.push({
         ...base,
         tone: 'clock',
-        title: planned ? `Clock ${usd(ask.feeCents)} to ${usd(ask.clock.floorCents)}` : `Fee now ${usd(fee)}`,
-        sub: `${usd(ask.clock.stepCents)} every ${Math.round(ask.clock.intervalMs / 60_000)} min, floor ${usd(ask.clock.floorCents)}`,
+        title: planned ? `Clock ${usd(ask.feeCents)} to ${usd(ask.clock.floorCents)}` : matched !== null ? `Matched at ${usd(matched)}` : stopped ? `Stopped at ${usd(fee)}` : `Fee now ${usd(fee)}`,
+        sub: `${usd(ask.clock.stepCents)} every ${Math.round(ask.clock.intervalMs / 60_000)} min, floor ${usd(ask.clock.floorCents)}${matched !== null ? '; stopped at the match' : ''}`,
         steps,
         shopId,
         cls: `hms-bar hms-clock${planned ? ' is-planned' : ''}`,
@@ -280,7 +292,11 @@ export function buildRows(bundle: BoardBundle, proposals: Proposal[], now: Marke
     const shop = shopOf(current?.shopId);
     let status = 'Free';
     if (current && shop) {
-      if (current.status === 'awaiting_arrival' || current.status === 'arrived') status = `On the way to ${shop.name}, ETA ${clockText(bundle.asks[current.askId]?.etaAt ?? current.windowEndsAt)}`;
+      if (current.status === 'awaiting_arrival' || current.status === 'arrived') {
+        // A passed ETA says so (Jo at 11:21 was due 11:15), instead of reading like a time still ahead.
+        const eta = bundle.asks[current.askId]?.etaAt ?? current.windowEndsAt;
+        status = eta < now ? `On the way to ${shop.name}, ETA ${clockText(eta)} passed` : `On the way to ${shop.name}, ETA ${clockText(eta)}`;
+      }
       else if (current.status === 'checked_in') status = `In line at ${shop.name} since ${clockText(current.checkedInAt ?? now)}`;
       else if (current.status === 'lapsed') status = `Missed check-in at ${shop.name}`;
       else if (current.status === 'done') status = `Done at ${shop.name}`;

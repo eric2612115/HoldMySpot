@@ -1046,3 +1046,49 @@ html[data-phone='requester'] .task .earn {
   font: 700 26px/1 var(--font-money);
   letter-spacing: 0.24em;
 }
+
+/* Zero-key demo: the simulated reading for a photo no model reads (D-128). */
+.q-sim {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed color-mix(in srgb, var(--ink-3) 45%, transparent);
+  border-radius: 14px;
+  min-width: 0;
+}
+.q-sim legend {
+  padding: 0 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.q-sim__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.q-sim__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-3) 10%, transparent);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.q-sim__option.is-on {
+  background: var(--ink);
+  color: #fff;
+}
+.q-sim__option input {
+  margin: 0;
+  accent-color: currentColor;
+}
+.q-sim__note {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}

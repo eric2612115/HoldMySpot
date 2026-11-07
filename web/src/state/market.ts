@@ -37,6 +37,8 @@ export interface UserOrder {
   /** The fee it filled at (the offer's fee at that moment). */
   fillFeeCents?: Cents;
   queuerName?: string;
+  /** Server driver: where the queuer's job for this request is (claimed, checked_in, queueing, bought, ...). */
+  jobStatus?: string;
   chargedCents?: Cents;
   releasedCents?: Cents;
   /** In-browser market: when the queuer's receipt comes in (market clock). */
@@ -69,10 +71,22 @@ export interface ActivityRow {
   who?: string;
 }
 
+/** Whose phone a toast belongs to: the requester's, the queuer's, or whichever phone is on screen. */
+export type ToastAudience = 'requester' | 'queuer' | 'any';
+
 export interface Toast {
   id: number;
   text: string;
   tone: 'money' | 'info' | 'win';
+  audience: ToastAudience;
+}
+
+/**
+ * The toasts the phone on screen shows (D-132): a requester's money news never shows on the
+ * queuer's phone and the other way round; the in-browser market and screen-wide notes use "any".
+ */
+export function toastsFor(toasts: readonly Toast[], phone: 'requester' | 'queuer'): Toast[] {
+  return toasts.filter((t) => t.audience === 'any' || t.audience === phone);
 }
 
 export interface Celebration {
@@ -129,6 +143,11 @@ export interface MarketState {
   backend: 'connecting' | 'mock' | 'server';
   /** Server runtime mode: fake (Simulated PayPal) or sandbox. Null in the in-browser market. */
   serverMode: 'fake' | 'sandbox' | null;
+  /**
+   * Zero-key server (simulated PayPal, no live model): a photo with no recorded reading gets the
+   * simulated reading the queuer picks on the phone (D-128).
+   */
+  simulatedReadings: boolean;
   persona: Persona | null;
   points: TaskPoint[];
   selectedId: string | null;
@@ -139,6 +158,8 @@ export interface MarketState {
   heldCents: Cents;
   /** Server mode: what PayPal Payouts sent to the queuer persona (succeeded). */
   paidOutCents: Cents;
+  /** Server mode: what the requester persona was charged (captures less refunds, succeeded). */
+  chargedCents: Cents;
   toasts: Toast[];
   /** Increments when a point's book changes (a new request or a fill), so its label and item can bounce. */
   bumps: Record<string, number>;
@@ -167,13 +188,19 @@ export interface MarketState {
   shippingFor(pointId: string): Cents;
   /** Clears a finished order so the viewer can ask again. */
   clearOrder(pointId: string): void;
-  toast(text: string, tone?: Toast['tone']): void;
+  toast(text: string, tone?: Toast['tone'], audience?: ToastAudience): void;
   dismissToast(id: number): void;
   bump(pointId: string): void;
   celebrate(pointId: string | null): void;
 }
 
 let toastSeq = 0;
+/** Before a new toast for `audience`: keep the newest earlier toast that the same phone shows, and every toast for the other phone. */
+function keepLatest(toasts: readonly Toast[], audience: ToastAudience): Toast[] {
+  const shownWith = (t: Toast) => audience === 'any' || t.audience === 'any' || t.audience === audience;
+  const same = toasts.filter(shownWith).slice(-1);
+  return toasts.filter((t) => !shownWith(t) || same.includes(t));
+}
 const FINISHED: OrderStatus[] = ['released', 'missed', 'error', 'filled'];
 
 /** Orders that are finished (or never started) leave the buttons free. */
@@ -184,6 +211,7 @@ export function isOpenOrder(order: UserOrder | undefined): boolean {
 export const useMarket = create<MarketState>()((set, get) => ({
   backend: 'connecting',
   serverMode: null,
+  simulatedReadings: false,
   persona: null,
   points: [],
   selectedId: null,
@@ -192,6 +220,7 @@ export const useMarket = create<MarketState>()((set, get) => ({
   activity: [],
   heldCents: 0,
   paidOutCents: 0,
+  chargedCents: 0,
   toasts: [],
   bumps: {},
   celebration: { n: 0, pointId: null },
@@ -234,9 +263,10 @@ export const useMarket = create<MarketState>()((set, get) => ({
     if (!isOpenOrder(get().orders[pointId])) return;
     set((s) => ({ orders: { ...s.orders, [pointId]: undefined } }));
   },
-  toast(text, tone = 'info') {
+  toast(text, tone = 'info', audience = 'any') {
     const id = ++toastSeq;
-    set((s) => ({ toasts: [...s.toasts.slice(-1), { id, text, tone }] }));
+    // The latest one of each audience stays, so a toast for the other phone never pushes this phone's out.
+    set((s) => ({ toasts: [...keepLatest(s.toasts, audience), { id, text, tone, audience }] }));
     window.setTimeout(() => get().dismissToast(id), 4600);
   },
   dismissToast(id) {

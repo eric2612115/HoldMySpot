@@ -10,7 +10,7 @@ import type { RecordedResponse } from './types.ts';
  * Loaded by server/src/ports/load.ts as
  * `createSandboxPayPal(options: SandboxPayPalOptions): PayPalPort`
  * (server/src/ports/payments.ts). Credentials come from `options.settings`,
- * which the server reads from ~/.config/paypal-hackathon/sandbox.env; this
+ * which the server reads from sandbox.env in its secrets folder (D-131); this
  * file never reads files or the environment, and refuses any base URL other
  * than https://api-m.sandbox.paypal.com.
  */

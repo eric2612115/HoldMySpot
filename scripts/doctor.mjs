@@ -14,9 +14,12 @@ import { parseArgs } from 'node:util';
 import {
   AI_KEY_NAMES,
   DEFAULT_PORTS,
+  KEYS_FROM_ENV,
   LICENCE_FILES,
   PACKAGES,
   REPO,
+  RUN_DIR,
+  SANDBOX_ALIASES,
   SANDBOX_NAMES,
   aiPing,
   bold,
@@ -114,6 +117,10 @@ async function main() {
     console.error(err.message);
     return 2;
   }
+  // The advice repeats the port flags this check was given, so following it stops the right launcher.
+  const flags = portFlags(args);
+  const offset = args['port-offset'] === undefined ? 0 : Number(args['port-offset']);
+  const elsewhere = `--port-offset ${offset + 10}`;
   for (const [name, port] of Object.entries(ports)) {
     const free = await portFree(port);
     let holder = null;
@@ -122,18 +129,22 @@ async function main() {
       holder = health?.contractVersion ? 'HoldMySpot' : (portOwner(port) ?? 'another program');
       block(
         holder === 'HoldMySpot'
-          ? `${name} port ${port} is in use by HoldMySpot: if npm run demo is already running, open its URLs; else stop it (npm run demo -- --stop) or use --port-offset 10`
-          : `${name} port ${port} is in use (${holder}): stop it, or run npm run demo -- --port-offset 10 (and pass the same flag here)`,
+          ? `${name} port ${port} is in use by HoldMySpot: if npm run demo is already running, open its URLs; else stop it (npm run demo -- --stop${flags}) or use other ports (npm run demo -- ${elsewhere})`
+          : `${name} port ${port} is in use (${holder}): stop it, or run npm run demo -- ${elsewhere} (and pass the same flag here)`,
       );
     }
     report.ports[name] = { port, free, holder };
   }
+  // This repo's own launcher on these ports (its record in .run/): the demo is running, which is fine.
+  report.demoRunning = Object.values(report.ports).some((p) => p.holder === 'HoldMySpot') && fs.existsSync(path.join(RUN_DIR, `dev-${ports.server}.json`));
 
   // Secrets folder and keys (names only).
   const demo = launchEnv({ mode: 'fake', ai: 'auto', ports });
   const sandbox = launchEnv({ mode: 'sandbox', ai: 'auto', ports });
   const dir = demo.secrets.dir;
-  report.secrets = { folder: demo.secrets.source, path: shown(dir), exists: fs.existsSync(dir), files: {} };
+  report.secrets = { folder: demo.secrets.source, path: shown(dir), exists: fs.existsSync(dir), outsideRepo: Boolean(demo.secrets.outside), files: {} };
+  // Keys from a folder outside the repo make this machine differ from a fresh clone (D-131).
+  if (demo.secrets.outside) warn(`Keys are read from ${shown(dir)} (HMS_SECRETS_DIR), outside this repo: a fresh clone elsewhere has none of them. Unset HMS_SECRETS_DIR to check the zero-key path.`);
   for (const f of ['sandbox.env', 'ai.env', LICENCE_FILES.grid.file, LICENCE_FILES.studio.file]) {
     const file = path.join(dir, f);
     const mode = fileMode(file);
@@ -141,14 +152,18 @@ async function main() {
     if (mode !== null && (mode & 0o077) !== 0) warn(`${shown(file)} can be read by other users: chmod 600 it`);
   }
   const sandboxEnv = readDotenvFile(path.join(dir, 'sandbox.env')) ?? new Map();
-  const has = (name) => Boolean(process.env[name] || sandboxEnv.get(name));
-  report.paypal.names = Object.fromEntries(SANDBOX_NAMES.map((n) => [n, has(n) ? (process.env[n] ? 'set (process env)' : 'set (sandbox.env)') : 'missing']));
+  // The payout receiver's older name (PAYPAL_TW_PAYOUT_EMAIL) still counts.
+  const value = (name) => process.env[name] || sandboxEnv.get(name) || (SANDBOX_ALIASES[name] ? process.env[SANDBOX_ALIASES[name]] || sandboxEnv.get(SANDBOX_ALIASES[name]) : '');
+  const where = (name) => (process.env[name] || (SANDBOX_ALIASES[name] && process.env[SANDBOX_ALIASES[name]]) ? 'set (process env)' : 'set (sandbox.env)');
+  report.paypal.names = Object.fromEntries(SANDBOX_NAMES.map((n) => [n, value(n) ? where(n) : 'missing']));
+  // What a person supplies: npm run keys -- --from-env reads these four and finds the rest itself.
+  report.paypal.keysFromEnv = KEYS_FROM_ENV;
   const aiEnv = readDotenvFile(path.join(dir, 'ai.env')) ?? new Map();
   report.ai.keys = Object.fromEntries(AI_KEY_NAMES.map((n) => [n, process.env[n] ? 'set (process env)' : aiEnv.get(n) ? 'set (ai.env)' : 'not in env or ai.env']));
 
   // PayPal OAuth (only with keys, only the token call).
-  const clientId = process.env.PAYPAL_CLIENT_ID || sandboxEnv.get('PAYPAL_CLIENT_ID') || '';
-  const secret = process.env.PAYPAL_CLIENT_SECRET || sandboxEnv.get('PAYPAL_CLIENT_SECRET') || '';
+  const clientId = value('PAYPAL_CLIENT_ID');
+  const secret = value('PAYPAL_CLIENT_SECRET');
   if (!clientId || !secret) report.paypal.oauth = 'skipped (no PayPal keys)';
   else if (args.offline) report.paypal.oauth = 'skipped (--offline)';
   else {
@@ -181,8 +196,9 @@ async function main() {
       const sandboxRun = name === 'npm run dev:sandbox';
       const refused = sandboxRun && v.mode !== 'sandbox';
       report.runs[name] = {
-        paypal: v.mode === 'sandbox' ? 'PayPal sandbox' : refused ? 'not ready: npm run dev:sandbox refuses to start' : 'simulated PayPal (fake mode)',
-        paypalReason: v.modeReason,
+        paypal: v.mode === 'sandbox' ? 'PayPal sandbox' : refused ? 'not ready: npm run dev:sandbox refuses to start until these are set' : 'simulated PayPal (fake mode)',
+        // The probe asks the server with the fake fallback on; the real start refuses instead of falling back.
+        paypalReason: refused ? v.modeReason.replace(/: running fake\.$/, '.') : v.modeReason,
         // With PayPal not ready the server would fall back to fake mode; say what AI the sandbox run will use once it is.
         ai: refused ? (v.ai.provider === 'fake' ? 'recorded answers and rules (no AI key)' : `${v.ai.provider} ${v.ai.model}, mode live (once PayPal is ready)`) : aiText(v.ai),
         aiReason: v.ai.reason,
@@ -203,7 +219,7 @@ async function main() {
       }
     }
     const sb = report.runs['npm run dev:sandbox'];
-    if (sb && !sb.error && !sb.paypal.startsWith('PayPal sandbox')) report.paypal.sandboxReady = `no: ${sb.paypalReason.replace(/: running fake\.$/, '')}`;
+    if (sb && !sb.error && !sb.paypal.startsWith('PayPal sandbox')) report.paypal.sandboxReady = `no: ${sb.paypalReason.replace(/\.$/, '')}`;
     else if (sb && !sb.error) report.paypal.sandboxReady = 'yes';
   } else {
     report.runs = { note: 'install server/ first (npm run setup) to see what each run would use' };
@@ -226,8 +242,13 @@ async function main() {
     console.log(JSON.stringify(report, null, 2));
     return report.ok ? 0 : 1;
   }
-  printHuman(report, ports);
+  printHuman({ ...report, args }, ports);
   return report.ok ? 0 : 1;
+}
+
+/** The port flags as given (" --port-offset 100" or the single-port flags), for advice that must hit the same ports. */
+function portFlags(args) {
+  return ['port-offset', 'server-port', 'web-port', 'ops-port'].filter((k) => args[k] !== undefined).map((k) => ` --${k} ${args[k]}`).join('');
 }
 
 /** The AI a run uses, in words. */
@@ -268,9 +289,11 @@ function printHuman(r, ports) {
   out.push(`  ${green('ok  ')} demo data: ${r.fixtures.replayAnswers} recorded AI answers, ${r.fixtures.demoPhotos} demo photo cases`);
   for (const [name, p] of Object.entries(r.ports)) out.push(`  ${ok(p.free)} port ${p.port} (${name}) ${p.free ? 'free' : `in use by ${p.holder}`}`);
   out.push('', bold('Keys (names only)'));
-  out.push(`  Secrets folder: ${r.secrets.folder}${r.secrets.exists ? '' : ' (does not exist yet)'}`);
+  out.push(`  Secrets folder: ${r.secrets.folder}${r.secrets.exists || r.secrets.folder.startsWith('none') ? '' : ' (does not exist yet)'}`);
   for (const [f, s] of Object.entries(r.secrets.files)) out.push(`    ${f.padEnd(22)} ${s}`);
-  out.push(`  PayPal sandbox: ${Object.entries(r.paypal.names).filter(([, v]) => v !== 'missing').length}/${Object.keys(r.paypal.names).length} names set${Object.values(r.paypal.names).includes('missing') ? `; missing ${Object.entries(r.paypal.names).filter(([, v]) => v === 'missing').map(([k]) => k).join(', ')}` : ''}`);
+  const missingNames = Object.entries(r.paypal.names).filter(([, v]) => v === 'missing').map(([k]) => k);
+  out.push(`  PayPal sandbox: ${Object.keys(r.paypal.names).length - missingNames.length}/${Object.keys(r.paypal.names).length} names set${missingNames.length > 0 ? `; missing ${missingNames.join(', ')}` : ''}`);
+  if (missingNames.length > 0) out.push(dim(`    npm run keys asks for ${r.paypal.keysFromEnv.join(', ')} (or reads them with --from-env) and finds the rest itself.`));
   out.push(`    OAuth check: ${r.paypal.oauth}`);
   if (r.paypal.features) out.push(`    Features: ${Object.entries(r.paypal.features).map(([k, v]) => `${k} ${v}`).join('; ')}`);
   out.push(`  AI keys: ${Object.entries(r.ai.keys).map(([k, v]) => `${k} ${v}`).join('; ')}`);
@@ -285,7 +308,7 @@ function printHuman(r, ports) {
       continue;
     }
     out.push(`  ${bold(name)}`);
-    out.push(`    PayPal: ${v.paypal}${v.paypal.startsWith('PayPal sandbox') ? '' : dim(` (${v.paypalReason.replace(/: running fake\.$/, '')})`)}`);
+    out.push(`    PayPal: ${v.paypal}${v.paypal.startsWith('PayPal sandbox') ? '' : dim(` (${v.paypalReason.replace(/\.$/, '')})`)}`);
     out.push(`    AI:     ${v.ai} ${dim(`(${v.aiReason})`)}`);
     if (v.serverEnvLocal?.length > 0) out.push(dim(`    server/.env.local sets ${v.serverEnvLocal.join(', ')}`));
   }
@@ -298,8 +321,8 @@ function printHuman(r, ports) {
   } else {
     out.push(red(bold('Not ready: npm run demo cannot start yet.')), ...r.blockers.map((b) => `  ${red('-')} ${b}`));
   }
-  const offset = ports.server !== DEFAULT_PORTS.server ? ' (with the same port flags)' : '';
-  if (!r.ok) out.push(dim(`Fix the above, then run npm run doctor again${offset}.`));
+  const again = portFlags(r.args ?? {});
+  if (!r.ok) out.push(dim(`Fix the above, then run npm run doctor${again ? ` --${again}` : ''} again.`));
   console.log(out.join('\n'));
 }
 

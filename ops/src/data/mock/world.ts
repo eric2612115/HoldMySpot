@@ -1070,11 +1070,27 @@ export function applyOpsMove(w: World, a: OpsAction): boolean {
     kind: 'reassign',
     fromFeeCents: job.feeCents,
     toFeeCents: taken[0]?.feeCents ?? null,
-    reason:
-      (names.length > 0
+    reason: withReasonAfter(
+      names.length > 0
         ? `${job.requesterName}'s hold could not pay, so ${job.queuerName}'s ${what} went to ${names.join(' and ')} at ${usd(taken[0]?.feeCents ?? job.feeCents)} each (approved by ops). ${job.requesterName.split(' ')[0]} keeps the place in line once a new hold is approved.`
-        : `${job.requesterName}'s hold could not pay; ${job.queuerName}'s ${what} went back to the line-up (approved by ops).`) + (a.reason ? ` ${a.reason}` : ''),
+        : `${job.requesterName}'s hold could not pay; ${job.queuerName}'s ${what} went back to the line-up (approved by ops).`,
+      a.reason,
+    ),
     ai: a.ai,
   });
   return true;
+}
+
+/**
+ * A move note with the pick's reason after it, minus the sentences the note already says (D-132): the
+ * rescheduler's reason for Noor's card repeated "keeps the place in line once a new hold is approved".
+ */
+export function withReasonAfter(base: string, reason: string | null | undefined): string {
+  if (!reason) return base;
+  const said = base.toLowerCase();
+  const fresh = reason
+    .split(/(?<=[.;])\s+/)
+    .map((x) => x.trim())
+    .filter((x) => x && !said.includes(x.replace(/[.;]$/, '').toLowerCase()));
+  return fresh.length > 0 ? `${base} ${fresh.join(' ')}` : base;
 }

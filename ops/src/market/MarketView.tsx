@@ -11,7 +11,7 @@ import { modelLabel } from '../agents/brain.ts';
 import type { MarketSnapshot } from '../data/backend.ts';
 import type { Market } from '../data/useMarket.ts';
 import { W } from '../data/vocab.ts';
-import { createMarketDesk } from './agent/marketDesk.ts';
+import { PLACEHOLDER_ID, createMarketDesk } from './agent/marketDesk.ts';
 import { studioData } from './studioData.ts';
 import { INITIAL_STATE } from './studioState.ts';
 import { hmsStudioTheme } from './theme.ts';
@@ -36,21 +36,47 @@ const TOPIC_LABEL: Record<string, string> = {
   earnings: 'queuer earnings',
 };
 
-/** How the market desk's own tool reads in Studio's chat panel. */
+/**
+ * How the market desk's tools read in Studio's chat panel: plain words, with the tool's own name in the
+ * pill at the end of the row (D-130). Studio's delegate_to and remove_widget get words too: the first
+ * showed a bare "delegate_to" line, the second called the desk's placeholder note "the widget".
+ */
+const AGENT_NAME: Record<string, string> = { widget: 'Widget', page: 'Page', data: 'Data' };
 const TOOL_DISPLAY = {
   read_market: {
     label: ({ status, args }: { status: string; args: { topic?: string; shop?: string } }) => ({
-      text: `${status === 'done' ? 'Read' : 'Reading'} ${TOPIC_LABEL[args.topic ?? ''] ?? 'the market'}`,
-      pill: args.shop || undefined,
+      text: `${status === 'done' ? 'Read' : 'Reading'} ${TOPIC_LABEL[args.topic ?? ''] ?? 'the market'}${args.shop ? ` at ${args.shop}` : ''}`,
+      pill: 'read_market',
     }),
   },
   add_gap_spotlight: {
-    label: ({ status }: { status: string }) => ({ text: `${status === 'done' ? 'Built' : 'Building'} the ${W.widestSpread} spotlight` }),
+    label: ({ status }: { status: string }) => ({ text: `${status === 'done' ? 'Built' : 'Building'} the ${W.widestSpread} spotlight`, pill: 'add_gap_spotlight' }),
+  },
+  add_breakdown: {
+    label: ({ status, args }: { status: string; args: { measure?: string; by?: string; chart?: string } }) => ({
+      text: `${status === 'done' ? 'Built' : 'Building'} a ${args.chart === 'bar' ? 'chart' : 'table'} of ${(args.measure ?? 'money').replace('_', ' ')} by ${args.by ?? 'shop'}`,
+      pill: 'add_breakdown',
+    }),
+  },
+  check_widget: {
+    label: ({ status }: { status: string }) => ({ text: `${status === 'done' ? 'Checked' : 'Checking'} the widget's figures against the market`, pill: 'check_widget' }),
   },
   filter_shop: {
     label: ({ status, args }: { status: string; args: { shop?: string } }) => ({
-      text: args.shop === 'all' ? 'Cleared the shop filter' : `${status === 'done' ? 'Filtered' : 'Filtering'} the page to one shop`,
-      pill: args.shop && args.shop !== 'all' ? args.shop : undefined,
+      text: args.shop === 'all' ? 'Cleared the shop filter' : `${status === 'done' ? 'Filtered' : 'Filtering'} the page to ${args.shop ?? 'one shop'}`,
+      pill: 'filter_shop',
+    }),
+  },
+  delegate_to: {
+    label: ({ status, args }: { status: string; args: { type?: { id?: string } } }) => ({
+      text: `${status === 'done' ? 'Asked' : 'Asking'} Studio's ${AGENT_NAME[args.type?.id ?? ''] ?? ''} agent`.replace('  ', ' '),
+      pill: 'delegate_to',
+    }),
+  },
+  remove_widget: {
+    label: ({ status, args, widgetName }: { status: string; args: { widgetId?: string }; widgetName: (id: string) => string | undefined }) => ({
+      text: `${status === 'done' ? 'Removed' : 'Removing'} ${args.widgetId === PLACEHOLDER_ID ? 'the placeholder note' : ((args.widgetId && widgetName(args.widgetId)) ?? 'a widget')}`,
+      pill: 'remove_widget',
     }),
   },
 };

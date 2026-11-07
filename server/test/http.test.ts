@@ -210,14 +210,21 @@ describe('server-sent events', () => {
   });
   after(() => s.done());
 
-  async function readEvents(url: string, until: (events: { event: string; data: any; id: string | null }[]) => boolean, headers: Record<string, string> = {}) {
+  /** `onHello` runs once the stream's hello event arrived, so a test acts only after it is subscribed (a loaded machine can take longer than any fixed wait). */
+  async function readEvents(
+    url: string,
+    until: (events: { event: string; data: any; id: string | null }[]) => boolean,
+    headers: Record<string, string> = {},
+    onHello?: () => void,
+  ) {
     const ctrl = new AbortController();
     const res = await fetch(url, { headers, signal: ctrl.signal });
     assert.equal(res.headers.get('content-type'), 'text/event-stream; charset=utf-8');
     const reader = res.body!.getReader();
     const events: { event: string; data: any; id: string | null }[] = [];
     let buf = '';
-    const deadline = Date.now() + 3000;
+    let helloSeen = false;
+    const deadline = Date.now() + 15_000;
     while (!until(events) && Date.now() < deadline) {
       const { value, done } = await reader.read();
       if (done) break;
@@ -232,14 +239,20 @@ describe('server-sent events', () => {
         const id = lines.find((l) => l.startsWith('id: '))?.slice(4) ?? null;
         if (ev && data) events.push({ event: ev, data: JSON.parse(data), id });
       }
+      if (!helloSeen && events.some((e) => e.event === 'hello')) {
+        helloSeen = true;
+        onHello?.();
+      }
     }
     ctrl.abort();
     return events;
   }
 
   it('sends hello, then only the events this persona may see, redacted', async () => {
-    const pending = readEvents(`${base}/api/events?as=wei`, (evs) => evs.some((e) => e.event === 'claim.updated'));
-    await new Promise((r) => setTimeout(r, 50));
+    let subscribed!: () => void;
+    const hello = new Promise<void>((r) => (subscribed = r));
+    const pending = readEvents(`${base}/api/events?as=wei`, (evs) => evs.some((e) => e.event === 'claim.updated'), {}, () => subscribed());
+    await hello;
     const { placeBid, postAsk } = await import('./helpers.ts');
     await placeBid(s.app, 'mia', { qty: 1, maxFeeCents: 1200 });
     await postAsk(s.app, 'wei', { capacity: 1, feeCents: 1100 });

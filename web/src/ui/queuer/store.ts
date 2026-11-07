@@ -9,7 +9,6 @@ import { usePosition } from '../../state/position';
 import { onStreamEvent, type StreamEvent } from '../../state/serverMarket';
 import { clock, params } from '../../state/services';
 import { activeClaimId, isStale, type OfferForm, type QueuerRecords } from './logic';
-import { usePhone } from './phone';
 import { uploadPhoto } from './photos';
 
 /**
@@ -87,9 +86,9 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong.';
 }
 
-/** Toasts for the queuer only show on the queuer's phone. */
+/** Toasts for the queuer show only on the queuer's phone (the toast list filters by phone, D-132). */
 function tell(text: string, tone: 'money' | 'info' | 'win' = 'info') {
-  if (usePhone.getState().phone === 'queuer') useMarket.getState().toast(text, tone);
+  useMarket.getState().toast(text, tone, 'queuer');
 }
 
 /** Keeps the latest copy per id; an older copy (a late HTTP answer) never replaces a newer one from the stream. */
@@ -268,7 +267,7 @@ async function run<T>(label: string, fn: (q: string) => Promise<T>): Promise<T |
   } catch (err) {
     const text = message(err);
     set({ error: text });
-    useMarket.getState().toast(text, 'info');
+    useMarket.getState().toast(text, 'info', 'queuer');
     return null;
   } finally {
     set({ busy: null });
@@ -311,9 +310,10 @@ export const queuerActions = {
   offer(point: TaskPoint, form: OfferForm, tripMinutes: number) {
     return run('Posting your offer', (q) => postAsk(q, point, form, tripMinutes));
   },
-  checkIn(claim: Claim, photo: Blob) {
+  /** `scenario`: the simulated reading picked on the phone (zero-key demo only, D-128). */
+  checkIn(claim: Claim, photo: Blob, scenario: string | null = null) {
     return run('Checking in', async (q) => {
-      const file = await uploadPhoto(q, 'line_photo', photo);
+      const file = await uploadPhoto(q, 'line_photo', photo, scenario);
       const out = await api('POST /api/claims/:claimId/check-in', { claimId: claim.id }, { ...here(), photoFileId: file.id }, { as: q, idempotencyKey: key() });
       set((s) => ({ claims: upsert(s.claims, [out.claim], 'claim'), jobs: upsert(s.jobs, out.jobs, 'job'), proofs: out.proof ? upsert(s.proofs, [out.proof], 'proof') : s.proofs }));
       return out;
@@ -335,10 +335,11 @@ export const queuerActions = {
       return out;
     });
   },
-  proof(job: Job, receipt: Blob, item: Blob) {
+  /** `scenario`: the simulated reading picked on the phone (zero-key demo only, D-128); both photos carry it. */
+  proof(job: Job, receipt: Blob, item: Blob, scenario: string | null = null) {
     return run('Sending the photos', async (q) => {
-      const r = await uploadPhoto(q, 'receipt', receipt);
-      const i = await uploadPhoto(q, 'item_photo', item);
+      const r = await uploadPhoto(q, 'receipt', receipt, scenario);
+      const i = await uploadPhoto(q, 'item_photo', item, scenario);
       const out = await api('POST /api/jobs/:jobId/proof', { jobId: job.id }, { receiptFileId: r.id, itemFileId: i.id }, { as: q, idempotencyKey: key() });
       set((s) => ({ jobs: upsert(s.jobs, [out.job], 'job'), proofs: upsert(s.proofs, [out.proof], 'proof') }));
       return out;

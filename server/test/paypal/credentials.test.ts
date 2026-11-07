@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { SERVER_ROOT } from '../../src/config.ts';
 import { after, describe, it } from 'node:test';
 import { inspect } from 'node:util';
 import { loadSandboxEnvFile, maskId, parseDotenv, secretsDir } from '../../src/paypal/index.ts';
@@ -51,7 +52,7 @@ describe('sandbox.env loader', () => {
     assert.equal(r.settings.clientSecret, DUMMY_SECRET);
     assert.equal(r.settings.clientId, 'AbCdEf0123456789xyz');
     assert.equal(r.settings.webhookId, null);
-    assert.deepEqual(r.missingRecommended, ['PAYPAL_MERCHANT_ID', 'PAYPAL_TW_PAYOUT_EMAIL']);
+    assert.deepEqual(r.missingRecommended, ['PAYPAL_MERCHANT_ID', 'PAYPAL_PAYOUT_EMAIL']);
     assert.deepEqual(r.warnings, []);
     assert.ok(!JSON.stringify(r).includes(DUMMY_SECRET));
     assert.ok(!inspect(r, { depth: 5 }).includes(DUMMY_SECRET));
@@ -86,8 +87,8 @@ describe('sandbox.env loader', () => {
     assert.deepEqual(Object.fromEntries(m), { A: '1', B: 'two', C: 'quoted # not a comment', D: 'plain', F: '', G: 'single' });
   });
 
-  it('finds the secrets folder from HMS_SECRETS_DIR, else ~/.config/paypal-hackathon', () => {
-    assert.equal(secretsDir({}), join(homedir(), '.config', 'paypal-hackathon'));
+  it("finds the secrets folder from HMS_SECRETS_DIR, else the repo's own .secrets/ (D-131)", () => {
+    assert.equal(secretsDir({}), join(SERVER_ROOT, '..', '.secrets'));
     assert.equal(secretsDir({ HMS_SECRETS_DIR: '/tmp/x' }), '/tmp/x');
     assert.equal(secretsDir({ HMS_SECRETS_DIR: '~/s' }), join(homedir(), 's'));
   });

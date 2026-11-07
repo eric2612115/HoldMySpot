@@ -93,7 +93,7 @@ export function loadSandboxBuyer(secretsDir) {
 
 /**
  * A payout receiver picked by label from sandbox-buyers.json (email only, no password), for when
- * sandbox.env has no PAYPAL_TW_PAYOUT_EMAIL. It must not be the buyer (docs/PAYPAL-MAPPING.md section 1).
+ * sandbox.env has no PAYPAL_PAYOUT_EMAIL. It must not be the buyer (docs/PAYPAL-MAPPING.md section 1).
  */
 export function loadPayoutReceiver(secretsDir, label) {
   const env = (() => {
@@ -113,7 +113,7 @@ export function loadPayoutReceiver(secretsDir, label) {
 /**
  * Any sandbox account picked by label from sandbox-buyers.json, with its password, for approving a
  * hold in PayPal's own window from the web app (web/scripts/sandbox-walk.mjs). It must not be the
- * payout receiver (PAYPAL_TW_PAYOUT_EMAIL or PAYPAL_PAYOUT_EMAIL), so a buyer is never also paid out.
+ * payout receiver (PAYPAL_PAYOUT_EMAIL, or its older name PAYPAL_TW_PAYOUT_EMAIL), so a buyer is never also paid out.
  */
 export function loadSandboxAccount(secretsDir, label) {
   let env = new Map();

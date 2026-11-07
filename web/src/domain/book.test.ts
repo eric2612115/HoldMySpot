@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestOffer, depthOf, holdFor, matchPoint, noOfferNote, offerFeeAt, retailCapFor, supplyLabel, units, withBookSummary } from './book';
+import { bestOffer, depthOf, holdFor, lineSentence, matchPoint, maxFeeGrid, noOfferNote, offerFeeAt, retailCapFor, supplyLabel, units, withBookSummary } from './book';
 import { buildCatalog } from './catalog';
 import { usd } from './money';
 import type { Bid, FeeOffer, TaskPoint } from './types';
@@ -125,5 +125,47 @@ describe('the offer card with no open offer', () => {
   it('names the queuer who took the request, and a sell-out', () => {
     expect(noOfferNote(point as never, { status: 'bought', queuerName: 'Wei' })).toBe('Wei took your request. No other offer is open right now.');
     expect(noOfferNote({ ...point, status: 'sold_out' } as never, { status: 'resting' })).toBe('Paper Moon Toys has sold out of the plush.');
+  });
+});
+
+describe('the line sentence in the shop sheet (D-132)', () => {
+  const shop = { id: 'paper-moon-toys', name: 'Paper Moon Toys', street: '', hours: { opens: '10:00', closes: '18:00' }, timezone: 'America/Los_Angeles' };
+  const base = { status: 'open' as const, shop, offers: [] as FeeOffer[], queue: { minutes: 50, peopleAhead: null, queuers: [] as string[] } };
+  const hhmm = (t: number) => (t === T0 ? '10:50' : '?');
+  it("never says nobody is in line while the viewer's own queuer is there", () => {
+    expect(lineSentence({ ...base, queue: { ...base.queue, queuers: ['Wei'] } }, { status: 'booked', queuerName: 'Wei', jobStatus: 'queueing' })).toBe('Wei is in line for you now.');
+    // The book has not caught up yet: the job says he is in line.
+    expect(lineSentence(base, { status: 'booked', queuerName: 'Wei', jobStatus: 'queueing' })).toBe('Wei is in line for you now.');
+    expect(lineSentence(base, { status: 'booked', queuerName: 'Wei', jobStatus: 'checked_in' })).toBe('Wei is at Paper Moon Toys; the line photo is being checked.');
+    expect(lineSentence(base, { status: 'booked', queuerName: 'Wei', jobStatus: 'claimed' })).toBe('Wei took your request and is on the way to the line.');
+    // After the purchase his visit is over: the sentence says so instead of "No queuer in line yet".
+    expect(lineSentence(base, { status: 'bought', queuerName: 'Wei', jobStatus: 'verified' })).toBe('Wei bought yours and left the line. No other queuer is in line right now.');
+    expect(lineSentence({ ...base, queue: { ...base.queue, queuers: ['Lin'] } }, { status: 'bought', queuerName: 'Wei', jobStatus: 'verified' })).toBe('Wei bought yours and left the line. Lin is in line too.');
+  });
+  it('names who is in line, who is on the way, or nobody', () => {
+    expect(lineSentence({ ...base, queue: { ...base.queue, queuers: ['Wei'] } }, undefined)).toBe('Wei is in line now.');
+    expect(lineSentence({ ...base, queue: { ...base.queue, queuers: ['Wei', 'Rex'] } }, { status: 'resting' })).toBe('Wei and Rex are queueing together.');
+    expect(lineSentence({ ...base, offers: [offer(15, { checkedIn: false, etaAt: T0 })] }, undefined, hhmm)).toBe('No queuer is in line yet. Wei is on the way (arriving 10:50).');
+    expect(lineSentence(base, undefined)).toBe('No queuer is in line right now. Requests wait here for one.');
+    expect(lineSentence({ ...base, status: 'sold_out' }, undefined)).toBe('Sold out here: no queuer is buying it now.');
+    // A released request does not name its old queuer.
+    expect(lineSentence(base, { status: 'released', queuerName: 'Wei', jobStatus: 'failed' })).toBe('No queuer is in line right now. Requests wait here for one.');
+  });
+});
+
+describe('the max-fee picker grid (D-132)', () => {
+  it('starts a dollar over the best request, on the same half-dollar grid as the slider', () => {
+    // Fresh market: the best request is $11, so the picker starts at $12 (a $63.70 hold for the plush).
+    expect(maxFeeGrid({ minFeeCents: 500, bestFeeCents: 1100 }, null)).toEqual({ unit: 50, lo: 500, hi: 2500, initial: 1200 });
+    // After the scripted day the best request is $10.50: $11.50 is on the grid, so the slider shows what the label says.
+    const g = maxFeeGrid({ minFeeCents: 500, bestFeeCents: 1050 }, null);
+    expect(g.initial).toBe(1150);
+    expect((g.initial - g.lo) % g.unit).toBe(0);
+    // $12.00 is reachable from there in one step.
+    expect(g.initial + g.unit).toBe(1200);
+  });
+  it('stays under an open offer and inside the bounds', () => {
+    expect(maxFeeGrid({ minFeeCents: 500, bestFeeCents: 1100 }, 1500)).toEqual({ unit: 50, lo: 500, hi: 1400, initial: 1200 });
+    expect(maxFeeGrid({ minFeeCents: 525, bestFeeCents: null }, 700).lo).toBe(550);
   });
 });

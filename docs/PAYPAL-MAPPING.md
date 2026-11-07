@@ -8,9 +8,9 @@ Items marked **probe** are not yet proven in our sandbox. Everything else in sec
 
 | Role | Sandbox account | Where it comes from |
 |---|---|---|
-| Platform merchant (payee of every hold, sender of every payout) | Existing sandbox app, US business account `<sandbox business account>` | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID` in `~/.config/paypal-hackathon/sandbox.env` |
+| Platform merchant (payee of every hold, sender of every payout) | Existing sandbox app, US business account `<sandbox business account>` | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID` in `sandbox.env` in the secrets folder (`.secrets/` written by `npm run keys`, or `HMS_SECRETS_DIR`) |
 | Requester (buyer) | US personal account `<sandbox personal account>` (or a dedicated judge buyer) | `PAYPAL_BUYER_EMAIL`; the password is typed only on PayPal's own pages |
-| Queuer payout receiver | Any US personal sandbox account other than the buyer (no Taiwan account is needed, owner 11-07) | `PAYPAL_TW_PAYOUT_EMAIL` (the name is historical, D-17). When `sandbox.env` has none (true on 11-07), the gate script takes `--payout-to <label>` from `sandbox-buyers.json` (never the buyer) and hands it to the server it starts as `PAYPAL_TW_PAYOUT_EMAIL` in the environment (D-69). |
+| Queuer payout receiver | Any US personal sandbox account other than the buyer (no Taiwan account is needed, owner 11-07) | `PAYPAL_PAYOUT_EMAIL` (its older name `PAYPAL_TW_PAYOUT_EMAIL` is still read, D-17). When `sandbox.env` has none (true on 11-07), the gate script takes `--payout-to <label>` from `sandbox-buyers.json` (never the buyer) and hands it to the server it starts as `PAYPAL_PAYOUT_EMAIL` in the environment (D-69). |
 
 The platform app's transaction and dispute history can hold objects that are not HoldMySpot's. Every object we create carries an `HMS-` prefixed `invoice_id` and our id in `custom_id`; the poller, the webhook handler and the dispute list ignore anything without that prefix.
 
@@ -109,7 +109,7 @@ Mia's request for the hero errand, as the server sends it. Run `20261107-2047` s
 
 - `payment_source` uses the key of the button the buyer chose (`paypal` or `venmo`; Pay Later rides on `paypal`). A v6 session accepts an order created with a `payment_source` (section 3), so the server always sends one (the client's `paymentSource: 'send'` default; nothing sets `omit`).
 - Local errands: `shipping_preference: NO_SHIPPING` and `purchase_units[0].shipping.type: PICKUP_FROM_PERSON` (accepted on 11-07, G9; PayPal notes seller protection does not apply to in-person pickup because the payer can check the item first, which is why local mode captures at the handover).
-- The hold screen says "up to": the PayPal page shows the full limit ($63.70 in [PayPal's window](../proto-shots/v3/final/03-paypal-window.png)). The processing line, $3.70 here, is the most the request's one job could pay PayPal at its caps (D-105); it is not called "PayPal processing", because PayPal's user agreement forbids a fee for accepting PayPal as a payment method.
+- The hold screen says "up to": the PayPal page shows the full limit ($63.70 in [PayPal's window](../proto-shots/v3/final/03-paypal-window.png)). The processing line, $3.70 here, is the most the request's one job could pay PayPal at its caps (D-105).
 
 ## 5. Payout body
 
@@ -128,13 +128,13 @@ Wei's fee payout in run `20261107-2047`: batch `5MVTE5WFTZD24`, item `FQCNEBP9F6
     "amount": { "value": "10.80", "currency": "USD" },
     "note": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys (Wei)",
     "sender_item_id": "po_0001",
-    "receiver": "<PAYPAL_TW_PAYOUT_EMAIL>",
+    "receiver": "<PAYPAL_PAYOUT_EMAIL>",
     "notification_language": "en-US"
   }]
 }
 ```
 
-In sandbox mode every queuer persona pays out to the one receiver in `PAYPAL_TW_PAYOUT_EMAIL` (a US personal sandbox account; the name is historical); the persona name is in the note. The sandbox does not support the PHONE recipient type, and Venmo payouts need a US phone number, so Venmo payouts are a production-only option. Unclaimed items return after 30 days or can be cancelled; claimed items cannot be pulled back.
+In sandbox mode every queuer persona pays out to the one receiver in `PAYPAL_PAYOUT_EMAIL` (a US personal sandbox account; the older name `PAYPAL_TW_PAYOUT_EMAIL` is still read); the persona name is in the note. The sandbox does not support the PHONE recipient type, and Venmo payouts need a US phone number, so Venmo payouts are a production-only option. Unclaimed items return after 30 days or can be cancelled; claimed items cannot be pulled back.
 
 ## 6. Status sync: webhooks and polling
 

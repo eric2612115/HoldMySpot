@@ -235,8 +235,8 @@ Required disclosures (exact numbers filled in):
 
 - Bid form: "PayPal holds up to $63.70. You pay the receipt price, the matched fee, the actual shipping and processing at cost, never more than this. The rest is released."
 - Bid form and ask form: "HoldMySpot keeps 10% of the queue fee. Shop price, shipping and processing are passed through at cost."
-- Bid form: "Processing and payouts: up to $3.70, what taking your payment and paying the queuer costs (3.49% + $0.49 per charge, $0.25 per payout). HoldMySpot makes nothing on it." The line is never called "PayPal processing": PayPal's user agreement forbids a fee for accepting PayPal as a payment method, and this cost is the same whichever button pays (D-105).
+- Bid form: "Processing and payouts: up to $3.70, what taking your payment and paying the queuer costs (3.49% + $0.49 per charge, $0.25 per payout). HoldMySpot makes nothing on it." The cost is the same whichever button pays (D-105).
 - Every screen in sandbox or fake mode: a mode banner ("PayPal sandbox: no real money" or "Simulated PayPal").
-- AI results: "Checked by AI and rules" plus the provider stamp; estimates are labelled as estimates.
+- AI results: "Checked by AI and rules" plus the provider stamp; a photo no model and no recording read says "Simulated reading, no AI" with the reading it got (D-128); estimates are labelled as estimates.
 
 Avoid on screen and in the pitch (from the 11-07 policy check): NFT, mint, token, floor price, flip, trading, liquidity, spread; loot box, gacha, chase, jackpot, break; scalp, resell for profit, skip the line, bots, hype; escrow, wallet, credits, cash out; "PayPal protects every trade"; any real brand. Internal names (bid, ask, book) stay in code; screen copy is presentation and can say "requests" and "offers".

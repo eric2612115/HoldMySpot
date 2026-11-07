@@ -22,6 +22,8 @@ interface Props {
   onSelect(queuerId: string, shopId: string | null): void;
   validateMove(jobId: string, toQueuerId: string): string | null;
   onMove(jobId: string, toQueuerId: string): Promise<string | null>;
+  /** A drop the rules refused: the validator's reason, for the same toast as a move. */
+  onRefused?(reason: string): void;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -106,7 +108,7 @@ function barContent(bar: BarRecord) {
   return children;
 }
 
-export function QueuerBoard({ bars, rows, bundle, now, selectedId, onSelect, validateMove, onMove }: Props) {
+export function QueuerBoard({ bars, rows, bundle, now, selectedId, onSelect, validateMove, onMove, onRefused }: Props) {
   const ref = useRef<BryntumScheduler>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const barsById = useRef(new Map<string, BarRecord>());
@@ -117,6 +119,10 @@ export function QueuerBoard({ bars, rows, bundle, now, selectedId, onSelect, val
   validateRef.current = validateMove;
   const moveRef = useRef(onMove);
   moveRef.current = onMove;
+  const refusedRef = useRef(onRefused);
+  refusedRef.current = onRefused;
+  // The validator's last refusal, shown once the bar snaps back (the drag tooltip goes away with the drag).
+  const refusal = useRef<string | null>(null);
   const [markers, setMarkers] = useState<Marker[]>([]);
 
   const events = useMemo(
@@ -295,8 +301,13 @@ export function QueuerBoard({ bars, rows, bundle, now, selectedId, onSelect, val
           if (String(newResource.id) === bar.resourceId) return true;
           const problem = validateRef.current(bar.jobId, String(newResource.id));
           const name = rowsById.current.get(String(newResource.id))?.name ?? String(newResource.id);
+          refusal.current = problem;
           return problem ? { valid: false, message: problem } : { valid: true, message: `Moves to ${name} at that offer's fee now` };
         },
+      },
+      onAfterEventDrop: ({ valid }: { valid: boolean }) => {
+        if (!valid && refusal.current) refusedRef.current?.(refusal.current);
+        refusal.current = null;
       },
       onBeforeEventDropFinalize: ({ context }) => {
         const bar = barsById.current.get(String(context.eventRecord?.id ?? context.eventRecords[0]?.id));

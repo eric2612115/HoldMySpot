@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// The PayPal part of scripts/setup-keys.mjs, for a secrets folder outside the repo:
-// $HMS_SECRETS_DIR, else ~/.config/paypal-hackathon (the server's default). Same flags as
+// The PayPal part of scripts/setup-keys.mjs, for a secrets folder outside the repo named by
+// $HMS_SECRETS_DIR or --dir (there is no default outside the repo, D-131). Same flags as
 // `npm run keys -- --only paypal`: --check, --dry-run, --client-id, --buyer-email, --payout-email,
 // --merchant-email, --merchant-id, --webhook-id, --secret-stdin, --keep-secret, --no-verify,
 // --no-lookup, --dir. Names the file does not manage are kept as they are. Nothing secret is printed.
@@ -19,7 +19,12 @@ if (argv.includes('--from')) {
   process.exit(2);
 }
 const hasDir = argv.some((a) => a === '--dir' || a.startsWith('--dir='));
-const dir = process.env.HMS_SECRETS_DIR || path.join(os.homedir(), '.config', 'paypal-hackathon');
+const fromEnv = process.env.HMS_SECRETS_DIR?.trim();
+if (!hasDir && !fromEnv && !argv.includes('--help') && !argv.includes('-h')) {
+  console.error('Name the secrets folder outside the repo with HMS_SECRETS_DIR or --dir. For this repo, use npm run keys (it writes .secrets/).');
+  process.exit(2);
+}
+const dir = fromEnv?.startsWith('~/') ? path.join(os.homedir(), fromEnv.slice(2)) : (fromEnv || path.join(here, '..', '.secrets'));
 const args = [path.join(here, 'setup-keys.mjs'), '--only', 'paypal', ...(hasDir ? [] : ['--dir', dir]), ...argv];
 const child = spawn(process.execPath, args, { stdio: 'inherit' });
 child.on('exit', (code, signal) => process.exit(code ?? (signal ? 1 : 0)));

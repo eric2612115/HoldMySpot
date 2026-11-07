@@ -17,6 +17,8 @@
     "doctor": "node scripts/doctor.mjs",
     "test": "node scripts/test-all.mjs",
     "gates": "node scripts/dev.mjs gates",
+    "errand": "node scripts/errand.mjs",
+    "paypal:check": "node scripts/paypal-check.mjs",
     "ai:eval": "node scripts/dev.mjs ai-eval"
   }
 }

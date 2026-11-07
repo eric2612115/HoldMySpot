@@ -185,7 +185,9 @@ function positiveInt(value: string | undefined, fallback: number): number {
 export function resolveAiSettings(opts: ResolveOptions = {}): ResolvedAi {
   const env = opts.env ?? process.env;
   const runtimeMode: RuntimeMode = opts.runtimeMode ?? (env.HMS_MODE === 'sandbox' ? 'sandbox' : 'fake');
-  const secretsDir = opts.secretsDir ?? env.HMS_SECRETS_DIR ?? join(homedir(), '.config', 'paypal-hackathon');
+  const fromEnv = env.HMS_SECRETS_DIR?.trim();
+  // HMS_SECRETS_DIR, else the repo's .secrets/ (D-131); the server passes its own choice as opts.secretsDir.
+  const secretsDir = opts.secretsDir ?? (fromEnv ? (fromEnv.startsWith('~/') ? join(homedir(), fromEnv.slice(2)) : fromEnv) : join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.secrets'));
 
   const searched = ['process env'];
   const found: Record<KeyName, { value: SecretValue; source: string } | null> = { ANTHROPIC_API_KEY: null, MODEL_API_KEY: null, OPENAI_API_KEY: null };

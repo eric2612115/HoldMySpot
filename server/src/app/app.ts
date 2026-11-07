@@ -53,6 +53,8 @@ export class App {
   readonly startedAt: number;
   /** Demo director, attached by the composition root when demo mode is on. */
   director: { nextDue(): { at: number; run: () => Promise<void>; key: string } | null } | null = null;
+  /** True while a demo script step runs: its staged requests are the script's, not a person's (D-132). */
+  inDemoStep = false;
 
   readonly #serial = new Serial();
   readonly #background = new Set<Promise<void>>();

@@ -13,6 +13,15 @@ import type { AiMode, CheckoutFunding, MarketRules, RuntimeMode } from '@holdmys
  */
 
 export const SERVER_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+/** The repo's own key folder, written by `npm run keys` (git-ignored). The default secrets folder (D-131). */
+export const DEFAULT_SECRETS_DIR = join(SERVER_ROOT, '..', '.secrets');
+
+/** HMS_SECRETS_DIR with a leading ~ expanded, or null when unset. */
+export function expandSecretsDir(raw: string | undefined): string | null {
+  const v = raw?.trim();
+  if (!v) return null;
+  return v === '~' ? homedir() : v.startsWith('~/') ? join(homedir(), v.slice(2)) : resolve(v);
+}
 
 export const SANDBOX_REQUIRED = [
   'PAYPAL_ENV',
@@ -21,8 +30,11 @@ export const SANDBOX_REQUIRED = [
   'PAYPAL_MERCHANT_EMAIL',
   'PAYPAL_MERCHANT_ID',
   'PAYPAL_BUYER_EMAIL',
-  'PAYPAL_TW_PAYOUT_EMAIL',
+  'PAYPAL_PAYOUT_EMAIL',
 ] as const;
+
+/** Older names still read (D-132): PAYPAL_TW_PAYOUT_EMAIL was the payout receiver's first name. */
+export const PAYPAL_NAME_ALIASES: Readonly<Record<string, string>> = { PAYPAL_PAYOUT_EMAIL: 'PAYPAL_TW_PAYOUT_EMAIL' };
 
 export interface PayPalSettings {
   env: 'sandbox';
@@ -117,7 +129,8 @@ export function readDotenv(path: string): Map<string, string> {
 function loadPayPal(env: Env, secretsDir: string): { settings: PayPalSettings | null; missing: string[]; source: string } {
   const file = join(secretsDir, 'sandbox.env');
   const fromFile = readDotenv(file);
-  const get = (k: string) => env[k] || fromFile.get(k) || '';
+  const alias = (k: string) => PAYPAL_NAME_ALIASES[k];
+  const get = (k: string) => env[k] || fromFile.get(k) || (alias(k) ? env[alias(k)!] || fromFile.get(alias(k)!) : '') || '';
   const missing = SANDBOX_REQUIRED.filter((k) => !get(k));
   const source = existsSync(file) ? 'sandbox.env' : 'process env';
   if (missing.length > 0) return { settings: null, missing, source };
@@ -130,7 +143,7 @@ function loadPayPal(env: Env, secretsDir: string): { settings: PayPalSettings | 
       merchantEmail: get('PAYPAL_MERCHANT_EMAIL'),
       merchantId: get('PAYPAL_MERCHANT_ID'),
       buyerEmail: get('PAYPAL_BUYER_EMAIL'),
-      twPayoutEmail: get('PAYPAL_TW_PAYOUT_EMAIL'),
+      twPayoutEmail: get('PAYPAL_PAYOUT_EMAIL'),
       webhookId: get('PAYPAL_WEBHOOK_ID') || null,
     },
     missing: [],
@@ -169,7 +182,8 @@ export const isLoopback = (host: string) => LOOPBACK.has(host);
 export function loadConfig(env: Env = process.env, overrides: Partial<ServerConfig> = {}): ServerConfig {
   const requested = (env.HMS_MODE ?? 'fake') as RuntimeMode;
   if (requested !== 'fake' && requested !== 'sandbox') throw new Error('HMS_MODE must be fake or sandbox.');
-  const secretsDir = env.HMS_SECRETS_DIR ?? join(homedir(), '.config', 'paypal-hackathon');
+  // Keys live in HMS_SECRETS_DIR, else the repo's .secrets/ (npm run keys); no folder outside the repo is read by default (D-131).
+  const secretsDir = expandSecretsDir(env.HMS_SECRETS_DIR) ?? DEFAULT_SECRETS_DIR;
 
   let mode: RuntimeMode = 'fake';
   let modeReason = 'HMS_MODE=fake: simulated PayPal, no network.';

@@ -40,7 +40,7 @@ export interface UserDoc {
   user: User;
   /** Seeded crowd bidders: real records, not selectable personas. */
   crowd: boolean;
-  /** Payout receiver in fake mode (sandbox mode pays PAYPAL_TW_PAYOUT_EMAIL). */
+  /** Payout receiver in fake mode (sandbox mode pays PAYPAL_PAYOUT_EMAIL). */
   payoutEmail: string | null;
 }
 

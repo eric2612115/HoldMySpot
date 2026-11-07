@@ -1,5 +1,5 @@
 import { DEFAULT_RULES, bidDisclosures } from '@holdmyspot/shared';
-import { sortBids } from '../domain/book';
+import { lineSentence, sortBids } from '../domain/book';
 import { REASON_TEXT, distanceText, rateText, travelText, type Reach } from '../domain/earning';
 import { formatUsd } from '../domain/money';
 import type { TaskPoint } from '../domain/types';
@@ -14,11 +14,6 @@ const QUEUER_COLORS = ['#FF8FAB', '#57C4E5', '#FFD166', '#F28482'];
 /** The ask form's platform-fee sentence (docs/DOMAIN.md section 9), the same words as the bid form's. */
 const FEE_LINE = bidDisclosures({ qty: 1, retailCapCents: 0, maxFeeCents: 0, shippingBudgetCents: 0, mode: 'local' })[1]!;
 const clockTime = (t: number, tz: string) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(t);
-
-function listNames(names: string[]) {
-  if (names.length <= 1) return names.join('');
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
 
 /** Why the viewer cannot ask for this item (sold out; server persona in another city, local errand only), or null. */
 function requestBlock(point: TaskPoint, persona: Persona | null): string | null {
@@ -48,6 +43,9 @@ export function TaskSheet({
   const now = useNow(1000);
   const persona = useMarket((s) => s.persona);
   const taken = useMarket((s) => s.taken[point.id]);
+  const order = useMarket((s) => s.orders[point.id]);
+  // A requester in another city (Mia in New York) has it shipped: no walk, no distance (D-132).
+  const elsewhere = Boolean(persona && persona.requesterCity !== (point.cityId === 'sf' ? 'San Francisco' : 'New York'));
   const bids = sortBids(point.bids);
   const most = Math.max(1, ...point.depth.map((l) => l.qty));
   const q = point.queue;
@@ -64,7 +62,7 @@ export function TaskSheet({
           <p className="task__shop">{point.shop.name}</p>
           <p>
             {point.shop.street}
-            {reach && <>, {distanceText(reach.walkM)} away</>}
+            {reach && !elsewhere && <>, {distanceText(reach.walkM)} away</>}
           </p>
         </div>
         <button type="button" className="close-button" onClick={onClose} aria-label="Close">
@@ -136,9 +134,12 @@ export function TaskSheet({
       <section className="task__block">
         <div className="block-head">
           <h3>The line</h3>
-          <button type="button" className="text-button" onClick={onWalk}>
-            Walk there
-          </button>
+          {/* A requester in another city (Mia in New York) asks for it shipped; she does not walk to the shop (D-132). */}
+          {!elsewhere && (
+            <button type="button" className="text-button" onClick={onWalk}>
+              Walk there
+            </button>
+          )}
         </div>
         <div className="line-info">
           <div className="line-info__stat">
@@ -162,15 +163,7 @@ export function TaskSheet({
               </span>
             ))}
           </div>
-          <p>
-            {q.queuers.length === 0
-              ? point.status === 'sold_out'
-                ? 'Sold out here: no queuer is buying it now.'
-                : 'No queuer in line yet. Requests are waiting for one.'
-              : q.queuers.length === 1
-                ? `${q.queuers[0]} is in line now.`
-                : `${listNames(q.queuers)} are queueing together.`}
-          </p>
+          <p>{lineSentence(point, order, (t) => clockTime(t, point.shop.timezone))}</p>
         </div>
       </section>
 

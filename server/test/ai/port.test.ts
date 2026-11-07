@@ -23,7 +23,7 @@ describe('AiPort factory', () => {
     }
   });
 
-  it('reads its own fixtures, and hands simulated-scenario or unknown photos (no key) to the rules-only fake', async () => {
+  it('reads its own fixtures, hands simulated-scenario photos (no key) to the rules-only fake, and sends unknown photos with no scenario to review (D-128)', async () => {
     const config = loadConfig({ HMS_SECRETS_DIR: tempDir(), HMS_AI_PROVIDER: 'auto', HMS_AI_FIXTURES_DIR: tempDir() });
     const ai = await createAiPort({ config, log: () => undefined });
     assert.deepEqual([ai.info.provider, ai.info.mode], ['fake', 'replay']);
@@ -38,9 +38,12 @@ describe('AiPort factory', () => {
     const scenario = await ai.checkInPhoto({ ...input, photo: { ...input.photo, scenario: 'no_code', bytes: async () => stranger } });
     assert.equal(scenario.status, 'failed', 'an unknown photo with a scenario gets the simulated reading');
     assert.equal(scenario.extraction, null);
-    const unknown = await ai.checkInPhoto({ ...input, photo: { ...input.photo, bytes: async () => stranger } });
-    assert.equal(unknown.status, 'passed', 'the rules-only fake reads an unknown photo as genuine');
-    assert.equal(unknown.ai.provider, 'fake');
+    assert.equal(scenario.ai.simulated, 'no_code', 'the stamp names the simulated reading, not a model');
+    const genuine = await ai.checkInPhoto({ ...input, photo: { ...input.photo, scenario: 'line_ok', bytes: async () => stranger } });
+    assert.equal(genuine.status, 'passed');
+    assert.deepEqual([genuine.ai.provider, genuine.ai.simulated], ['fake', 'line_ok']);
+    // Nothing can read an unknown photo without a scenario: it never passes as genuine (the core sends it to review).
+    await assert.rejects(ai.checkInPhoto({ ...input, photo: { ...input.photo, bytes: async () => stranger } }), /no AI model reads photos on this server/);
   });
 
   it('hashes PNG and JPEG uploads and skips formats it cannot decode', async () => {

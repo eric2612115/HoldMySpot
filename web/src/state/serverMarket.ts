@@ -162,16 +162,16 @@ async function refreshOrder(bidId: string) {
     const pastReceipt = next.status === 'bought' || next.status === 'filled';
     if (prev && prev.status !== next.status) {
       const p = get().points.find((x) => x.id === next.pointId);
-      if (next.status === 'booked' && p) get().toast(`Matched: ${next.queuerName ?? 'a queuer'} will queue for you for a ${formatUsd(next.fillFeeCents ?? 0)} fee.`, 'money');
+      if (next.status === 'booked' && p) get().toast(`Matched: ${next.queuerName ?? 'a queuer'} will queue for you for a ${formatUsd(next.fillFeeCents ?? 0)} fee.`, 'money', 'requester');
       const who = next.queuerName ?? 'The queuer';
       // The receipt is the win, once per request (a shipped errand's hold stays open until tracking, D-115);
       // the last capture, which closes the hold, gets its own line.
       if (p && pastReceipt && !receiptShown.has(d.bid.id)) {
         get().celebrate(p.id);
-        get().toast(`Receipt checked. ${who} bought your ${p.itemShort}.`, 'win');
+        get().toast(`Receipt checked. ${who} bought your ${p.itemShort}.`, 'win', 'requester');
       } else if (p && next.status === 'filled') {
         const back = next.releasedCents ?? 0;
-        get().toast(`${who} ${next.mode === 'ship' ? 'shipped' : 'handed over'} your ${p.itemShort}. ${back > 0 ? `${formatUsd(back, { exact: true })} of your hold went back to you.` : 'Nothing more is held.'}`, 'money');
+        get().toast(`${who} ${next.mode === 'ship' ? 'shipped' : 'handed over'} your ${p.itemShort}. ${back > 0 ? `${formatUsd(back, { exact: true })} of your hold went back to you.` : 'Nothing more is held.'}`, 'money', 'requester');
       }
     }
     if (pastReceipt) receiptShown.add(d.bid.id);
@@ -211,7 +211,13 @@ function upsert(rows: ActivityRow[], row: ActivityRow): ActivityRow[] {
 function publishActivity() {
   const sorted = [...requesterRows, ...queuerRows].sort((a, b) => b.at - a.at || (a.id < b.id ? 1 : -1));
   const paidOut = queuerRows.filter((r) => r.kind === 'paid_out' && r.status === 'succeeded').reduce((sum, r) => sum + r.amountCents, 0);
-  useMarket.setState({ activity: sorted, heldCents: heldOf(requesterRows), paidOutCents: paidOut });
+  let charged = 0;
+  for (const r of requesterRows) {
+    if (r.status !== 'succeeded') continue;
+    if (r.kind === 'captured') charged += r.amountCents;
+    else if (r.kind === 'refunded') charged -= r.amountCents;
+  }
+  useMarket.setState({ activity: sorted, heldCents: heldOf(requesterRows), paidOutCents: paidOut, chargedCents: Math.max(0, charged) });
 }
 
 async function loadAll() {
@@ -331,7 +337,7 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
   if (!p || !isOpenOrder(get().orders[pointId])) return;
   const destination = destinationFor(p);
   if (!destination) {
-    get().toast(`${p.itemShort} is a local errand: only for requesters in ${p.cityId === 'sf' ? 'San Francisco' : 'New York'}.`, 'info');
+    get().toast(`${p.itemShort} is a local errand: only for requesters in ${p.cityId === 'sf' ? 'San Francisco' : 'New York'}.`, 'info', 'requester');
     return;
   }
   setOrder({ pointId, kind, status: 'approving', mode: destination.mode, maxFeeCents, holdCents: holdFor(p, maxFeeCents, 1, get().shippingFor(pointId)) });
@@ -362,12 +368,12 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
     }
     await api('POST /api/fake/paypal/orders/:orderId/approve', { orderId: created.checkout.orderId }, { funding: 'paypal', outcome: 'approve' });
     const result = await authorizeRequest(created.bid.id, created.checkout.orderId);
-    get().toast(heldText(result, maxFeeCents), 'money');
+    get().toast(heldText(result, maxFeeCents), 'money', 'requester');
     await refreshOrder(created.bid.id);
   } catch (err) {
     useMarket.setState({ checkout: null });
     patchOrder(pointId, { status: 'error', message: message(err) });
-    get().toast(message(err), 'info');
+    get().toast(message(err), 'info', 'requester');
   }
 }
 
@@ -468,12 +474,12 @@ function payWithPayPal(pointId: string, choice: BidChoice, funding: CheckoutFund
   const p = get().points.find((x) => x.id === pointId);
   if (!p || !checkout || !isOpenOrder(get().orders[pointId])) return;
   if (checkout.busy()) {
-    get().toast('PayPal’s window is already open for another request. Finish or close it first.', 'info');
+    get().toast('PayPal’s window is already open for another request. Finish or close it first.', 'info', 'requester');
     return;
   }
   const destination = destinationFor(p);
   if (!destination) {
-    get().toast(`${p.itemShort} is a local errand: only for requesters in ${p.cityId === 'sf' ? 'San Francisco' : 'New York'}.`, 'info');
+    get().toast(`${p.itemShort} is a local errand: only for requesters in ${p.cityId === 'sf' ? 'San Francisco' : 'New York'}.`, 'info', 'requester');
     return;
   }
   let maxFeeCents: Cents;
@@ -532,7 +538,7 @@ function endApproval(pointId: string, maxFeeCents: Cents, out: BidApprovalOutcom
         fillFeeCents: fill?.feeCents,
         message: undefined,
       });
-      get().toast(heldText(out.result, maxFeeCents), 'money');
+      get().toast(heldText(out.result, maxFeeCents), 'money', 'requester');
       void refreshOrder(out.bidId);
       return;
     }
@@ -541,11 +547,11 @@ function endApproval(pointId: string, maxFeeCents: Cents, out: BidApprovalOutcom
       return;
     case 'failed':
       patchOrder(pointId, { status: 'error', message: out.message });
-      get().toast(out.message, 'info');
+      get().toast(out.message, 'info', 'requester');
       return;
     case 'check':
       patchOrder(pointId, { status: 'error', message: out.message });
-      get().toast(out.message, 'info');
+      get().toast(out.message, 'info', 'requester');
       void refreshOrder(out.bidId);
   }
 }
@@ -626,10 +632,11 @@ const driver: MarketDriver = {
           ? `You took a request at ${formatUsd(out.matches[0]!.feeCents)}. ${trip}: check in before ${hhmm(out.claim.windowEndsAt, p.shop.timezone)}.`
           : `Your offer is up at ${formatUsd(p.bestFeeCents)}. ${trip}: check in before ${hhmm(out.claim.windowEndsAt, p.shop.timezone)}.`,
         'money',
+        'queuer',
       );
     } catch (err) {
       useMarket.setState((s) => ({ taken: { ...s.taken, [pointId]: { pointId, feeCents: p.bestFeeCents!, status: 'error', at: clock.now(), message: message(err) } } }));
-      get().toast(message(err), 'info');
+      get().toast(message(err), 'info', 'queuer');
     }
   },
   approve(ok) {
@@ -669,6 +676,8 @@ export async function bootServerMarket(city: CityConfig, params: AppParams): Pro
   useMarket.setState({
     backend: 'server',
     serverMode: config.mode,
+    // No live model in fake mode: the phone offers a simulated reading for photos with no recording (D-128).
+    simulatedReadings: config.mode === 'fake' && config.ai.mode !== 'live' && config.ai.mode !== 'record',
     driver,
     persona: { requesterId: r.user.id, requesterName: r.user.displayName, requesterCity: r.user.cityId === 'sf' ? 'San Francisco' : 'New York', queuerId: q.user.id, queuerName: q.user.displayName },
   });

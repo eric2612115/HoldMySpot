@@ -74,7 +74,9 @@ Options:
   -h, --help
 `;
 
-const PAYPAL_MANAGED = ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL', 'PAYPAL_WEBHOOK_ID'];
+const PAYPAL_MANAGED = ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL', 'PAYPAL_WEBHOOK_ID'];
+/** Older name of the payout receiver: still read from an existing file, and replaced by PAYPAL_PAYOUT_EMAIL when the file is written (D-132). */
+const PAYPAL_OLD_NAMES = ['PAYPAL_TW_PAYOUT_EMAIL'];
 const AI_PROVIDERS = {
   openai: { key: 'OPENAI_API_KEY', label: 'OpenAI', defaultModel: 'gpt-6.1-sol (the server default)' },
   anthropic: { key: 'ANTHROPIC_API_KEY', label: 'Anthropic', defaultModel: 'claude-opus-5-5 (the server default)' },
@@ -234,7 +236,7 @@ async function paypalSection(ctx) {
   const pick = (key, flag, fromEnv) => flag || (ctx.fromEnv ? fromEnv : '') || saved.get(key) || '';
   v.PAYPAL_CLIENT_ID = pick('PAYPAL_CLIENT_ID', a['client-id'], env.PAYPAL_CLIENT_ID);
   v.PAYPAL_BUYER_EMAIL = pick('PAYPAL_BUYER_EMAIL', a['buyer-email'], env.PAYPAL_BUYER_EMAIL);
-  v.PAYPAL_TW_PAYOUT_EMAIL = pick('PAYPAL_TW_PAYOUT_EMAIL', a['payout-email'], env.PAYPAL_PAYOUT_EMAIL || env.PAYPAL_TW_PAYOUT_EMAIL);
+  v.PAYPAL_PAYOUT_EMAIL = pick('PAYPAL_PAYOUT_EMAIL', a['payout-email'], env.PAYPAL_PAYOUT_EMAIL || env.PAYPAL_TW_PAYOUT_EMAIL) || saved.get('PAYPAL_TW_PAYOUT_EMAIL') || '';
   v.PAYPAL_MERCHANT_EMAIL = pick('PAYPAL_MERCHANT_EMAIL', a['merchant-email'], env.PAYPAL_MERCHANT_EMAIL);
   v.PAYPAL_MERCHANT_ID = pick('PAYPAL_MERCHANT_ID', a['merchant-id'], env.PAYPAL_MERCHANT_ID);
   v.PAYPAL_WEBHOOK_ID = pick('PAYPAL_WEBHOOK_ID', a['webhook-id'], env.PAYPAL_WEBHOOK_ID);
@@ -259,20 +261,17 @@ async function paypalSection(ctx) {
     console.log(dim('  Sandbox accounts: developer.paypal.com > Testing Tools > Sandbox Accounts (personal accounts).'));
     const buyer = await ask(`  Buyer email: the personal sandbox account you approve holds with${keep('PAYPAL_BUYER_EMAIL')}: `);
     if (buyer) v.PAYPAL_BUYER_EMAIL = buyer;
-    const payout = await ask(`  Payout email: another personal sandbox account that receives queuer payouts${keep('PAYPAL_TW_PAYOUT_EMAIL')}: `);
-    if (payout) v.PAYPAL_TW_PAYOUT_EMAIL = payout;
+    const payout = await ask(`  Payout email: another personal sandbox account that receives queuer payouts${keep('PAYPAL_PAYOUT_EMAIL')}: `);
+    if (payout) v.PAYPAL_PAYOUT_EMAIL = payout;
   }
 
-  const missing = ['PAYPAL_CLIENT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL'].filter((k) => !v[k]);
-  if (missing.length > 0) {
-    const names = missing.map((k) => (k === 'PAYPAL_TW_PAYOUT_EMAIL' ? 'PAYPAL_PAYOUT_EMAIL' : k));
-    throw new Error(`PayPal: missing ${names.join(', ')}.`);
-  }
-  for (const k of ['PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL', 'PAYPAL_MERCHANT_EMAIL']) {
-    if (v[k] && !EMAIL.test(v[k])) throw new Error(`PayPal: ${k === 'PAYPAL_TW_PAYOUT_EMAIL' ? 'PAYPAL_PAYOUT_EMAIL' : k} does not look like an email address.`);
+  const missing = ['PAYPAL_CLIENT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL'].filter((k) => !v[k]);
+  if (missing.length > 0) throw new Error(`PayPal: missing ${missing.join(', ')}.`);
+  for (const k of ['PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL', 'PAYPAL_MERCHANT_EMAIL']) {
+    if (v[k] && !EMAIL.test(v[k])) throw new Error(`PayPal: ${k} does not look like an email address.`);
   }
   for (const k of PAYPAL_MANAGED) if (v[k] && !SAFE.test(v[k])) throw new Error(`PayPal: ${k} contains spaces, quotes or #; please check it.`);
-  if (v.PAYPAL_BUYER_EMAIL.toLowerCase() === v.PAYPAL_TW_PAYOUT_EMAIL.toLowerCase()) {
+  if (v.PAYPAL_BUYER_EMAIL.toLowerCase() === v.PAYPAL_PAYOUT_EMAIL.toLowerCase()) {
     console.log(yellow('  Note: the buyer and the payout receiver are the same account; a second personal sandbox account makes the money easier to follow.'));
   }
 
@@ -347,7 +346,7 @@ async function paypalSection(ctx) {
     ['# PayPal sandbox credentials for HoldMySpot (npm run keys). Private: mode 600, never commit or share it.', `# Written ${new Date().toISOString()}.`],
     v,
     PAYPAL_MANAGED,
-    otherLines(raw, PAYPAL_MANAGED),
+    otherLines(raw, [...PAYPAL_MANAGED, ...PAYPAL_OLD_NAMES]),
   );
   secret = '';
   v.PAYPAL_CLIENT_SECRET = 'x';
@@ -490,6 +489,8 @@ async function check(ctx) {
     const file = path.join(ctx.dir, 'sandbox.env');
     const env = parseDotenv(readText(file));
     const values = Object.fromEntries(PAYPAL_MANAGED.map((k) => [k, env.get(k) || '']));
+    // A file written before the rename keeps the payout receiver under its older name; it still counts (D-132).
+    if (!values.PAYPAL_PAYOUT_EMAIL && env.get('PAYPAL_TW_PAYOUT_EMAIL')) values.PAYPAL_PAYOUT_EMAIL = env.get('PAYPAL_TW_PAYOUT_EMAIL');
     const fm = fileMode(file);
     console.log(`  sandbox.env: ${fm === null ? 'absent' : `mode ${fm.toString(8)}; ${status(values, PAYPAL_MANAGED)}`}`);
     if (fm !== null && values.PAYPAL_CLIENT_ID && values.PAYPAL_CLIENT_SECRET && !ctx.noVerify) {

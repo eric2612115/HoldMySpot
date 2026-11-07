@@ -130,6 +130,32 @@ describe('hero script', () => {
     assert.equal(jobs.length, 1);
     assert.equal(jobs[0]?.status, 'shipped');
   });
+
+  it('refuses a second one-per-customer plush for Mia once hers was bought (D-132)', async () => {
+    const NY = { mode: 'ship', country: 'US', region: 'NY', city: 'New York', postalCode: '10012' };
+    const quote = await s.call('POST', '/api/bids/quote', { as: 'mia', body: { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination: NY } });
+    assert.equal(quote.status, 400);
+    assert.equal(quote.json.error.code, 'OVER_STORE_LIMIT');
+    assert.match(quote.json.error.message, /at most 1 Mochi Bunny plush per person, and you already have one requested or bought/);
+    const bid = await s.call('POST', '/api/bids', {
+      as: 'mia',
+      idem: 'mia-second-plush',
+      body: { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, retailCapCents: 3600, maxFeeCents: 1200, shippingBudgetCents: 1200, destination: NY, deadlineAt: sf('14:05') + 86_400_000, funding: 'paypal', agent: null },
+    });
+    assert.equal(bid.status, 400);
+    assert.equal(bid.json.error.code, 'OVER_STORE_LIMIT');
+  });
+
+  it("stops Wei's fee clock on the ops board at the $12 match, not at the $8 floor (D-132)", async () => {
+    const wei = s.app.store.asks.first("queuer_id = 'wei'")!;
+    assert.notEqual(wei.status, 'open');
+    const board = (await s.call('GET', `/api/ops/board?cityId=sf&from=${sf('10:00')}&to=${sf('15:00')}`)).json;
+    const clock = board.events.find((e: { kind: string; refs: { askId?: string } }) => e.kind === 'fee_clock' && e.refs.askId === wei.id);
+    assert.ok(clock, "Wei's fee clock is on the board");
+    assert.equal(clock.startDate, sf('10:50'));
+    // The match at 11:05 took his only unit; the floor ($8) would have been 11:25.
+    assert.equal(clock.endDate, sf('11:05'));
+  });
 });
 
 describe('hero script, second take in the same server', () => {
@@ -151,5 +177,38 @@ describe('hero script, second take in the same server', () => {
     } finally {
       await s.done();
     }
+  });
+});
+
+describe('hero script with a request Mia placed in the web app before Play (D-132)', () => {
+  let s: TestServer;
+  before(async () => {
+    s = await testServer({ demo: true, crowd: true });
+    await s.director!.reset('hero', null);
+    s.app.clock.pause();
+    // The judge's own request on a fresh market: the web app's default $12 max fee, shipped to New York.
+    const NY = { mode: 'ship', country: 'US', region: 'NY', city: 'New York', postalCode: '10012' };
+    const quote = (await s.call('POST', '/api/bids/quote', { as: 'mia', body: { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination: NY } })).json;
+    const created = (
+      await s.call('POST', '/api/bids', {
+        as: 'mia',
+        idem: 'mia-before-play',
+        body: { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, retailCapCents: quote.suggested.retailCapCents, maxFeeCents: 1200, shippingBudgetCents: quote.suggested.shippingBudgetCents, destination: NY, deadlineAt: s.app.now() + 2 * 86_400_000, funding: 'paypal', agent: null },
+      })
+    ).json;
+    await s.call('POST', `/api/fake/paypal/orders/${created.checkout.orderId}/approve`, { body: { funding: 'paypal', outcome: 'approve' } });
+    await s.call('POST', `/api/bids/${created.bid.id}/authorize`, { as: 'mia', body: { orderId: created.checkout.orderId } });
+    s.director!.resume();
+    s.app.clock.pause();
+    await s.at(sf('14:05'));
+  });
+  after(() => s.done());
+
+  it('runs the day with her request instead of a second one, to the same ledger', () => {
+    const mine = s.app.store.bids.where('requester_id = ? AND item_id = ?', 'mia', HERO.itemId);
+    assert.equal(mine.length, 1, 'one plush request for Mia');
+    const hold = s.app.store.holds.must(mine[0]!.holdId!);
+    assert.deepEqual([hold.amount.cents, hold.capturedCents, hold.releasedCents, hold.status], [6370, 5826, 544, 'captured']);
+    assert.equal(s.director!.state().status, 'finished');
   });
 });

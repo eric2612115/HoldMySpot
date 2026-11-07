@@ -1,4 +1,4 @@
-import { SEED_SHOPS, bidDepth, epochToZonedLocal, formatUsd, maxSteps, opsDatasets, travelMinutes } from '@holdmyspot/shared';
+import { SEED_SHOPS, askClockStopsAt, bidDepth, epochToZonedLocal, formatUsd, maxSteps, opsDatasets, travelMinutes } from '@holdmyspot/shared';
 import type {
   AgentAction,
   AskQuote,
@@ -78,12 +78,11 @@ function clockEnd(w: World, ask: AskTask, start: MarketMs): MarketMs {
   const clock = ask.clock;
   if (!clock) return start;
   const floorAt = start + maxSteps({ openCents: ask.feeCents, stepCents: clock.stepCents, intervalMs: clock.intervalMs, floorCents: clock.floorCents, startsAt: start }) * clock.intervalMs;
-  if (ask.status === 'filled') {
-    const last = Math.max(...w.matches.filter((m) => m.askId === ask.id).map((m) => m.at));
-    return Math.max(start + MINUTE, last);
-  }
-  if (ask.status !== 'open') return Math.max(start + MINUTE, ask.updatedAt);
-  return Math.max(floorAt, start + clock.intervalMs);
+  if (ask.status === 'open') return Math.max(floorAt, start + clock.intervalMs);
+  // Filled or closed after its last unit matched: the clock stopped at that match (D-132), the same rule as the server's board.
+  const matches = w.matches.filter((m) => m.askId === ask.id).map((m) => m.at);
+  const stop = clock.startsAt === null ? null : askClockStopsAt(ask, matches.length > 0 ? Math.max(...matches) : null);
+  return Math.max(start + MINUTE, stop ?? (matches.length > 0 ? Math.max(...matches) : ask.updatedAt));
 }
 
 export function positionsAt(w: World, t: MarketMs): Record<UserId, LngLat> {

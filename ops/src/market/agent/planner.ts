@@ -2,7 +2,8 @@ import type { AgAiEvent, AgAiMessage, AgAiRunInput, AgStudioApi } from 'ag-studi
 import type { MarketSnapshot } from '../../data/backend.ts';
 import { W } from '../../data/vocab.ts';
 import { DEPTH_LADDER, GAP_SPOTLIGHT } from '../widgets/defs.ts';
-import { marketFacts, shopIn, topicFacts, topicOf } from './facts.ts';
+import { breakdownSpec } from './breakdown.ts';
+import { marketFacts, otherTopicsNote, shopIn, topicFacts, topicOf } from './facts.ts';
 import type { Topic } from './facts.ts';
 
 /**
@@ -151,6 +152,11 @@ export async function* planTurn(input: AgAiRunInput, signal: AbortSignal | undef
     yield* call('read_market', { topic, ...(shop ? { shop } : {}) });
     return;
   }
+  // Captures: a table of the PayPal captures by shop, built by add_breakdown from exact fields and filters (D-130).
+  if (topic === 'captures' && !done.includes('add_breakdown')) {
+    yield* call('add_breakdown', { measure: 'captures', by: 'shop' });
+    return;
+  }
   const wantsWidget = topic === 'gaps' || topic === 'depth';
   if (wantsWidget && !done.includes('add_widget')) {
     const { slot, replace } = slotFor(api);
@@ -175,6 +181,13 @@ export async function* planTurn(input: AgAiRunInput, signal: AbortSignal | undef
     }
   }
   const facts = resultText(results.read_market) || topicFacts(getSnapshot(), topic, shop);
-  const built = topic === 'gaps' ? ` I put a ${W.widestSpread} spotlight on the page.` : topic === 'depth' ? ` I put a ${W.depth.toLowerCase()} ladder on the page.` : '';
-  yield* say(`${facts}${built}`, signal);
+  const built =
+    topic === 'gaps'
+      ? ` I put a ${W.widestSpread} spotlight on the page.`
+      : topic === 'depth'
+        ? ` I put a ${W.depth.toLowerCase()} ladder on the page.`
+        : topic === 'captures' && done.includes('add_breakdown')
+          ? ` I put a table of the captures by shop on the page. ${breakdownSpec(getSnapshot(), 'captures', 'shop').text}`
+          : '';
+  yield* say(`${facts}${built}${otherTopicsNote(user, topic)}`, signal);
 }

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
@@ -13,10 +13,12 @@ import { defineConfig, loadEnv } from 'vite';
  *
  * AG licences (D-82): two optional keys, read here at dev-server or build time.
  * - AG Studio key: VITE_AG_STUDIO_LICENSE_KEY, else the file named by
- *   HMS_AG_STUDIO_LICENSE_FILE (default ~/.config/paypal-hackathon/agstudio-license.txt).
+ *   HMS_AG_STUDIO_LICENSE_FILE, else agstudio-license.txt in the secrets folder
+ *   (HMS_SECRETS_DIR, else the repo's .secrets/ written by npm run keys; D-131).
  *   It is the only key the console needs (D-83).
  * - AG Grid and AG Charts Enterprise key: VITE_AG_LICENSE_KEY, else the file named
- *   by HMS_AG_LICENSE_FILE (default ~/.config/paypal-hackathon/aggrid-license.txt).
+ *   by HMS_AG_LICENSE_FILE, else aggrid-license.txt in the same folder.
+ * - HMS_AG_TRIAL=1 (the launcher's --no-ag-licence) ignores every key: AG's trial mode.
  * The VITE_* values go in the git-ignored ops/.env.local or the shell. A key put
  * in the other slot still reaches the product it is for (its [03A], [03B] or
  * [03C] tag marks an AG Studio key). Without keys the console runs in AG's trial
@@ -33,12 +35,21 @@ interface AgKey {
   source: string;
 }
 
+/** The secrets folder, as the server reads it: HMS_SECRETS_DIR, else the repo's .secrets/ (D-131). */
+function secretsDir(env: Record<string, string>): { dir: string; label: string } {
+  const raw = (env.HMS_SECRETS_DIR || '').trim();
+  if (!raw) return { dir: join(root, '..', '.secrets'), label: '.secrets/' };
+  const dir = raw === '~' ? homedir() : raw.startsWith('~/') ? join(homedir(), raw.slice(2)) : isAbsolute(raw) ? raw : resolve(raw);
+  return { dir, label: 'HMS_SECRETS_DIR' };
+}
+
 /** One AG key: the inline variable, else the key file. Missing or empty gives undefined. */
 function readAgKey(env: Record<string, string>, inline: string, fileVar: string, defaultFile: string): AgKey | undefined {
   const value = (env[inline] || '').trim();
   if (value) return { key: value, source: inline };
-  const file = env[fileVar] || join(homedir(), '.config', 'paypal-hackathon', defaultFile);
-  const source = env[fileVar] ? fileVar : `the default ${fileVar} (~/.config/paypal-hackathon/${defaultFile})`;
+  const folder = secretsDir(env);
+  const file = env[fileVar] || join(folder.dir, defaultFile);
+  const source = env[fileVar] ? fileVar : `${defaultFile} in ${folder.label}`;
   try {
     const key = existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
     return key ? { key, source } : undefined;
@@ -53,6 +64,7 @@ const isStudioKey = (key: string) => /\[03[ABC]\]/.test(key);
 
 /** The AG Studio key and the AG Grid and AG Charts key, each from its own slot first. */
 function agLicenses(env: Record<string, string>): { studio?: AgKey; grid?: AgKey } {
+  if (env.HMS_AG_TRIAL === '1') return {};
   const studioSlot = readAgKey(env, 'VITE_AG_STUDIO_LICENSE_KEY', 'HMS_AG_STUDIO_LICENSE_FILE', 'agstudio-license.txt');
   const gridSlot = readAgKey(env, 'VITE_AG_LICENSE_KEY', 'HMS_AG_LICENSE_FILE', 'aggrid-license.txt');
   return {
@@ -72,7 +84,7 @@ export default defineConfig(({ mode }) => {
   // OPS_HMR=off: no hot updates, so an open page (a screenshot run) is never reloaded by an edit; a new page load gets the new code.
   const still = env.OPS_HMR === 'off';
   console.log(
-    `[ops] AG Studio licence: ${licenses.studio ? `from ${licenses.studio.source} (value not shown)` : 'none, trial mode (a watermark on hosts other than localhost)'}`,
+    `[ops] AG Studio licence: ${licenses.studio ? `from ${licenses.studio.source} (value not shown)` : `none, trial mode${env.HMS_AG_TRIAL === '1' ? ' (HMS_AG_TRIAL=1)' : ''} (a watermark on hosts other than localhost)`}`,
   );
   console.log(
     `[ops] AG Grid and AG Charts licence: ${licenses.grid ? `from ${licenses.grid.source} (value not shown)` : 'none (not needed: every grid and chart here is drawn by AG Studio)'}`,

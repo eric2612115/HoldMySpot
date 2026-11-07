@@ -328,7 +328,35 @@ describe('the AI check as rows', () => {
     expect(by.Time?.value).toBe('printed 11:41 AM, check-in 10:33 AM');
     expect(by.Items?.value).toBe('1 × MOCHI BUNNY PLUSH SAKURA $34.00');
     expect(by.Money?.value).toBe('shop price $34.00 (cap $36.00) + fee $12.00 + processing $2.69 at cost = $48.69');
+    expect(by.Totals?.value).toBe('total $34.00, QR read');
     expect(v.flags).toEqual([]);
+  });
+
+  it('says when no model read the photo: a simulated reading, and no "QR read" (D-128)', () => {
+    const base = purchaseCheckView(proof({ status: 'passed' }), job(), shop, sf('10:33'));
+    const sim = proof({
+      status: 'passed',
+      ai: { provider: 'fake', model: 'rules-v1', mode: 'fake', latencyMs: 0, simulated: 'genuine' },
+      receipt: {
+        printedName: 'PAPER MOON TOYS',
+        sellerTaxId: '41500017',
+        invoiceNumber: 'PM-20261112-0007',
+        issuedAt: new Date(sf('11:41')).toISOString(),
+        currency: 'USD',
+        lines: [],
+        total: { currency: 'USD', minor: 3400 },
+        qr: { invoiceNumber: 'PM-20261112-0007', issuedDate: '2026-11-12', sellerTaxId: '41500017', total: 3400 },
+        codeSeen: 'K7MX4',
+      },
+    });
+    const v = purchaseCheckView(sim, job(), shop, sf('10:33'));
+    expect(v.stamp).toBe('Simulated reading, no AI: read as a genuine receipt · the rules decided');
+    expect(v.rows.find((r) => r.label === 'Totals')?.value).toBe('total $34.00, QR simulated');
+    expect(base.stamp).toMatch(/^Checked by AI and rules/);
+    const fake = purchaseCheckView(proof({ status: 'failed', ai: { provider: 'fake', model: 'rules-v1', mode: 'fake', latencyMs: 0, simulated: 'fake_receipt' } }), job(), shop, sf('10:33'));
+    expect(fake.stamp).toBe('Simulated reading, no AI: read as a fake receipt · the rules decided');
+    const line = lineCheckView(proof({ kind: 'check_in', jobId: null, status: 'failed', ai: { provider: 'fake', model: 'rules-v1', mode: 'fake', latencyMs: 0, simulated: 'no_code' } }), claim());
+    expect(line.stamp).toBe('Simulated reading, no AI: read as no code in the photo · the rules decided');
   });
 
   it('lists the reasons a fake receipt failed and moves nothing', () => {

@@ -16,12 +16,14 @@ export const DEFAULT_PORTS = Object.freeze({ server: 8796, web: 5190, ops: 5197 
 export const MIN_NODE_MAJOR = 24;
 /** Keys written by `npm run keys` live here (git-ignored, mode 700, files mode 600). */
 export const REPO_SECRETS_DIR = path.join(REPO, '.secrets');
-/** The server's own default when neither HMS_SECRETS_DIR nor .secrets/ is there. */
-export const USER_SECRETS_DIR = path.join(os.homedir(), '.config', 'paypal-hackathon');
 export const RUN_DIR = path.join(REPO, '.run');
 
 /** Every name the server needs for PayPal sandbox mode (server/src/config.ts SANDBOX_REQUIRED). */
-export const SANDBOX_NAMES = ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL'];
+export const SANDBOX_NAMES = ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL'];
+/** Older names the server still reads for these (PAYPAL_TW_PAYOUT_EMAIL was the payout receiver's first name). */
+export const SANDBOX_ALIASES = Object.freeze({ PAYPAL_PAYOUT_EMAIL: 'PAYPAL_TW_PAYOUT_EMAIL' });
+/** What npm run keys -- --from-env reads; it finds PAYPAL_ENV, PAYPAL_MERCHANT_EMAIL and PAYPAL_MERCHANT_ID itself. */
+export const KEYS_FROM_ENV = ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL'];
 export const AI_KEY_NAMES = ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'MODEL_API_KEY'];
 /** Non-secret AI settings that may sit in .secrets/ai.env next to the key; the launcher passes them on. */
 export const AI_SETTING_NAMES = ['HMS_AI_PROVIDER', 'HMS_AI_MODEL', 'HMS_AI_BASE_URL', 'HMS_AI_MODE', 'HMS_ANTHROPIC_MODEL', 'HMS_MUSE_MODEL', 'HMS_MUSE_URL'];
@@ -220,14 +222,20 @@ export function serverLocalEnv() {
 }
 
 /**
- * Which secrets folder the server will use: HMS_SECRETS_DIR when set, else this repo's
- * .secrets/ when it exists (written by npm run keys), else the server's own default.
+ * Which secrets folder the server will use (D-131): HMS_SECRETS_DIR when set, else this repo's
+ * .secrets/ (written by npm run keys). No folder outside the repo is read unless HMS_SECRETS_DIR
+ * names it, so every machine runs the same zero-key demo until keys are saved.
+ * `outside`: the folder is not inside this repo (doctor says so).
  */
 export function secretsChoice(env = process.env) {
   const fromEnv = env.HMS_SECRETS_DIR?.trim();
-  if (fromEnv) return { dir: path.resolve(expandHome(fromEnv)), source: 'HMS_SECRETS_DIR', pass: true };
-  if (fs.existsSync(REPO_SECRETS_DIR)) return { dir: REPO_SECRETS_DIR, source: '.secrets/ in this repo (npm run keys)', pass: true };
-  return { dir: USER_SECRETS_DIR, source: 'the server default, ~/.config/paypal-hackathon', pass: false };
+  if (fromEnv) {
+    const dir = path.resolve(expandHome(fromEnv));
+    const rel = path.relative(REPO, dir);
+    return { dir, source: `HMS_SECRETS_DIR (${shown(dir)})`, pass: true, outside: rel.startsWith('..') || path.isAbsolute(rel) };
+  }
+  const exists = fs.existsSync(REPO_SECRETS_DIR);
+  return { dir: REPO_SECRETS_DIR, source: exists ? '.secrets/ in this repo (npm run keys)' : 'none yet (.secrets/ is written by npm run keys)', pass: exists, outside: false };
 }
 
 export function fileMode(file) {
@@ -444,17 +452,22 @@ export function launchEnv({ mode, ai, ports, demo = true, base = process.env }) 
   return { server, web, ops, secrets, licences };
 }
 
-/** Licence sources for doctor: names and places only, never the key. */
+/**
+ * Where the ops console gets each AG key, in ops/vite.config.ts's order: the inline VITE_* key (shell
+ * or ops/.env.local), else the key file named by HMS_AG_*_LICENSE_FILE, else the file in the secrets
+ * folder; HMS_AG_TRIAL=1 (--no-ag-licence) ignores them all. Names and places only, never the key.
+ */
 export function licenceSources(env = process.env) {
   const opsLocal = readDotenvFile(path.join(REPO, 'ops', '.env.local'));
   const out = {};
   for (const [kind, l] of Object.entries(LICENCE_FILES)) {
-    const inline = kind === 'grid' ? opsLocal?.get('VITE_AG_LICENSE_KEY') : opsLocal?.get('VITE_AG_STUDIO_LICENSE_KEY');
+    const inlineName = kind === 'grid' ? 'VITE_AG_LICENSE_KEY' : 'VITE_AG_STUDIO_LICENSE_KEY';
+    const inline = env[inlineName] ? inlineName : opsLocal?.get(inlineName) ? `${inlineName} in ops/.env.local` : null;
     const chosen = secretsChoice(env);
-    if (env[l.env]) out[kind] = { source: `${l.env} (${fs.existsSync(expandHome(env[l.env])) ? 'file exists' : 'file missing'})`, present: fs.existsSync(expandHome(env[l.env])) };
+    if (env.HMS_AG_TRIAL === '1') out[kind] = { source: 'none: trial mode forced (--no-ag-licence)', present: false };
+    else if (inline) out[kind] = { source: inline, present: true };
+    else if (env[l.env]) out[kind] = { source: `${l.env} (${fs.existsSync(expandHome(env[l.env])) ? 'file exists' : 'file missing'})`, present: fs.existsSync(expandHome(env[l.env])) };
     else if (chosen.pass && fs.existsSync(path.join(chosen.dir, l.file))) out[kind] = { source: `${shown(path.join(chosen.dir, l.file))}`, present: true };
-    else if (inline) out[kind] = { source: 'ops/.env.local', present: true };
-    else if (fs.existsSync(path.join(USER_SECRETS_DIR, l.file))) out[kind] = { source: `~/.config/paypal-hackathon/${l.file}`, present: true };
     else out[kind] = { source: 'none (trial mode; AG hides its watermark on localhost and 127.0.0.1 anyway)', present: false };
   }
   return out;

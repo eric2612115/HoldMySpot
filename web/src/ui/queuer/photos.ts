@@ -26,9 +26,14 @@ async function asJpeg(file: Blob): Promise<Blob> {
   return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The photo could not be prepared.'))), 'image/jpeg', 0.88));
 }
 
-export async function uploadPhoto(as: string, purpose: FilePurpose, file: Blob): Promise<FileRef> {
+/**
+ * `scenario` (zero-key demo only): the simulated reading the server's rules-only reader gives a photo
+ * it has no recording for (`?fixture=`, D-128). The phone sends the one the queuer picked.
+ */
+export async function uploadPhoto(as: string, purpose: FilePurpose, file: Blob, scenario: string | null = null): Promise<FileRef> {
   const body = SENDABLE.includes(file.type) && file.size <= MAX_BYTES ? file : await asJpeg(file);
-  const res = await fetch(`${BASE}/api/files?purpose=${encodeURIComponent(purpose)}`, {
+  const fixture = scenario ? `&fixture=${encodeURIComponent(scenario)}` : '';
+  const res = await fetch(`${BASE}/api/files?purpose=${encodeURIComponent(purpose)}${fixture}`, {
     method: 'POST',
     headers: { 'content-type': body.type, [HEADERS.persona]: as },
     body,

@@ -16,6 +16,7 @@ import { failJob } from './jobs.ts';
 import { applyFill, bookAsks, emitBook, holdUsable, runBook } from './market.ts';
 import { reconcileBid } from './money.ts';
 import { emitAsk, emitClaim } from './views.ts';
+import { withTimeout } from '../util/serial.ts';
 
 /**
  * The server side of the ops console's two agents (D-100 to D-102).
@@ -38,6 +39,12 @@ const MAX_IN_FLIGHT = 3;
 const MAX_PER_WINDOW = 150;
 const WINDOW_MS = 10 * MINUTE;
 const MAX_SHIFT_MINUTES = 30;
+/**
+ * Studio's agents the market desk delegates to (Widget, Page, Data) get 30 s per turn instead of the
+ * model's own timeout, so a slow delegate fails fast and the desk answers from read_market (D-130).
+ */
+const DELEGATE_AGENTS = new Set(['widget', 'page', 'data']);
+const DELEGATE_TURN_MS = 30_000;
 
 let inFlight = 0;
 const recent: number[] = [];
@@ -53,7 +60,9 @@ export async function opsAgentTurn(app: App, req: OpsAgentTurnRequest): Promise<
   inFlight++;
   recent.push(now);
   try {
-    const out = await turn(req);
+    const out = DELEGATE_AGENTS.has(req.agent)
+      ? await withTimeout(turn(req), Math.min(DELEGATE_TURN_MS, app.config.ai.timeoutMs), () => Object.assign(new Error(`Studio's ${req.agent} agent took over ${DELEGATE_TURN_MS / 1000} s for one turn.`), { kind: 'timeout' }))
+      : await turn(req);
     app.log(`ops agent turn: ${req.agent}, ${out.calls.length} call(s), ${out.ai.provider}/${out.ai.model} ${out.ai.latencyMs} ms`);
     return out;
   } catch (err) {

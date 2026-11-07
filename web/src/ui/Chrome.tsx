@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import type { CityConfig } from '../config/cities';
 import { useLook } from '../state/look';
-import { useMarket } from '../state/market';
+import { toastsFor, useMarket } from '../state/market';
 import { PlayerFace } from './ItemIcon';
+import { usePhone } from './queuer/phone';
 
 export function PlayerChip({ city }: { city: CityConfig }) {
   // The same colours as the player on the map (set on the characters page).
@@ -18,12 +19,14 @@ export function PlayerChip({ city }: { city: CityConfig }) {
   );
 }
 
+/** The toasts of the phone on screen only (the requester's or the queuer's, D-132). */
 export function Toasts() {
   const toasts = useMarket((s) => s.toasts);
   const dismiss = useMarket((s) => s.dismissToast);
+  const phone = usePhone((s) => s.phone);
   return (
     <div className="toasts" role="status" aria-live="polite">
-      {toasts.map((t) => (
+      {toastsFor(toasts, phone).map((t) => (
         <button key={t.id} type="button" className={`toast is-${t.tone}`} onClick={() => dismiss(t.id)}>
           {t.text}
         </button>

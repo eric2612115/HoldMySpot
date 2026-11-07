@@ -2,11 +2,13 @@
 // check on PayPal itself that the money moved exactly as the server's ledger says.
 //
 //   node scripts/sandbox-gates.mjs lifecycle --payout-to person-1 [--headed] [--keep]
+//   node scripts/sandbox-gates.mjs lifecycle --by-hand [--open] [--wait 15]   you approve in your own browser
 //
 // It starts its own server (HMS_MODE=sandbox, port 8798 by default, a temporary database and
 // upload folder, demo staging so the rendered hero photos carry the right codes, recorded AI
 // answers), plays Mia (requester) and Wei (queuer) at Paper Moon Toys over HTTP only, approves
-// the PayPal order in a browser as the sandbox buyer (scripts/lib/sandbox-buyer.mjs), and stops
+// the PayPal order in a browser as the sandbox buyer (scripts/lib/sandbox-buyer.mjs; with --by-hand
+// it prints PayPal's link and waits while you approve it yourself, so no password is stored), and stops
 // the server it started (by its own PID) at the end. Nothing else is touched.
 //
 // Steps: quote, bid ($63.70 hold, processing and payouts at cost included, D-105), buyer approval,
@@ -56,7 +58,8 @@ class ApiError extends Error {
   }
 }
 
-function client(base) {
+/** A tiny HTTP client for the server's API: JSON in and out, raw bytes for photos, persona and idempotency headers. */
+export function client(base) {
   return async function api(method, route, { as, body, bytes, contentType = 'image/png', idem } = {}) {
     const headers = {};
     if (as) headers['x-hms-user'] = as;
@@ -82,7 +85,7 @@ function client(base) {
   };
 }
 
-async function waitFor(what, fn, { timeoutMs = 60_000, everyMs = 1_000 } = {}) {
+export async function waitFor(what, fn, { timeoutMs = 60_000, everyMs = 1_000 } = {}) {
   const started = Date.now();
   for (;;) {
     const v = await fn();
@@ -117,7 +120,7 @@ async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
     HMS_LOG_LEVEL: 'warn',
   };
   delete env.HMS_DEMO_RESET;
-  if (payoutEmail) env.PAYPAL_TW_PAYOUT_EMAIL = payoutEmail;
+  if (payoutEmail) env.PAYPAL_PAYOUT_EMAIL = payoutEmail;
   const child = spawn(process.execPath, ['src/main.ts'], { cwd: SERVER, env, stdio: ['ignore', out, out] });
   log(`server pid ${child.pid} on 127.0.0.1:${port} (log ${logFile})`);
   const exited = new Promise((resolve) => child.once('exit', (code, signal) => resolve({ code, signal })));
@@ -149,16 +152,115 @@ async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
   };
 }
 
-/** Runs the lifecycle. `pp` is server/src/paypal, `port` an HmsPayPal on the sandbox (for the checks on PayPal). */
-export async function runLifecycle({ pp, port: paypal, settings, secretsDir, payoutLabel, payoutEmail, headless = true, shotDir, keep = false, serverPort = 8798, log = console.log }) {
-  const shared = await import(pathToFileURL(path.join(REPO, 'shared', 'src', 'index.ts')).href);
-  const { HERO, PAYPAL_PRICING, SEED_USERS, findShop, jobSettlement, paypalCaptureFeeCents, platformFeeCents, travelMinutes, zonedLocalToEpoch } = shared;
+
+/** The market times of the hero errand's rendered photos (server/fixtures/proofs): the clock must be at or before the first. */
+export const ERRAND_TIMES = Object.freeze({ claim: '10:40', checkIn: '10:50', bought: '11:38', proof: '11:42', ship: '14:00' });
+
+/**
+ * Wei's side of Mia's Mochi Bunny plush errand at Paper Moon Toys, over the server's HTTP API only: a
+ * direct claim at the request's max fee, the check-in with the rendered line photo, "bought", the proof
+ * with the rendered receipt and item photos, both PayPal payouts and the shipment with tracking. The
+ * photos carry the one-time codes a demo market pins on Wei's first visit there (D-48), so the server
+ * must be a fresh demo market whose clock is at or before 10:40. `clock(hhmm)` moves the market clock.
+ * Used by the sandbox lifecycle and by `npm run errand` (a hold approved by hand, D-129).
+ */
+export async function playQueuerErrand({ api, shared, bidId, clock, step, requesterId = 'mia' }) {
+  const { HERO, SEED_USERS, findShop, travelMinutes, zonedLocalToEpoch } = shared;
   const sf = (hhmm) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles');
   const shop = findShop(HERO.shopId);
   const wei = SEED_USERS.find((u) => u.id === HERO.queuerId);
-  const NY = { mode: 'ship', country: 'US', region: 'NY', city: 'New York', postalCode: '10012' };
   const fixture = (rel) => fs.readFileSync(path.join(PROOFS, rel));
-  if (!settings.twPayoutEmail && !payoutEmail) throw new Error('No payout receiver: set PAYPAL_TW_PAYOUT_EMAIL in sandbox.env or pass --payout-to <label>.');
+  const T = ERRAND_TIMES;
+
+  // 4. Wei claims the request at its max fee and checks in at the shop with his line photo.
+  await clock(T.claim);
+  const travel = travelMinutes(wei.home, shop.lngLat);
+  const eta = Math.max(sf(T.checkIn), sf(T.claim) + (travel + 1) * 60_000);
+  const claim = await api('POST', `/api/bids/${bidId}/claim`, { as: 'wei', body: { qty: 1, etaAt: eta, modes: ['ship'], from: { lngLat: wei.home, accuracyM: 10 } } });
+  const jobId = claim.job.id;
+  step('claimed', `${claim.claim.id}, job ${jobId}, fee ${usd(claim.match.feeCents)}`);
+  await clock(T.checkIn);
+  const line = (await api('POST', '/api/files?purpose=line_photo', { as: 'wei', bytes: fixture('checkin-paper-moon-wei/line.png') })).file;
+  await api('POST', `/api/claims/${claim.claim.id}/check-in`, { as: 'wei', body: { lngLat: shop.lngLat, accuracyM: 8, photoFileId: line.id } });
+  const checkedIn = await waitFor('the check-in photo check', async () => {
+    const c = (await api('GET', `/api/claims/${claim.claim.id}`, { as: 'wei' })).claim;
+    if (c.status === 'checked_in') return c;
+    if (['lapsed', 'failed', 'cancelled'].includes(c.status)) throw new Error(`The claim ended as ${c.status}.`);
+    const records = await api('GET', '/api/ops/records', { as: 'ops' }).catch(() => null);
+    const lineProof = records?.proofs?.filter((p) => p.claimId === claim.claim.id && p.kind === 'check_in').at(-1);
+    if (lineProof && (lineProof.status === 'failed' || lineProof.status === 'needs_review')) throw new Error(`The line photo check ended as ${lineProof.status}: ${lineProof.summary}`);
+    return null;
+  }, { timeoutMs: 120_000, everyMs: 1_000 });
+  step('checked in', `claim ${checkedIn.id} ${checkedIn.status}`);
+
+  // 5. Bought, then the proof with the rendered receipt and item photos.
+  await clock(T.bought);
+  await api('POST', `/api/jobs/${jobId}/bought`, { as: 'wei' });
+  await clock(T.proof);
+  const receipt = (await api('POST', '/api/files?purpose=receipt', { as: 'wei', bytes: fixture('paper-moon-mia-genuine/receipt.png') })).file;
+  const item = (await api('POST', '/api/files?purpose=item_photo', { as: 'wei', bytes: fixture('paper-moon-mia-genuine/item.png') })).file;
+  await api('POST', `/api/jobs/${jobId}/proof`, { as: 'wei', body: { receiptFileId: receipt.id, itemFileId: item.id } });
+  const verified = await waitFor('the receipt check and the receipt capture', async () => {
+    const d = await api('GET', `/api/jobs/${jobId}`, { as: requesterId });
+    if (d.job.status === 'verified' || d.job.status === 'shipped') return d;
+    if (['failed', 'payment_failed', 'disputed'].includes(d.job.status)) throw new Error(`The job ended as ${d.job.status}: ${JSON.stringify(d.job.failure ?? null)}`);
+    const p = d.proofs.find((x) => x.kind === 'purchase');
+    if (p && p.status === 'needs_review') throw new Error(`The receipt check sent the proof to review: ${p.summary}`);
+    return null;
+  }, { timeoutMs: 180_000, everyMs: 1_500 });
+  const proof = verified.proofs.find((p) => p.kind === 'purchase');
+  step('proof', `${proof.status} (${proof.ai?.provider ?? '-'} ${proof.ai?.mode ?? '-'}), retail ${usd(proof.amounts.retailCents)}, capture ${usd(proof.amounts.captureCents)}`);
+  const payoutStatus = async (purpose) => {
+    const list = (await api('GET', '/api/payouts?mine=1', { as: 'wei' })).payouts;
+    return list.find((p) => p.reference === jobId && p.purpose === purpose) ?? null;
+  };
+  const fee = await waitFor('the fee payout to succeed at PayPal', async () => {
+    const p = await payoutStatus('fee');
+    if (p && ['failed', 'returned', 'cancelled'].includes(p.status)) throw new Error(`The fee payout ended as ${p.status}.`);
+    return p && p.status === 'succeeded' ? p : null;
+  }, { timeoutMs: 240_000, everyMs: 3_000 });
+  step('fee payout', `${fee.id} ${usd(fee.amount.cents)} ${fee.status}`);
+
+  // 6. Shipment: tracking to PayPal, final shipping capture, the rest released, reimbursement.
+  await clock(T.ship);
+  const label = (await api('POST', '/api/files?purpose=label', { as: 'wei', bytes: LABEL_PNG })).file;
+  const trackingNumber = `HPG-2611-${String(Date.now()).slice(-8)}`;
+  const shipped = await api('POST', `/api/jobs/${jobId}/shipment`, {
+    as: 'wei',
+    body: { carrierName: 'Harbor Parcel Ground', trackingNumber, shippingCostCents: 875, dutyPaidCents: 0, labelFileId: label.id },
+  });
+  step('shipped', `job ${shipped.job.status}, tracking ${trackingNumber}`);
+  const reimb = await waitFor('the reimbursement payout to succeed at PayPal', async () => {
+    const p = await payoutStatus('reimbursement');
+    if (p && ['failed', 'returned', 'cancelled'].includes(p.status)) throw new Error(`The reimbursement payout ended as ${p.status}.`);
+    return p && p.status === 'succeeded' ? p : null;
+  }, { timeoutMs: 240_000, everyMs: 3_000 });
+  step('reimbursement payout', `${reimb.id} ${usd(reimb.amount.cents)} ${reimb.status}`);
+  return { claimId: claim.claim.id, jobId, trackingNumber, proof, fee, reimb };
+}
+
+/** Runs the lifecycle. `pp` is server/src/paypal, `port` an HmsPayPal on the sandbox (for the checks on PayPal). */
+export async function runLifecycle({
+  pp,
+  port: paypal,
+  settings,
+  secretsDir,
+  payoutLabel,
+  payoutEmail,
+  headless = true,
+  shotDir,
+  keep = false,
+  serverPort = 8798,
+  byHand = false,
+  openLink = null,
+  waitMinutes = 15,
+  log = console.log,
+}) {
+  const shared = await import(pathToFileURL(path.join(REPO, 'shared', 'src', 'index.ts')).href);
+  const { HERO, PAYPAL_PRICING, jobSettlement, paypalCaptureFeeCents, platformFeeCents, zonedLocalToEpoch } = shared;
+  const sf = (hhmm) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles');
+  const NY = { mode: 'ship', country: 'US', region: 'NY', city: 'New York', postalCode: '10012' };
+  if (!settings.twPayoutEmail && !payoutEmail) throw new Error('No payout receiver: set PAYPAL_PAYOUT_EMAIL in sandbox.env (npm run keys) or pass --payout-to <label>.');
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-lifecycle-'));
   const steps = [];
@@ -166,7 +268,7 @@ export async function runLifecycle({ pp, port: paypal, settings, secretsDir, pay
     steps.push({ name, detail, at: Date.now() });
     log(`  ${name}${detail ? `: ${detail}` : ''}`);
   };
-  // The server reads PAYPAL_TW_PAYOUT_EMAIL from sandbox.env or its environment; a --payout-to receiver goes in the environment.
+  // The server reads PAYPAL_PAYOUT_EMAIL from sandbox.env or its environment; a --payout-to receiver goes in the environment.
   const server = await startServer({ port: serverPort, tmp, secretsDir, payoutEmail: payoutEmail ?? settings.twPayoutEmail ?? null, log: (l) => log(`  ${l}`) });
   const { api } = server;
   const clock = (hhmm) => api('POST', '/api/demo/clock', { body: { jumpTo: sf(hhmm), paused: true } });
@@ -205,15 +307,24 @@ export async function runLifecycle({ pp, port: paypal, settings, secretsDir, pay
     step('bid', `${bidId}, hold ${usd(created.hold.amount.cents)}, PayPal order ${orderId} (${created.checkout.mode}, next ${created.checkout.next})`);
     if (created.checkout.mode !== 'sandbox') throw new Error('The bid did not go to the PayPal sandbox.');
 
-    // 2. The sandbox buyer approves on PayPal's page.
+    // 2. The sandbox buyer approves on PayPal's page: in a headless browser with the saved login, or by hand (D-129).
     const order = await paypal.getOrder(orderId);
     if (!order.approveUrl) throw new Error('PayPal returned no approval link for the order.');
-    const { openSandboxBuyer } = await import('./sandbox-buyer.mjs');
-    buyer = await openSandboxBuyer({ secretsDir, headless, shotDir, log: (l) => log(`    ${l}`) });
-    await buyer.approve(order.approveUrl, { returnUrl: `http://127.0.0.1:${serverPort}/api/paypal/return`, cancelUrl: `http://127.0.0.1:${serverPort}/api/paypal/cancel`, label: 'lifecycle order' });
-    await buyer.close();
-    buyer = null;
-    step('approved', `order ${orderId} approved by the sandbox buyer`);
+    if (byHand) {
+      log(`  Approve the ${usd(created.hold.amount.cents)} hold as your sandbox buyer on PayPal's page (no password is stored):`);
+      log(`    ${order.approveUrl}`);
+      if (openLink) openLink(order.approveUrl);
+      log(`  Waiting up to ${waitMinutes} minutes for PayPal to report the order approved...`);
+      await waitFor('your approval on PayPal', async () => (await paypal.getOrder(orderId)).status === 'APPROVED', { timeoutMs: waitMinutes * 60_000, everyMs: 5_000 });
+      step('approved', `order ${orderId} approved by hand`);
+    } else {
+      const { openSandboxBuyer } = await import('./sandbox-buyer.mjs');
+      buyer = await openSandboxBuyer({ secretsDir, headless, shotDir, log: (l) => log(`    ${l}`) });
+      await buyer.approve(order.approveUrl, { returnUrl: `http://127.0.0.1:${serverPort}/api/paypal/return`, cancelUrl: `http://127.0.0.1:${serverPort}/api/paypal/cancel`, label: 'lifecycle order' });
+      await buyer.close();
+      buyer = null;
+      step('approved', `order ${orderId} approved by the sandbox buyer`);
+    }
 
     // 3. Authorize through the server.
     const auth = await api('POST', `/api/bids/${bidId}/authorize`, { as: 'mia', body: { orderId } });
@@ -221,68 +332,10 @@ export async function runLifecycle({ pp, port: paypal, settings, secretsDir, pay
     result.ids.hold = auth.hold.id;
     step('authorized', `${auth.hold.authorizationId}, hold ${auth.hold.status} ${usd(auth.hold.amount.cents)}, bid ${auth.bid.status}`);
 
-    // 4. Wei claims the request at its max fee and checks in at the shop with his line photo.
-    await clock('10:40');
-    const travel = travelMinutes(wei.home, shop.lngLat);
-    const eta = Math.max(sf('10:50'), sf('10:40') + (travel + 1) * 60_000);
-    const claim = await api('POST', `/api/bids/${bidId}/claim`, { as: 'wei', body: { qty: 1, etaAt: eta, modes: ['ship'], from: { lngLat: wei.home, accuracyM: 10 } } });
-    result.ids.claim = claim.claim.id;
-    result.ids.job = claim.job.id;
-    const jobId = claim.job.id;
-    step('claimed', `${claim.claim.id}, job ${jobId}, fee ${usd(claim.match.feeCents)}`);
-    await clock('10:50');
-    const line = (await api('POST', '/api/files?purpose=line_photo', { as: 'wei', bytes: fixture('checkin-paper-moon-wei/line.png') })).file;
-    await api('POST', `/api/claims/${claim.claim.id}/check-in`, { as: 'wei', body: { lngLat: shop.lngLat, accuracyM: 8, photoFileId: line.id } });
-    const checkedIn = await waitFor('the check-in photo check', async () => {
-      const c = (await api('GET', `/api/claims/${claim.claim.id}`, { as: 'wei' })).claim;
-      if (c.status === 'checked_in') return c;
-      if (['lapsed', 'failed', 'cancelled'].includes(c.status)) throw new Error(`The claim ended as ${c.status}.`);
-      return null;
-    });
-    step('checked in', `claim ${checkedIn.id} ${checkedIn.status}`);
-
-    // 5. Bought, then the proof with the rendered receipt and item photos.
-    await clock('11:38');
-    await api('POST', `/api/jobs/${jobId}/bought`, { as: 'wei' });
-    await clock('11:42');
-    const receipt = (await api('POST', '/api/files?purpose=receipt', { as: 'wei', bytes: fixture('paper-moon-mia-genuine/receipt.png') })).file;
-    const item = (await api('POST', '/api/files?purpose=item_photo', { as: 'wei', bytes: fixture('paper-moon-mia-genuine/item.png') })).file;
-    await api('POST', `/api/jobs/${jobId}/proof`, { as: 'wei', body: { receiptFileId: receipt.id, itemFileId: item.id } });
-    const verified = await waitFor('the receipt check and the receipt capture', async () => {
-      const d = await api('GET', `/api/jobs/${jobId}`, { as: 'mia' });
-      if (d.job.status === 'verified' || d.job.status === 'shipped') return d;
-      if (['failed', 'payment_failed', 'disputed'].includes(d.job.status)) throw new Error(`The job ended as ${d.job.status}: ${JSON.stringify(d.job.failure ?? null)}`);
-      return null;
-    }, { timeoutMs: 120_000, everyMs: 1_500 });
-    const proof = verified.proofs.find((p) => p.kind === 'purchase');
-    step('proof', `${proof.status} (${proof.stamp?.provider ?? '-'} ${proof.stamp?.mode ?? '-'}), retail ${usd(proof.amounts.retailCents)}, capture ${usd(proof.amounts.captureCents)}`);
-    const payoutStatus = async (purpose) => {
-      const list = (await api('GET', '/api/payouts?mine=1', { as: 'wei' })).payouts;
-      return list.find((p) => p.reference === jobId && p.purpose === purpose) ?? null;
-    };
-    const fee = await waitFor('the fee payout to succeed at PayPal', async () => {
-      const p = await payoutStatus('fee');
-      if (p && ['failed', 'returned', 'cancelled'].includes(p.status)) throw new Error(`The fee payout ended as ${p.status}.`);
-      return p && p.status === 'succeeded' ? p : null;
-    }, { timeoutMs: 240_000, everyMs: 3_000 });
-    step('fee payout', `${fee.id} ${usd(fee.amount.cents)} ${fee.status}`);
-
-    // 6. Shipment: tracking to PayPal, final shipping capture, the rest released, reimbursement.
-    await clock('14:00');
-    const label = (await api('POST', '/api/files?purpose=label', { as: 'wei', bytes: LABEL_PNG })).file;
-    const trackingNumber = `HPG-2611-${String(Date.now()).slice(-8)}`;
-    const shipped = await api('POST', `/api/jobs/${jobId}/shipment`, {
-      as: 'wei',
-      body: { carrierName: 'Harbor Parcel Ground', trackingNumber, shippingCostCents: 875, dutyPaidCents: 0, labelFileId: label.id },
-    });
-    result.ids.tracking = trackingNumber;
-    step('shipped', `job ${shipped.job.status}, tracking ${trackingNumber}`);
-    const reimb = await waitFor('the reimbursement payout to succeed at PayPal', async () => {
-      const p = await payoutStatus('reimbursement');
-      if (p && ['failed', 'returned', 'cancelled'].includes(p.status)) throw new Error(`The reimbursement payout ended as ${p.status}.`);
-      return p && p.status === 'succeeded' ? p : null;
-    }, { timeoutMs: 240_000, everyMs: 3_000 });
-    step('reimbursement payout', `${reimb.id} ${usd(reimb.amount.cents)} ${reimb.status}`);
+    // 4 to 6. Wei's side of the errand: claim, check-in, purchase, proof, payouts, shipment (shared with npm run errand).
+    const errand = await playQueuerErrand({ api, shared, bidId, clock, step });
+    const { jobId, trackingNumber } = errand;
+    Object.assign(result.ids, { claim: errand.claimId, job: jobId, tracking: trackingNumber });
 
     // 7. What the server says.
     const bid = await api('GET', `/api/bids/${bidId}`, { as: 'mia' });

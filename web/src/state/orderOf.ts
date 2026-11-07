@@ -52,6 +52,7 @@ export function orderOf(d: BidDetail, names?: OrderNames): UserOrder {
     bidId: bid.id,
     fillFeeCents: job?.feeCents,
     queuerName: job?.queuerName,
+    ...(job ? { jobStatus: job.status } : {}),
     chargedCents: hold?.capturedCents,
     releasedCents: hold?.releasedCents,
     ...(message ? { message } : {}),

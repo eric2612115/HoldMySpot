@@ -40,7 +40,8 @@ const OPS = process.env.OPS_URL ?? null;
 const OUT = path.resolve(process.env.OUT_DIR ?? path.join(here, '..', '..', 'proto-shots', 'v3', 'working', 'sandbox-walk'));
 const RAW = path.resolve(process.env.RAW_DIR ?? path.join(os.tmpdir(), `hms-sandbox-walk-${process.pid}`));
 const FIX = path.resolve(here, '..', '..', 'server', 'fixtures', 'proofs');
-const SECRETS = process.env.HMS_SECRETS_DIR || path.join(os.homedir(), '.config', 'paypal-hackathon');
+// The secrets folder the server reads (D-131): HMS_SECRETS_DIR, else the repo's .secrets/ (npm run keys).
+const SECRETS = process.env.HMS_SECRETS_DIR || path.join(here, '..', '..', '.secrets');
 const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
 const GL = process.env.GL ?? (process.platform === 'darwin' ? 'metal' : 'swiftshader');
 const args = GL === 'metal' ? ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'];

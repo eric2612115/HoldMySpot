@@ -1,5 +1,5 @@
 import { clientToolRunner, createAiHarness, directLlmRunner } from 'ag-studio';
-import type { AgAiHarness, AgAiHarnessSetupParams, AgAiParamsBuilder, AgAiPromptStarter, AgAiTool, AgAiToolContext, AgStudioApi } from 'ag-studio';
+import type { AgAiAgentContext, AgAiHarness, AgAiHarnessSetupParams, AgAiParamsBuilder, AgAiPromptStarter, AgAiTool, AgAiToolContext, AgStudioApi } from 'ag-studio';
 import type { Dispute, OpsAgentTurnResponse } from '@holdmyspot/shared';
 import type { Brain } from '../../agents/brain.ts';
 import type { MarketSnapshot } from '../../data/backend.ts';
@@ -7,7 +7,9 @@ import { clockText } from '../../data/time.ts';
 import { W } from '../../data/vocab.ts';
 import { shopLabel } from '../studioData.ts';
 import { DEPTH_LADDER, GAP_BOARD, GAP_SPOTLIGHT } from '../widgets/defs.ts';
-import { TOPICS, topicFacts } from './facts.ts';
+import { DIMENSIONS, MEASURES, breakdownSpec, readWidget } from './breakdown.ts';
+import type { Dimension, Measure } from './breakdown.ts';
+import { TOPICS, marketClockNote, topicFacts } from './facts.ts';
 import type { Topic } from './facts.ts';
 import { PLACEHOLDER_ID, SPOTLIGHT_MAPPING, nextId, planTurn, slotFor } from './planner.ts';
 import { serverLlmAdapter } from './serverAdapter.ts';
@@ -45,15 +47,18 @@ export interface DeskOptions {
 export const OFFLINE_STARTERS: AgAiPromptStarter[] = [
   { label: `Widest ${W.spread.toLowerCase()}`, prompt: `Which shop has the ${W.widestSpread} right now?` },
   { label: 'Holds and captures', prompt: 'How much is PayPal holding, and how much was captured or released so far?' },
+  { label: 'Captures by shop', prompt: 'Show the PayPal captures by shop.' },
   { label: 'Fill rates', prompt: 'What are the fill rates by shop?' },
   { label: 'Step-downs', prompt: 'Which fee clocks are stepping down, and where are they now?' },
   { label: 'Disputes', prompt: 'Any disputes, failed captures or rejected receipts?' },
+  { label: 'Top earner', prompt: 'Which queuer earned the most so far?' },
 ];
 
+/** Questions that finish in a few turns with a live model (README, AG Studio). */
 export const MODEL_STARTERS: AgAiPromptStarter[] = [
   { label: `Widest ${W.spread.toLowerCase()}`, prompt: `Which shop has the ${W.widestSpread} right now?` },
-  { label: 'Captures by shop', prompt: 'Chart the money PayPal captured, by shop, and tell me which capture was the largest.' },
-  { label: 'Payouts so far', prompt: 'Who has been paid out so far, and is any payout still pending?' },
+  { label: 'Captures by shop', prompt: 'Show a table of the PayPal captures by shop, with the average capture, and tell me which shop took the most.' },
+  { label: 'Payouts by queuer', prompt: 'Chart the PayPal payouts by queuer and tell me who earned the most.' },
   { label: 'Step-downs', prompt: 'Which fee clocks are stepping down right now, and when is the next step?' },
   { label: 'Only Paper Moon', prompt: 'Show only Paper Moon Toys and tell me its fill rate.' },
 ];
@@ -70,7 +75,9 @@ How to work:
 2. Answer in two to four short sentences with exact dollar amounts, names and times.
 3. Change the dashboard when the operator asks to show, chart, compare, list, filter or explain something:
    - Widest ${W.spread.toLowerCase()}: call add_gap_spotlight. It places the "${GAP_SPOTLIGHT}" widget in the free slot and maps its fields.
-   - Any chart or table: add_widget with a fitting built-in type (bar-chart-grouped, column-chart-grouped, pie-chart, donut-chart, grid or value) in a free slot, then delegate_to the "widget" agent with that widgetType and widgetId and one sentence naming the exact field ids, for example "categoryKey shops.shop, valueKey holds.capturedUsd summed; title Captured by shop". Prefer fields that need no filter (holds.capturedUsd, holds.releasedUsd, holds.openUsd, payouts.amountUsd, fills.qty).
+   - A table or chart of money by shop, city, queuer or requester (captures, releases, payouts, holds, queue fees; counts, totals and averages): call add_breakdown. It builds the widget from exact fields and filters and returns the figures the widget shows; quote those figures.
+   - Any other chart or table: add_widget with a fitting built-in type (bar-chart-grouped, column-chart-grouped, pie-chart, donut-chart, grid or value) in a free slot, then delegate_to the "widget" agent with that widgetType and widgetId and one sentence naming the exact field ids and aggregation, for example "categoryKey shops.shop, valueKey holds.openUsd summed; title Still held by shop". holds.* fields are one row per request: never use them for capture amounts or an average capture. To count rows, sum ledger.events or fills.qty; never count a dollar field.
+   - After a delegate configures a widget, call check_widget with its id: it reads the widget back and computes what it shows. If its figures differ from read_market, say so and give the read_market figure; never claim the widget shows it.
    - When a delegate fails or returns no summary, say the widget was added but is not configured yet; never describe a chart you did not see built.
    - Filter to a shop: filter_shop with the shop's name ("all" clears it). Ask the "page" agent for any other layout or filter change.
    - Explain the page: view_page, then one line per widget.
@@ -80,6 +87,9 @@ How to work:
 
 Tables and the fields you will use (table.field): shops.shop, shops.city; holds.requester, holds.heldUsd, holds.capturedUsd, holds.releasedUsd, holds.openUsd, holds.status, holds.funding, holds.renewalRequired; ledger.kind (Held, Captured, Released, Paid out, Renewed, Refunded), ledger.amountUsd, ledger.status, ledger.who, ledger.paypalObject, ledger.paypalId, ledger.slot, ledger.events; payouts.queuer, payouts.amountUsd, payouts.platformFeeUsd, payouts.purpose, payouts.status; fills.slot, fills.queuer, fills.requester, fills.qty, fills.feeUsd, fills.valueUsd; jobs.queuer, jobs.requester, jobs.stage, jobs.earningsUsd; bids.requester, bids.qty, bids.remainingQty, bids.maxFeeUsd, bids.status; asks.queuer, asks.feeNowUsd, asks.openFeeUsd, asks.floorUsd, asks.status; books.bestBidUsd, books.bestAskUsd, books.spreadUsd, books.bidQty, books.askCapacity. Every table joins shops on shopId, so a filter on shops.shop filters the whole page. Custom widget types: ${GAP_BOARD}, ${GAP_SPOTLIGHT}, ${DEPTH_LADDER}.`;
 }
+
+/** Turn caps for Studio's agents when the desk delegates (their default is 100). */
+export const DELEGATE_TURNS = { widget: 8, page: 6, data: 6 } as const;
 
 export function createMarketDesk(opts: DeskOptions) {
   return (params: AgAiHarnessSetupParams): AgAiHarness => {
@@ -127,6 +137,68 @@ export function createMarketDesk(opts: DeskOptions) {
         },
       } as never);
 
+      // Our own tool over Studio's: a money breakdown with exact fields and filters, and the figures it shows (D-130).
+      const configureGrid = tools.studio.configureWidget({ widgetType: 'grid' });
+      const configureBar = tools.studio.configureWidget({ widgetType: 'bar-chart-grouped' });
+      const addWidgetFilter = tools.studio.addWidgetFilter();
+      const addBreakdown: AgAiTool = api.defineAiTool({
+        name: 'add_breakdown',
+        description:
+          'Adds a table (or a bar chart) of one money measure by one dimension, built from exact fields and filters: captures (succeeded PayPal captures), releases, payouts (succeeded PayPal Payouts), holds (one per request) or queue_fees (matched fees), by shop, city, queuer or requester; the table has the count, the total and the average. Returns the figures the widget shows.',
+        params: (s: AgAiParamsBuilder) =>
+          s.object({
+            measure: s.enum([...MEASURES]),
+            by: s.enum([...DIMENSIONS]),
+            chart: s.enum(['table', 'bar']).optional(),
+          }),
+        execute: async (args: { measure: Measure; by: Dimension; chart?: 'table' | 'bar' }, ctx: AgAiToolContext) => {
+          let spec;
+          try {
+            spec = breakdownSpec(opts.getSnapshot(), args.measure, args.by, args.chart ?? 'table');
+          } catch (e) {
+            return ctx.error(e instanceof Error ? e.message : String(e));
+          }
+          const { slot, replace } = slotFor(api);
+          const id = (step: string) => `${ctx.run.runId}-${step}`;
+          if (replace) await removeWidget.execute?.({ toolCallId: id('remove'), name: removeWidget.name, args: { widgetId: replace } }, ctx);
+          const widgetId = nextId('w-desk');
+          const added = await addWidget.execute?.({ toolCallId: id('add'), name: addWidget.name, args: { widgetId, type: spec.widget.type, ...slot } }, ctx);
+          if (added && !added.success) return added;
+          const configure = spec.widget.type === 'grid' ? configureGrid : configureBar;
+          const value = {
+            dataMapping: spec.widget.dataMapping,
+            sort: spec.widget.sort,
+            format: { title: { enabled: true, text: spec.widget.title }, subtitle: { enabled: true, text: `Built by the market desk at ${clockText(opts.getSnapshot().at)}` } },
+          };
+          const configured = await configure.execute?.({ toolCallId: id('configure'), name: configure.name, args: { op: 'patch', widgetId, value } }, ctx);
+          if (configured && !configured.success) return configured;
+          for (const [i, f] of spec.widget.filters.entries()) {
+            const r = await addWidgetFilter.execute?.(
+              { toolCallId: id(`filter-${i}`), name: addWidgetFilter.name, args: { widgetId, op: 'append', value: { field: { id: f.field }, model: { operator: 'equals', value: f.value } } } },
+              ctx,
+            );
+            if (r && !r.success) return r;
+          }
+          return ctx.success(`Added ${spec.widget.title} (${widgetId}). ${spec.text}`, { widgetId });
+        },
+      } as never);
+
+      // Reads a widget back (its mapping and filters) and computes what it shows from the dashboard's rows (D-130).
+      const checkWidget: AgAiTool = api.defineAiTool({
+        name: 'check_widget',
+        description: 'Reads one widget back (its fields, aggregations and filters) and computes the figures it shows from the dashboard rows, with warnings (a count drawn as dollars, an average over requests instead of captures). Compare them with read_market before you answer.',
+        params: (s: AgAiParamsBuilder) => s.object({ widgetId: s.string() }),
+        execute: async (args: { widgetId: string }, ctx: AgAiToolContext) => {
+          const state = api.getState();
+          const page = state.pages.find((p) => p.id === state.selectedPageId) ?? state.pages[0];
+          const widget = (page?.widgets as Record<string, unknown> | undefined)?.[args.widgetId];
+          const pageFilter = page?.filter as { page?: unknown[]; widget?: Record<string, unknown[]> } | undefined;
+          const filters = [...(pageFilter?.page ?? []), ...(pageFilter?.widget?.[args.widgetId] ?? [])];
+          const r = readWidget(opts.getSnapshot(), args.widgetId, widget as never, filters as never);
+          return ctx.success(`${r.figures}${r.warnings.length ? ` Warnings: ${r.warnings.join(' ')}` : ''}`, { widgetId: args.widgetId, warnings: r.warnings });
+        },
+      } as never);
+
       // Our own tool over three of Studio's: the spotlight in the free slot, with its fields mapped.
       const removeWidget = tools.studio.removeWidget();
       const addWidget = tools.studio.addWidget();
@@ -157,8 +229,8 @@ export function createMarketDesk(opts: DeskOptions) {
           name: 'Market desk (offline planner)',
           description: DESK_DESCRIPTION,
           maxTurns: 6,
-          instructions: () => 'Offline planner: fixed topics, no model. Calls read_market, then answers; builds a widget for the gap and depth questions.',
-          tools: () => [readMarket, filterShop, tools.studio.viewPage(), tools.studio.removeWidget(), tools.studio.addWidget(), tools.studio.configureWidget({ widgetType: GAP_SPOTLIGHT })],
+          instructions: () => 'Offline planner: fixed topics, no model. Calls read_market, then answers; builds a widget for the gap, depth and captures questions.',
+          tools: () => [readMarket, filterShop, addBreakdown, tools.studio.viewPage(), tools.studio.removeWidget(), tools.studio.addWidget(), tools.studio.configureWidget({ widgetType: GAP_SPOTLIGHT })],
           run: (input, ctx) => planTurn(input, ctx.signal, api, opts.getSnapshot),
         });
         return { agents: [desk], primary: 'market-desk', promptStarters: OFFLINE_STARTERS };
@@ -175,6 +247,8 @@ export function createMarketDesk(opts: DeskOptions) {
         tools: (ctx) => [
           readMarket,
           addSpotlight,
+          addBreakdown,
+          checkWidget,
           ctx.studio.viewPage(),
           ctx.studio.addWidget(),
           ctx.studio.removeWidget(),
@@ -186,12 +260,24 @@ export function createMarketDesk(opts: DeskOptions) {
         adapter: adapter('market-desk'),
       });
       // Three of Studio's own agents on the same model. The Widget agent loses its widget-filter tools: their
-      // 20 kB schema doubles every turn's prompt, and the desk asks only for mappings that need no filter.
+      // 20 kB schema doubles every turn's prompt, and add_breakdown covers the money widgets that need a filter.
+      // Each one knows the market day (so "today" is never the real date) and has a turn cap, so a slow
+      // delegate fails in minutes, not after its default hundred rounds (D-130).
       const widget = builtIn.widget;
+      const withClock =
+        <P,>(base: ((ctx: AgAiAgentContext, p: P) => string) | undefined) =>
+        (ctx: AgAiAgentContext, p: P) =>
+          `${base ? base(ctx, p) : ''}\n\n${marketClockNote(opts.getSnapshot())}`;
       const helpers = [
-        directLlmRunner({ ...widget, tools: (ctx, p) => (widget.tools?.(ctx, p) ?? []).filter((t) => !/_widget_filter$/.test(t.name)), adapter: adapter('widget') }),
-        directLlmRunner({ ...builtIn.page, adapter: adapter('page') }),
-        directLlmRunner({ ...builtIn.data, adapter: adapter('data') }),
+        directLlmRunner({
+          ...widget,
+          maxTurns: DELEGATE_TURNS.widget,
+          instructions: withClock(widget.instructions),
+          tools: (ctx, p) => (widget.tools?.(ctx, p) ?? []).filter((t) => !/_widget_filter$/.test(t.name)),
+          adapter: adapter('widget'),
+        }),
+        directLlmRunner({ ...builtIn.page, maxTurns: DELEGATE_TURNS.page, instructions: withClock(builtIn.page.instructions), adapter: adapter('page') }),
+        directLlmRunner({ ...builtIn.data, maxTurns: DELEGATE_TURNS.data, instructions: withClock(builtIn.data.instructions), adapter: adapter('data') }),
       ];
       return { agents: [desk, ...helpers], primary: 'market-desk', promptStarters: MODEL_STARTERS };
     });

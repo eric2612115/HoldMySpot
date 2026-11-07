@@ -7,7 +7,9 @@ import type { CheckInPhotoInput, PurchaseProofInput } from '../ports/ai.ts';
  * upload (`POST /api/files?fixture=...` in fake mode, or by the demo
  * director) and the fake AI returns what a model would have read from such a
  * photo. The shared rules then decide, exactly as with a real model. Without
- * a scenario the photo reads as genuine ("Simulated" is on every stamp).
+ * a scenario this fake reads the photo as genuine; the server's AI services
+ * send such an unknown photo to review instead (D-128). Every verdict's stamp
+ * names its simulated reading (`ai.simulated`).
  */
 
 export const CHECK_IN_SCENARIOS = ['line_ok', 'no_code', 'no_line', 'unreadable'] as const;

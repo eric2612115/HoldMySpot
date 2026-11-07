@@ -108,7 +108,9 @@ if (report) {
   console.log(`  Given: AG Studio <- ${report.given.agStudio}; AG Grid and AG Charts <- ${report.given.agGridAndCharts}`);
   for (const [name, k] of [['AG Studio key', report.studioKey], ['AG Grid and AG Charts key', report.gridKey]]) {
     if (!k.loaded) continue;
-    console.log(`  ${name}: AG Studio (Pro with AI, which this console needs) ${verdict(k.studio['PRO-AI'])}; AG Grid ${verdict(k.grid)}`);
+    // An AG Studio key is not an AG Grid key; this console needs none (AG Studio draws every grid and chart).
+    const grid = k.grid?.valid ? `AG Grid ${verdict(k.grid)}` : 'AG Grid: not needed (every grid and chart here is drawn by AG Studio)';
+    console.log(`  ${name}: AG Studio (Pro with AI, which this console needs) ${verdict(k.studio['PRO-AI'])}; ${grid}`);
   }
 } else {
   console.log('  No hmsLicenseReport() (not a dev server): only the console banners are checked.');
@@ -123,6 +125,6 @@ const licensed = banners.length === 0 && watermarks.length === 0;
 console.log(
   licensed
     ? 'Verdict: licensed. No AG licence banner or watermark.'
-    : 'Verdict: not fully licensed. Every feature still works (AG trial mode); an AG Studio Pro with AI key removes the banner and the watermark (README, Licences).',
+    : 'Verdict: not fully licensed. Every feature still works (AG trial mode); an AG Studio Pro with AI key removes the banner and the watermark (ops/README.md, Licences).',
 );
 if ((strict && !licensed) || !agentAnswered) process.exitCode = 1;

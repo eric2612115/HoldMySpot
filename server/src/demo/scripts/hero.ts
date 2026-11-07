@@ -88,6 +88,14 @@ export const heroScript: DemoScript = {
       label: 'Mia holds $63.70 for one plush, shipped to New York',
       async run(ctx) {
         const mia = ctx.user(HERO.requesterId);
+        // A request Mia already placed in the web app before Play is hers: the day runs with it (D-132).
+        const placed = ctx.app.store.bids
+          .where('requester_id = ? AND item_id = ?', mia.id, HERO.itemId)
+          .find((b) => ['awaiting_approval', 'open', 'partially_matched'].includes(b.status));
+        if (placed) {
+          ctx.refs.set('miaBid', placed.id);
+          return;
+        }
         const destination = { mode: 'ship' as const, country: 'US' as const, region: 'NY', city: 'New York', postalCode: '10012' };
         const quote = await quoteBid(ctx.app, mia, { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination });
         const created = await createBid(ctx.app, mia, {

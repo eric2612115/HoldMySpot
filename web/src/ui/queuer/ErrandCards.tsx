@@ -28,6 +28,7 @@ import {
   type Errand,
 } from './logic';
 import { PhotoField } from './PhotoField';
+import { LINE_READINGS, RECEIPT_READINGS, SimulatedReading, useSimulatedReadings } from './SimulatedReading';
 import { queuerActions, useQueuer } from './store';
 
 /** The cards of the errand sheet, one per step (see ErrandSheet.tsx). */
@@ -76,6 +77,8 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
   const now = useNow(500);
   const me = usePosition((s) => s.lngLat);
   const [photo, setPhoto] = useState<File | null>(null);
+  const simulated = useSimulatedReadings();
+  const [reading, setReading] = useState('line_ok');
   const checking = useBusy('Checking in');
   const { claim, ask, jobs, lineProof } = errand;
   const shop = findShop(point.shop.id);
@@ -121,12 +124,13 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
       {failed && <AiCheckCard view={lineCheckView(failed, claim)} kind="line" />}
 
       <PhotoField name="line" label={failed ? 'A new photo of the line' : 'Photo of the line'} hint="The line and the shop front, with your code showing." file={photo} onFile={setPhoto} disabled={checking} />
+      {simulated && <SimulatedReading name="line" options={LINE_READINGS} value={reading} onChange={setReading} disabled={checking} />}
       <button
         type="button"
         className="take-button"
         disabled={!photo || !fence.inside || checking || left <= 0}
         onClick={() => {
-          if (photo) void queuerActions.checkIn(claim, photo).then((out) => out && setPhoto(null));
+          if (photo) void queuerActions.checkIn(claim, photo, simulated ? reading : null).then((out) => out && setPhoto(null));
         }}
       >
         {checking ? 'Checking in…' : fence.inside ? 'Check in with this photo' : `Check in within ${shop?.geofenceMeters ?? 80} m of the shop`}
@@ -265,13 +269,18 @@ export function ProofCard({ errand, point }: CardProps) {
   const sending = useBusy('Sending the photos');
   const [receipt, setReceipt] = useState<File | null>(null);
   const [item, setItem] = useState<File | null>(null);
+  const simulated = useSimulatedReadings();
+  const [reading, setReading] = useState('genuine');
   return (
     <div className="q-card">
       <JobLine job={job} point={point} />
-      <p className="q-lead">Show what you bought. The AI reads the store, the time, the items and the totals; fixed rules decide. PayPal charges nothing until it passes.</p>
+      <p className="q-lead">
+        Show what you bought. {simulated ? 'The rules check' : 'The AI reads'} the store, the time, the items and the totals; fixed rules decide. PayPal charges nothing until it passes.
+      </p>
       <PhotoField name="receipt" label="The receipt" hint="Flat, the whole receipt, QR included." file={receipt} onFile={setReceipt} disabled={sending} />
       <PhotoField name="item" label={`The ${point.itemShort}`} hint={`With your code ${job.proofCode ?? ''} next to it.`} file={item} onFile={setItem} disabled={sending} />
-      <button type="button" className="take-button" disabled={!receipt || !item || sending} onClick={() => receipt && item && void queuerActions.proof(job, receipt, item)}>
+      {simulated && <SimulatedReading name="receipt" options={RECEIPT_READINGS} value={reading} onChange={setReading} disabled={sending} />}
+      <button type="button" className="take-button" disabled={!receipt || !item || sending} onClick={() => receipt && item && void queuerActions.proof(job, receipt, item, simulated ? reading : null)}>
         {sending ? 'Sending…' : 'Send for checking'}
       </button>
     </div>

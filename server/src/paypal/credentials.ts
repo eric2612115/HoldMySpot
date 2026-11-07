@@ -1,11 +1,12 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { SandboxSettings } from './types.ts';
 
 /**
- * Reads sandbox credentials from ~/.config/paypal-hackathon/sandbox.env
- * (or HMS_SECRETS_DIR) for standalone tools such as the probe script. The
+ * Reads sandbox credentials from sandbox.env in the secrets folder
+ * (HMS_SECRETS_DIR, else the repo's .secrets/) for standalone tools such as the probe script. The
  * server itself loads them in server/src/config.ts. Only the file is read,
  * never the process environment, and values are never printed: results name
  * missing variables only, and the secret is a non-enumerable property, so it
@@ -14,12 +15,13 @@ import type { SandboxSettings } from './types.ts';
 
 export const SANDBOX_ENV_FILE = 'sandbox.env';
 export const REQUIRED_KEYS = ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET'] as const;
-export const RECOMMENDED_KEYS = ['PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL'] as const;
+export const RECOMMENDED_KEYS = ['PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL'] as const;
 
+/** HMS_SECRETS_DIR (a leading ~ expanded), else the repo's .secrets/ written by npm run keys (D-131). */
 export function secretsDir(env: Record<string, string | undefined> = process.env): string {
   const fromEnv = env.HMS_SECRETS_DIR?.trim();
   if (fromEnv) return fromEnv.startsWith('~/') ? join(homedir(), fromEnv.slice(2)) : fromEnv;
-  return join(homedir(), '.config', 'paypal-hackathon');
+  return join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.secrets');
 }
 
 /** Parses dotenv text (KEY=value, optional `export`, quotes, comments, CRLF). */
@@ -59,7 +61,8 @@ export function loadSandboxEnvFile(opts: { dir?: string; fileName?: string } = {
   } catch {
     return { ok: false, file, missing: [...REQUIRED_KEYS], reason: `${file} cannot be read`, warnings };
   }
-  const get = (k: string) => values.get(k)?.trim() ?? '';
+  // PAYPAL_TW_PAYOUT_EMAIL is the payout receiver's older name, still read (D-132).
+  const get = (k: string) => values.get(k)?.trim() || (k === 'PAYPAL_PAYOUT_EMAIL' ? (values.get('PAYPAL_TW_PAYOUT_EMAIL')?.trim() ?? '') : '');
   const missing = REQUIRED_KEYS.filter((k) => get(k) === '');
   if (missing.length > 0) return { ok: false, file, missing, reason: `${file} is missing ${missing.join(', ')}`, warnings };
   if (get('PAYPAL_ENV') !== 'sandbox') return { ok: false, file, missing: [], reason: 'PAYPAL_ENV is not "sandbox"; HoldMySpot only uses the PayPal sandbox', warnings };
@@ -69,7 +72,7 @@ export function loadSandboxEnvFile(opts: { dir?: string; fileName?: string } = {
     merchantEmail: get('PAYPAL_MERCHANT_EMAIL'),
     merchantId: get('PAYPAL_MERCHANT_ID'),
     buyerEmail: get('PAYPAL_BUYER_EMAIL'),
-    twPayoutEmail: get('PAYPAL_TW_PAYOUT_EMAIL'),
+    twPayoutEmail: get('PAYPAL_PAYOUT_EMAIL'),
     webhookId: get('PAYPAL_WEBHOOK_ID') || null,
   } as SandboxSettings;
   Object.defineProperty(settings, 'clientSecret', { value: get('PAYPAL_CLIENT_SECRET'), enumerable: false, writable: false });

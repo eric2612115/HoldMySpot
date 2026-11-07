@@ -116,6 +116,24 @@ export function askFeeAt(ask: { feeCents: Cents; clock: FeeClock | null }, t: Ma
   return s === null ? ask.feeCents : priceAt(s, t);
 }
 
+/**
+ * When an ask's fee clock stops (D-132): at the floor while the ask is open; at its last match once
+ * that match took its last unit (the clock never keeps stepping after the fill); otherwise when the
+ * ask stopped selling (withdrawn, lapsed or closed). Never past the floor or before the clock started.
+ * Null while the clock has not started (or the fee is fixed).
+ */
+export function askClockStopsAt(
+  ask: { feeCents: Cents; clock: FeeClock | null; status: string; remainingCapacity: number; updatedAt: MarketMs },
+  lastMatchAt: MarketMs | null,
+): MarketMs | null {
+  const s = askSchedule(ask);
+  if (s === null) return null;
+  const floorAt = reachesAt(s, s.floorCents) ?? s.startsAt;
+  if (ask.status === 'open') return floorAt;
+  const stoppedAt = ask.remainingCapacity <= 0 && lastMatchAt !== null ? lastMatchAt : ask.updatedAt;
+  return Math.min(floorAt, Math.max(s.startsAt, stoppedAt));
+}
+
 /** When this ask's fee next changes, or null (fixed fee, clock not started, or at the floor). */
 export function askNextDropAt(ask: { feeCents: Cents; clock: FeeClock | null }, t: MarketMs): MarketMs | null {
   const s = askSchedule(ask);

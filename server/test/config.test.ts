@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -30,7 +30,7 @@ describe('HMS_MODE=sandbox', () => {
       err = e;
     }
     assert.ok(err instanceof SandboxConfigError, `expected a SandboxConfigError, got ${String(err)}`);
-    assert.deepEqual(err.missing, ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL']);
+    assert.deepEqual(err.missing, ['PAYPAL_ENV', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL']);
     assert.match(err.message, /^HMS_MODE=sandbox needs the PayPal sandbox settings/);
     assert.match(err.message, /Nothing was started\. Run npm run keys/);
   });
@@ -45,7 +45,7 @@ describe('HMS_MODE=sandbox', () => {
       err = e;
     }
     assert.ok(err instanceof SandboxConfigError);
-    assert.deepEqual(err.missing, ['PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_TW_PAYOUT_EMAIL']);
+    assert.deepEqual(err.missing, ['PAYPAL_MERCHANT_EMAIL', 'PAYPAL_MERCHANT_ID', 'PAYPAL_BUYER_EMAIL', 'PAYPAL_PAYOUT_EMAIL']);
     assert.equal(err.source, 'sandbox.env');
     assert.ok(!err.message.includes(DUMMY_SECRET) && !err.message.includes('dummy-client'), 'no value in the message');
   });
@@ -68,11 +68,16 @@ describe('HMS_MODE=sandbox', () => {
         'PAYPAL_MERCHANT_EMAIL=merchant@business.example.com',
         'PAYPAL_MERCHANT_ID=DUMMYMERCHANT',
         'PAYPAL_BUYER_EMAIL=buyer@personal.example.com',
-        'PAYPAL_TW_PAYOUT_EMAIL=payouts@personal.example.com',
+        'PAYPAL_PAYOUT_EMAIL=payouts@personal.example.com',
       ].join('\n'),
     );
     const c = loadConfig({ HMS_MODE: 'sandbox', HMS_SECRETS_DIR: dir, HMS_DB_PATH: ':memory:' });
     assert.equal(c.mode, 'sandbox');
+    assert.equal(c.paypal?.twPayoutEmail, 'payouts@personal.example.com');
+    // The payout receiver's older name is still read (D-132).
+    const old = tempDir();
+    writeFileSync(join(old, 'sandbox.env'), readFileSync(join(dir, 'sandbox.env'), 'utf8').replace('PAYPAL_PAYOUT_EMAIL=', 'PAYPAL_TW_PAYOUT_EMAIL='));
+    assert.equal(loadConfig({ HMS_MODE: 'sandbox', HMS_SECRETS_DIR: old, HMS_DB_PATH: ':memory:' }).paypal?.twPayoutEmail, 'payouts@personal.example.com');
     assert.equal(c.sandboxFallback, false);
     assert.equal(loadConfig({ HMS_SECRETS_DIR: tempDir(), HMS_DB_PATH: ':memory:' }).mode, 'fake');
   });

@@ -75,6 +75,7 @@ export function BoardView({ market, brain }: { market: Market; brain: Brain }) {
           onSelect={onSelect}
           validateMove={validateMove}
           onMove={onMove}
+          onRefused={(reason) => setToast(`Not moved: ${reason}`)}
         />
       </section>
       <aside className="side">

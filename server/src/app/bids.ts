@@ -65,6 +65,30 @@ function assertBookOpen(app: App, shop: Shop, item: Item): void {
   if (bookState(app, item.id).status !== 'open') throw new ContractError('SOLD_OUT', `${item.shortName} is sold out at ${shop.name}.`);
 }
 
+const LIVE_BID: readonly string[] = ['awaiting_approval', 'open', 'partially_matched', 'matched', 'closing'];
+const BOUGHT_JOB: readonly string[] = ['bought', 'proof_submitted', 'verified', 'shipped', 'delivered', 'disputed'];
+
+/**
+ * The shop's per-person limit counts every request of the same person for the same item (D-132):
+ * a live request counts in full, a closed one by the units bought for it. "One per customer" then
+ * means one, even after the first plush was bought.
+ */
+function assertPerPersonRoom(app: App, u: User, shop: Shop, item: Item, qty: number): void {
+  let units = 0;
+  for (const b of app.store.bids.where('requester_id = ? AND item_id = ?', u.id, item.id)) {
+    if (LIVE_BID.includes(b.status)) units += b.qty;
+    else for (const j of app.store.jobs.where('bid_id = ?', b.id)) if (BOUGHT_JOB.includes(j.status)) units += j.qty;
+  }
+  if (units + qty > item.perPersonLimit) {
+    const have = units === 1 ? 'one' : String(units);
+    throw new ContractError(
+      'OVER_STORE_LIMIT',
+      `${shop.name} sells at most ${item.perPersonLimit} ${item.shortName} per person, and you already have ${have} requested or bought.`,
+      { limit: item.perPersonLimit, already: units },
+    );
+  }
+}
+
 export async function quoteBid(app: App, u: User, req: QuoteRequest): Promise<BidQuote> {
   requireRole(u, 'requester');
   const { shop, item } = itemOrThrow(req.shopId, req.itemId);
@@ -72,8 +96,12 @@ export async function quoteBid(app: App, u: User, req: QuoteRequest): Promise<Bi
   assertBookOpen(app, shop, item);
   if (!Number.isInteger(req.qty) || req.qty < 1) throw new ContractError('BAD_REQUEST', 'Quantity must be a positive whole number.');
   if (req.qty > item.perPersonLimit) throw new ContractError('OVER_STORE_LIMIT', `${shop.name} sells at most ${item.perPersonLimit} per person.`);
-  const fee = await app.ai.feeEstimate({ shop, item, at: app.now(), latestLinePhoto: latestLinePhoto(app, shop.id), rules: app.rules });
-  const shipping = req.destination.mode === 'ship' ? await app.ai.shippingEstimate({ item, qty: req.qty, destination: req.destination }) : null;
+  if (!app.inDemoStep) assertPerPersonRoom(app, u, shop, item, req.qty);
+  // Both estimates at once: with a live model each is a model call, so the sheet waits for one round, not two.
+  const [fee, shipping] = await Promise.all([
+    app.ai.feeEstimate({ shop, item, at: app.now(), latestLinePhoto: latestLinePhoto(app, shop.id), rules: app.rules }),
+    req.destination.mode === 'ship' ? app.ai.shippingEstimate({ item, qty: req.qty, destination: req.destination }) : Promise.resolve(null),
+  ]);
   const suggested = {
     retailCapCents: suggestedRetailCapCents(item.retailCents),
     maxFeeCents: fee.suggestedFeeCents,
@@ -125,6 +153,8 @@ function validateBid(app: App, u: User, req: CreateBidRequest): { shop: Shop; it
 /** Creates the bid, its hold and the PayPal order (intent AUTHORIZE) for the user's own limit. */
 export async function createBid(app: App, u: User, req: CreateBidRequest, opts: { crowd?: boolean } = {}): Promise<CreateBidResponse> {
   const { shop, item } = validateBid(app, u, req);
+  // The seeded crowd and the demo script's staged requests are not a person's own; those keep to the limit.
+  if (!opts.crowd && !app.inDemoStep) assertPerPersonRoom(app, u, shop, item, req.qty);
   const adapter = app.adapterFor({ crowd: opts.crowd ?? false });
   const limitCents = bidLimitCents(req, req.destination.mode);
   const { bid, hold } = app.tx(() => {

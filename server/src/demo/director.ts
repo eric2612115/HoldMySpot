@@ -248,10 +248,13 @@ export class Director {
     const step = script.steps[this.#index];
     if (!step) return;
     const ctx = this.#context(at);
+    this.#app.inDemoStep = true;
     try {
       await step.run(ctx);
     } catch (err) {
       this.#app.log(`demo step ${this.#index} (${step.label}) failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      this.#app.inDemoStep = false;
     }
     this.#index++;
     if (this.#index >= script.steps.length) {

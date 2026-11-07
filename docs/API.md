@@ -43,7 +43,7 @@ Body: `{ "error": { "code": "OVER_LIMIT", "message": "...", "details": { ... }, 
 
 | HTTP | Codes |
 |---|---|
-| 400 | `BAD_REQUEST`, `INVALID_AMOUNT`, `OVER_STORE_LIMIT`, `FEE_BELOW_MINIMUM`, `RETAIL_CAP_TOO_LOW`, `DEADLINE_OUT_OF_RANGE`, `MODE_NOT_ALLOWED`, `GPS_TOO_COARSE`, `WRONG_CODE` |
+| 400 | `BAD_REQUEST`, `INVALID_AMOUNT`, `OVER_STORE_LIMIT` (also when a person's requests for one item, live or bought, would pass the shop's per-person limit, D-132), `FEE_BELOW_MINIMUM`, `RETAIL_CAP_TOO_LOW`, `DEADLINE_OUT_OF_RANGE`, `MODE_NOT_ALLOWED`, `GPS_TOO_COARSE`, `WRONG_CODE` |
 | 401 | `UNAUTHORIZED` (missing or unknown persona, wrong admin key) |
 | 402 | `PAYPAL_DECLINED` |
 | 403 | `FORBIDDEN`, `RELIABILITY_TOO_LOW`, `DEMO_ONLY`, `FAKE_ONLY`, `SANDBOX_ONLY` |
@@ -75,7 +75,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `GET /api/me` | P0 | per | | `{ user }` |
 | `GET /api/books` | P0 | pub | `?cityId=` | `{ books, asOf }`: what lights up the map |
 | `GET /api/books/:shopId/:itemId` | P0 | pub | | `{ book, asks, recentMatches }` |
-| `POST /api/files` * | P0 | per | raw image bytes, `Content-Type` image/jpeg, png or webp, `?purpose=`; fake mode only: `&fixture=` names a simulated reading for the in-process fake AI (`genuine`, `over_cap`, `wrong_seller`, `time_before_checkin`, `totals_off`, `fake_receipt`, `no_code`, `unreadable`, `generated`; line photos: `line_ok`, `no_code`, `no_line`, `unreadable`) | `{ file: FileRef }` (sha256, and dHash when the AI services provide one) |
+| `POST /api/files` * | P0 | per | raw image bytes, `Content-Type` image/jpeg, png or webp, `?purpose=`; fake mode only: `&fixture=` names a simulated reading for the in-process fake AI (`genuine`, `over_cap`, `wrong_seller`, `time_before_checkin`, `totals_off`, `fake_receipt`, `no_code`, `unreadable`, `generated`; line photos: `line_ok`, `no_code`, `no_line`, `unreadable`); the proof's `ai.simulated` then names it. With no model, no recording and no `fixture`, a photo goes to review instead of passing (D-128) | `{ file: FileRef }` (sha256, and dHash when the AI services provide one) |
 | `GET /api/files/:fileId` | P0 | per | | image bytes (job participants and ops only) |
 
 ### Bids (requesters)
@@ -83,7 +83,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | Endpoint | P | Auth | Request | Response | Rules |
 |---|---|---|---|---|---|
 | `POST /api/bids/quote` | P0 | per | `QuoteRequest` | `BidQuote` | AI-SERVICES 4.3 and 4.4; suggested retail cap = shop price + 5%, rounded up to a dollar; 409 `SOLD_OUT` once the item sold out (D-116) |
-| `POST /api/bids` * | P0 | per | `CreateBidRequest` | `CreateBidResponse` | Requester in the US; item exists; mode allowed (local only in the requester's own city); qty within the per-person limit; retail cap at least the shop price; max fee at least the item minimum; deadline within 10 days; button allowed; the item not sold out (409 `SOLD_OUT`, D-116). Creates the PayPal order |
+| `POST /api/bids` * | P0 | per | `CreateBidRequest` | `CreateBidResponse` | Requester in the US; item exists; mode allowed (local only in the requester's own city); qty within the per-person limit, counting the person's other live or bought requests for the item (D-132; the demo script's staged requests and the seeded crowd excepted); retail cap at least the shop price; max fee at least the item minimum; deadline within 10 days; button allowed; the item not sold out (409 `SOLD_OUT`, D-116). Creates the PayPal order |
 | `POST /api/bids/:bidId/authorize` * | P0 | per | `{ orderId }` | `BidResult` | Authorizes; bid `open`; matching runs; `matches` may already contain fills. After a sell-out nothing is authorized: bid `failed` (close reason `sold_out`), 409 `SOLD_OUT`, nothing held (D-116) |
 | `POST /api/bids/:bidId/approval-failed` * | P0 | per | `{ reason, detail }` | `{ bid, hold }` | Bid `failed` |
 | `GET /api/bids` | P0 | per | `?mine=1&status=&shopId=` | `{ bids }` | Own bids only |

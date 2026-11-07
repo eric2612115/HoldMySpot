@@ -49,10 +49,18 @@ export interface BuildAiPortOptions extends ResolveOptions, ProviderOverrides {
   /**
    * The server's rules-only fake (server/src/fakes/ai.ts). Photos uploaded
    * with a simulated scenario go to it (after an offline read, when the photo
-   * is a rendered fixture), and so do unknown photos when no AI reader exists
-   * (no key), instead of being sent to review.
+   * is a rendered fixture). An unknown photo with no scenario, when no AI
+   * reader exists (no key), goes to review instead of passing (D-128).
    */
   scenarioFallback?: AiPort | null;
+}
+
+/** What the proof says when no reader exists for a photo (no model, no recording, no simulated reading chosen). */
+function unreadPhoto(): AiError {
+  return new AiError(
+    'no_truth',
+    'no AI model reads photos on this server and this photo has no recorded reading; in the zero-key demo, pick a simulated reading on the phone or upload with ?fixture=<scenario>',
+  );
 }
 
 export function buildAiPort(opts: BuildAiPortOptions = {}): HmsAiPort {
@@ -100,7 +108,9 @@ export function buildAiPort(opts: BuildAiPortOptions = {}): HmsAiPort {
       try {
         return await checkInPhoto(input, provider);
       } catch (e) {
-        if (fallback && unread(e)) return fallbackCheckIn(input, fallback);
+        // No model, no recording and no simulated reading chosen: nothing can read this photo, so it
+        // goes to a person instead of passing as genuine (D-128).
+        if (fallback && unread(e)) throw unreadPhoto();
         throw e;
       }
     },
@@ -117,7 +127,7 @@ export function buildAiPort(opts: BuildAiPortOptions = {}): HmsAiPort {
       try {
         return await purchaseProof(input, provider);
       } catch (e) {
-        if (fallback && unread(e)) return fallbackPurchase(input, fallback);
+        if (fallback && unread(e)) throw unreadPhoto();
         throw e;
       }
     },

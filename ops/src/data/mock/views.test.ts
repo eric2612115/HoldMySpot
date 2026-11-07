@@ -79,6 +79,10 @@ test('the market desk reads holds, captures, fill rates, step-downs and disputes
   const w = worldAt(t);
   const snap = { at: t, datasets: datasetsAt(w, t), bundle: boardBundle(w, t), shops: SEED_SHOPS, proposals: [], books: booksAt(w, t) } as unknown as MarketSnapshot;
   assert.match(topicFacts(snap, 'stepdowns'), /Wei at Paper Moon Toys: opened at \$15\.00 at check-in \(10:50\), \$1\.00 every 5 min to a floor of \$8\.00; .*Matched Mia .* at \$12\.00/);
+  // His clock stopped at the match (D-132): it is not "at the floor" just because the floor time has passed.
+  const wei = topicFacts(snap, 'stepdowns').split(/(?<=\.) (?=[A-Z][a-z]+ at )/).find((l) => l.startsWith('Wei at Paper Moon Toys'))!;
+  assert.match(wei, /filled at \$12\.00 when matched/);
+  assert.doesNotMatch(wei, /At the floor/);
   assert.match(topicFacts(snap, 'holds'), /Needs a new approval .*Noor A\./);
   assert.match(topicFacts(snap, 'captures'), /captures succeeded/);
   assert.match(topicFacts(snap, 'fills'), /Paper Moon Toys: \d+ of \d+ units matched/);

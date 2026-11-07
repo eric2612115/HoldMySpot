@@ -13,11 +13,11 @@ node --version                       # v24 or newer (.nvmrc)
 npm run setup                        # npm ci in shared, server, web, ops; exit 0
 npm run -s doctor -- --json          # pure JSON; exit 0 and "ok": true when the zero-key demo can start
 npm test                             # exit 0, ends "All green: 6 steps in N s." (no network, no keys)
-npm run ai:eval                      # exit 0, about a minute; replays the recorded model answers: verdict accuracy 21/21
+npm run ai:eval                      # exit 0, in seconds; replays the recorded model answers: verdict accuracy 21/21
 npm run demo -- --smoke              # starts server, web and ops, checks each, stops; exit 0
 ```
 
-Run `doctor` while the demo is stopped: it counts the demo's own ports as busy. Then drive the scripted day over the API:
+Run `doctor` while the demo is stopped: it counts the demo's own ports as busy (exit 1, `"demoRunning": true`, and advice that repeats your port flags). Keys are read only from this repo's `.secrets/` or the folder `HMS_SECRETS_DIR` names, so these checks are zero-key on any machine without that. Then drive the scripted day over the API:
 
 ```sh
 mkdir -p .run && npm run demo > .run/demo.out 2>&1 &
@@ -31,23 +31,26 @@ for who in mia wei; do curl -s -H "X-HMS-User: $who" 'http://127.0.0.1:8796/api/
 # paid_out 4275 succeeded, paid_out 1080 succeeded
 # (captures include processing and payouts at cost: PayPal's fees, $3.51 in all, docs/DECISIONS.md D-105)
 (cd ops && OUT_DIR=../.run/ops-shots npm run shots && npm run licence:check)   # sponsor screens; needs Playwright's Chromium
+# other ports: (cd ops && export BASE_URL=http://127.0.0.1:<ops port> && OUT_DIR=../.run/ops-shots npm run shots && npm run licence:check)
 # three "saved .../.run/ops-shots/ops-0N-....png" lines (the Bryntum board, the AG Studio dashboard after the agent's
 # answer, the board after approvals), then: Drawn by AG Studio: 3 grid(s), 3 chart(s); market desk agent answered
 npm run demo -- --stop               # stops only what the launcher started
 ```
 
-- Ports: server 8796, web 5190 (`/?demo=1`), ops 5197. `--port-offset N` or `--server-port`, `--web-port`, `--ops-port`; pass the same flags to `--stop` and `doctor`, and set `BASE_URL=http://127.0.0.1:<ops port>` for the two sponsor checks.
+- Ports: server 8796, web 5190 (`/?demo=1`), ops 5197. `--port-offset N` or `--server-port`, `--web-port`, `--ops-port`; pass the same flags to `--stop`, `doctor`, `errand` and `paypal:check`, and export `BASE_URL=http://127.0.0.1:<ops port>` for the two sponsor checks (exported, so both commands get it).
+- Driving the phone app with Playwright: wait for `load` plus a map label such as `[aria-label^="Mochi Bunny plush:"]`, never `networkidle` (the event stream and the map tiles never settle). On macOS launch Chromium with `--use-angle=metal --enable-gpu --ignore-gpu-blocklist`, as the repo's scripts do; in software rendering one 390x844 screenshot can take tens of seconds.
+- Your own photos in the zero-key demo: the queuer's check-in and proof cards ask how the rules-only reader reads them (`?fixture=` on the upload; the result says "Simulated reading, no AI"); an API upload with no `fixture`, no recording and no model goes to ops review (D-128).
 - The sponsor checks open the ops console's in-browser replay (`?backend=mock`) in headless Chromium (`npx playwright@1.56.1 install chromium`), so the server's state does not matter. Without an AG key `licence:check` ends "Verdict: not fully licensed"; it still exits 0 when the agent answered.
 - `npm run ai:eval` without a key ends its summary with "Answers: 21 replayed from recorded muse/muse-spark-1.3 answers. No model was called in this run."; each photo's line ends with the stamp of the answer it replayed, `muse/muse-spark-1.3/replay`. The photos are synthetic.
 - `POST /api/demo/reset` with `{"scriptId":"hero"}` returns to 10:30. `GET /api/config` shows the PayPal mode, the AI provider and the clock. Every endpoint: [docs/API.md](docs/API.md).
 - Logs: `.run/logs/`. Process records: `.run/dev-<port>.json`. `npm run demo -- --dry-run` shows the settings without starting anything.
-- Optional, with keys: `npm run keys -- --from-env` (variables in `npm run keys -- --help`), then `npm run dev:sandbox` or `npm run demo -- --ai live`. `HMS_MODE=sandbox` without its settings refuses to start and names what is missing (D-108). Approving a PayPal hold needs a person, or the scripted `npm run gates -- lifecycle` described in the README.
+- Optional, with keys: `npm run keys -- --from-env` (variables in `npm run keys -- --help`; an OpenAI-compatible endpoint also needs `HMS_AI_PROVIDER=openai`, `HMS_AI_BASE_URL` and `HMS_AI_MODEL`), then `npm run dev:sandbox` or `npm run demo -- --ai live`. `HMS_MODE=sandbox` without its settings refuses to start and names what is missing (D-108). Approving a PayPal hold needs a person, in PayPal's window (or its overlay when pop-ups are blocked). After that, `npm run errand` plays the queuer's side over the API with no stored password and `npm run paypal:check -- --bid <id>` reads the result back from PayPal with GET calls only (D-129); `npm run gates -- lifecycle --by-hand` runs the whole errand with you approving PayPal's link.
 - What is not built or not proven yet: README, [Known limits](README.md#known-limits).
 
 ## Rules for changes
 
 - **English only** in every file in the repo.
-- **No secrets in the repo, logs or output.** Keys live in `.secrets/` (written by `npm run keys`, git-ignored, files mode 600) or in git-ignored `.env.local` files. Print names and "set or missing", never values.
+- **No secrets in the repo, logs or output.** Keys live in `.secrets/` (written by `npm run keys`, git-ignored, files mode 600), in the folder `HMS_SECRETS_DIR` names, or in git-ignored `.env.local` files; no script or app reads a folder outside the repo by default (D-131). Print names and "set or missing", never values. `npm run demo -- --no-ag-licence` forces AG's trial mode on a machine that has an AG key.
 - **Code decides money.** Amounts are integer cents. Every capture carries its processing at cost (`grossUpCapture`, D-105), and HoldMySpot keeps only 10% of the queue fee. The money, matching, fee-clock and photo rules live in `shared/src/` and are imported by the server and both apps. A model never sets an amount; a provider error sends a proof to review, never to a pass.
 - **PayPal goes through one port** (`PayPalPort` in `shared/src/ports.ts`). The sandbox adapter refuses any host other than `api-m.sandbox.paypal.com`. Fake mode is the same REST client on `server/src/paypal/emulator.ts`, which must keep matching the recorded sandbox answers (`server/test/paypal/sandbox-parity.test.ts`).
 - **Keep the committed evidence.** The `npm run gates` commands rewrite `docs/SANDBOX-GATES.md`, and the ones that call PayPal also save its answers under `server/test/paypal/fixtures/recorded/`; add `--out .run/gates.md --no-record` unless you mean to replace them. `npm run gates -- run --fake` needs no keys and writes to a temporary file.
