@@ -15,6 +15,9 @@
 // tracking, the final shipping capture ($9.57 = $8.75 + $0.82) and the release of the rest ($5.44),
 // the reimbursement payout. Then GET authorization, order, captures and payout batches from PayPal
 // and compare. The script takes every amount from the server, so only this comment names them.
+// PayPal's own fees are compared too (D-120): each capture's seller_receivable_breakdown.paypal_fee
+// and each payout item's payout_item_fee against the fee the server recorded and the D-105 schedule
+// ($2.19 + $0.82 + 2 x $0.25 = $3.51 on this errand), and the job's processing line against their sum.
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -149,7 +152,7 @@ async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
 /** Runs the lifecycle. `pp` is server/src/paypal, `port` an HmsPayPal on the sandbox (for the checks on PayPal). */
 export async function runLifecycle({ pp, port: paypal, settings, secretsDir, payoutLabel, payoutEmail, headless = true, shotDir, keep = false, serverPort = 8798, log = console.log }) {
   const shared = await import(pathToFileURL(path.join(REPO, 'shared', 'src', 'index.ts')).href);
-  const { HERO, SEED_USERS, findShop, travelMinutes, zonedLocalToEpoch } = shared;
+  const { HERO, PAYPAL_PRICING, SEED_USERS, findShop, jobSettlement, paypalCaptureFeeCents, platformFeeCents, travelMinutes, zonedLocalToEpoch } = shared;
   const sf = (hhmm) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles');
   const shop = findShop(HERO.shopId);
   const wei = SEED_USERS.find((u) => u.id === HERO.queuerId);
@@ -285,10 +288,12 @@ export async function runLifecycle({ pp, port: paypal, settings, secretsDir, pay
     const bid = await api('GET', `/api/bids/${bidId}`, { as: 'mia' });
     const ledger = (await api('GET', '/api/ledger?mine=1', { as: 'mia' })).entries.slice().reverse();
     const opsPayouts = (await api('GET', '/api/payouts', { as: 'ops' })).payouts.filter((p) => p.reference === jobId);
+    const job = (await api('GET', `/api/jobs/${jobId}`, { as: 'ops' })).job;
     result.server = {
       hold: { status: bid.hold.status, amountCents: bid.hold.amount.cents, capturedCents: bid.hold.capturedCents, releasedCents: bid.hold.releasedCents },
-      ledger: ledger.map((e) => ({ kind: e.kind, cents: e.amount.cents, status: e.status, mode: e.mode, captureId: e.paypal?.captureId ?? null, authorizationId: e.paypal?.authorizationId ?? null })),
-      payouts: opsPayouts.map((p) => ({ id: p.id, purpose: p.purpose, cents: p.amount.cents, status: p.status, batchId: p.paypalBatchId, itemId: p.paypalItemId })),
+      ledger: ledger.map((e) => ({ kind: e.kind, cents: e.amount.cents, status: e.status, mode: e.mode, captureId: e.paypal?.captureId ?? null, authorizationId: e.paypal?.authorizationId ?? null, feeCents: e.paypal?.feeCents ?? null })),
+      payouts: opsPayouts.map((p) => ({ id: p.id, purpose: p.purpose, cents: p.amount.cents, status: p.status, batchId: p.paypalBatchId, itemId: p.paypalItemId, feeCents: p.paypalFeeCents ?? null })),
+      job: { feeCents: job.feeCents, qty: job.qty, amounts: job.amounts },
     };
 
     // 8. What PayPal says.
@@ -303,7 +308,7 @@ export async function runLifecycle({ pp, port: paypal, settings, secretsDir, pay
       authorization: { id: pa.authorizationId, status: pa.status, amountCents: pa.amountCents },
       order: { id: po.orderId, status: po.status, trackers: po.trackers.map((t) => ({ trackingNumber: t.trackingNumber, captureId: t.captureId, status: t.status })) },
       captures: captures.map((c) => ({ id: c.captureId, status: c.status, amountCents: c.amountCents, finalCapture: c.finalCapture, paypalFeeCents: c.paypalFeeCents })),
-      payouts: batches.map(({ purpose, batch }) => ({ purpose, batchId: batch.batchId, batchStatus: batch.batchStatus, items: batch.items.map((i) => ({ itemId: i.itemId, status: i.status, amountCents: i.amountCents })) })),
+      payouts: batches.map(({ purpose, batch }) => ({ purpose, batchId: batch.batchId, batchStatus: batch.batchStatus, items: batch.items.map((i) => ({ itemId: i.itemId, status: i.status, amountCents: i.amountCents, feeCents: i.feeCents ?? null })) })),
     };
 
     // 9. Compare.
@@ -329,6 +334,30 @@ export async function runLifecycle({ pp, port: paypal, settings, secretsDir, pay
       result.server.payouts.length === result.paypal.payouts.length &&
         result.server.payouts.every((p) => result.paypal.payouts.some((b) => b.batchId === p.batchId && b.items.some((i) => i.itemId === p.itemId && i.amountCents === p.cents && i.status === 'SUCCESS'))),
       result.paypal.payouts.map((b) => `${b.purpose} ${b.batchId}: ${b.items.map((i) => `${usd(i.amountCents)} ${i.status}`).join(', ')} (batch ${b.batchStatus})`).join('; '),
+    );
+    // PayPal's own fees (D-105, D-120): what PayPal charged, what the server recorded, and the schedule.
+    const captureFees = result.server.ledger
+      .filter((e) => e.kind === 'captured')
+      .map((e) => ({ e, c: result.paypal.captures.find((c) => c.id === e.captureId) ?? null, schedule: paypalCaptureFeeCents(e.cents) }));
+    check(
+      'PayPal fee on each capture',
+      captureFees.length > 0 && captureFees.every(({ e, c, schedule }) => c !== null && c.paypalFeeCents !== null && c.paypalFeeCents === e.feeCents && c.paypalFeeCents === schedule),
+      captureFees.map(({ e, c, schedule }) => `${usd(e.cents)} capture: PayPal ${c?.paypalFeeCents == null ? 'none' : usd(c.paypalFeeCents)}, ledger ${e.feeCents == null ? 'none' : usd(e.feeCents)}, schedule ${usd(schedule)}`).join('; '),
+    );
+    const itemFees = result.server.payouts.map((p) => ({ p, item: result.paypal.payouts.find((b) => b.batchId === p.batchId)?.items.find((i) => i.itemId === p.itemId) ?? null }));
+    check(
+      'PayPal fee on each payout item',
+      itemFees.length > 0 && itemFees.every(({ p, item }) => item !== null && item.feeCents !== null && item.feeCents === p.feeCents && item.feeCents === PAYPAL_PRICING.payoutItemCents),
+      itemFees.map(({ p, item }) => `${p.purpose} ${usd(p.cents)}: PayPal ${item?.feeCents == null ? 'none' : usd(item.feeCents)}, server ${p.feeCents == null ? 'none' : usd(p.feeCents)}, schedule ${usd(PAYPAL_PRICING.payoutItemCents)}`).join('; '),
+    );
+    const paypalFees = captureFees.reduce((s, { c }) => s + (c?.paypalFeeCents ?? 0), 0) + itemFees.reduce((s, { item }) => s + (item?.feeCents ?? 0), 0);
+    const amounts = result.server.job.amounts;
+    const settled = jobSettlement(amounts);
+    const keep = platformFeeCents(result.server.job.feeCents) * result.server.job.qty;
+    check(
+      'processing at cost',
+      amounts.processingCents === paypalFees && amounts.paypalFeesCents === paypalFees && settled.platformCents === keep && settled.processingVarianceCents === 0,
+      `processing line ${usd(amounts.processingCents ?? 0)}, PayPal's fees ${usd(paypalFees)} (server ${usd(amounts.paypalFeesCents ?? 0)}); charged ${usd(settled.chargedCents)} - paid out ${usd(settled.paidOutCents)} - PayPal ${usd(paypalFees)} = HoldMySpot ${usd(settled.platformCents)}, 10% of the ${usd(result.server.job.feeCents)} fee is ${usd(keep)}`,
     );
     result.ok = result.checks.every((c) => c.ok);
     return result;

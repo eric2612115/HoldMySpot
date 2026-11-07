@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { usd } from '../../domain/money';
 import type { Bid, FeeOffer } from '../../domain/types';
-import { askRows, bidLevels, derivedFills, ladderPrices, meetingOf, mergeTape, nextStepAt, rowOf, spreadOf, type TapeRow } from './model';
+import { askRows, bidLevels, demoClockOffer, derivedFills, ladderPrices, meetingOf, mergeTape, nextStepAt, noOfferWords, rowOf, spreadOf, type TapeRow } from './model';
 
 const MIN = 60_000;
 /** 10:30 on the demo day in San Francisco. */
@@ -174,5 +174,27 @@ describe('the tape of recent matches', () => {
     expect(fills.map((f) => [f.askId, f.feeCents, f.qty, f.queuerName])).toEqual([['ask-wei', 1200, 1, 'Wei']]);
     expect(derivedFills({ offers: [wei()] }, { offers: [] }, at('11:05'))).toHaveLength(1);
     expect(derivedFills({ offers: [wei()] }, { offers: [wei()] }, at('11:05'))).toEqual([]);
+  });
+});
+
+describe('the demo clock in the book', () => {
+  it('offers the scripted day only on a simulated-PayPal server that has not started it; a sandbox server gets Run and Next step', () => {
+    expect(demoClockOffer('idle', 'fake')).toBe('start');
+    expect(demoClockOffer('idle', null)).toBe('start');
+    expect(demoClockOffer('idle', 'sandbox')).toBe('clock');
+    for (const status of ['running', 'paused', 'finished'] as const) {
+      expect(demoClockOffer(status, 'fake')).toBe('clock');
+      expect(demoClockOffer(status, 'sandbox')).toBe('clock');
+    }
+  });
+});
+
+describe('the book with no open offer', () => {
+  it('says "None yet" before anyone offered and "None open" once offers were taken, never "No queuer offered" beside a match', () => {
+    expect(noOfferWords(false)).toMatchObject({ cell: 'None yet', sub: 'No queuer offered' });
+    const after = noOfferWords(true);
+    expect([after.cell, after.sub]).toEqual(['None open', 'every offer taken']);
+    expect(after.note).toMatch(/^No open offer: every offer here was taken\./);
+    expect(after.note).not.toMatch(/queuer offered|offer yet/);
   });
 });

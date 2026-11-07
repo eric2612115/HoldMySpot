@@ -4,6 +4,7 @@ import { api } from '../../services/api';
 import { useMarket } from '../../state/market';
 import { clock } from '../../state/services';
 import { useNow } from '../hooks';
+import { demoClockOffer } from './model';
 
 const timeOf = (t: number, tz: string) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(t);
 const shortTime = (t: number, tz: string) => new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(t);
@@ -17,6 +18,7 @@ const shortTime = (t: number, tz: string) => new Intl.DateTimeFormat('en-US', { 
  */
 export function DemoClock({ timeZone, nextBookStepAt }: { timeZone: string; nextBookStepAt: number | null }) {
   const backend = useMarket((s) => s.backend);
+  const serverMode = useMarket((s) => s.serverMode);
   const [enabled, setEnabled] = useState(false);
   const [state, setState] = useState<DemoState | null>(null);
   const [clockState, setClockState] = useState<ClockState | null>(null);
@@ -89,6 +91,7 @@ export function DemoClock({ timeZone, nextBookStepAt }: { timeZone: string; next
   const target = nextBookStepAt !== null && nextBookStepAt > now ? nextBookStepAt : scripted;
   const paused = clockState?.paused ?? true;
   const speed = clockState?.speed ?? 60;
+  const offer = demoClockOffer(state.status, serverMode);
 
   return (
     <div className="obook-demo" role="group" aria-label="Demo clock">
@@ -96,10 +99,10 @@ export function DemoClock({ timeZone, nextBookStepAt }: { timeZone: string; next
         <span className="obook-demo__label">Demo clock</span>
         <span className="obook-demo__now">
           {timeOf(now, timeZone)}
-          <small>{state.status === 'idle' ? 'not started' : paused ? 'paused' : `${speed}× speed`}</small>
+          <small>{offer === 'start' ? 'not started' : paused ? 'paused' : `${speed}× speed`}</small>
         </span>
       </div>
-      {state.status === 'idle' ? (
+      {offer === 'start' ? (
         <button type="button" className="obook-demo__btn is-primary" disabled={busy} onClick={() => void start()}>
           Start the demo day
         </button>

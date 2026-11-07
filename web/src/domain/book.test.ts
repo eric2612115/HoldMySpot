@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestOffer, depthOf, holdFor, matchPoint, offerFeeAt, retailCapFor, supplyLabel, units, withBookSummary } from './book';
+import { bestOffer, depthOf, holdFor, matchPoint, noOfferNote, offerFeeAt, retailCapFor, supplyLabel, units, withBookSummary } from './book';
 import { buildCatalog } from './catalog';
 import { usd } from './money';
 import type { Bid, FeeOffer, TaskPoint } from './types';
@@ -112,5 +112,18 @@ describe('catalog', () => {
     expect(new Set(sf.map((p) => p.kind))).toEqual(new Set(['cake', 'plush', 'ramen']));
     expect(sf[0].id).toBe('plush-paper-moon');
     expect(sf[0].perPersonLimit).toBe(1);
+  });
+});
+
+describe('the offer card with no open offer', () => {
+  const point = { status: 'open' as const, shop: { name: 'Paper Moon Toys' }, itemShort: 'plush', queue: { queuers: [] as string[] }, offers: [] };
+  it('asks for a max fee until the viewer has one, then says the request rests there', () => {
+    expect(noOfferNote(point as never, undefined)).toBe('No queuer has offered yet. Set your max fee: the first offer that reaches it takes your request.');
+    expect(noOfferNote(point as never, { status: 'resting' })).toBe('No queuer has offered yet. Your request rests at your max fee: the first offer that reaches it takes it.');
+    expect(noOfferNote({ ...point, queue: { queuers: ['Wei'] } } as never, { status: 'resting' })).toBe('Wei is fully booked. Your request rests at your max fee: the next offer that reaches it takes it.');
+  });
+  it('names the queuer who took the request, and a sell-out', () => {
+    expect(noOfferNote(point as never, { status: 'bought', queuerName: 'Wei' })).toBe('Wei took your request. No other offer is open right now.');
+    expect(noOfferNote({ ...point, status: 'sold_out' } as never, { status: 'resting' })).toBe('Paper Moon Toys has sold out of the plush.');
   });
 });

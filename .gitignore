@@ -12,12 +12,16 @@ assets-src/*/repo/
 # HoldMySpot server runtime data: SQLite database and uploaded photos.
 server/data/
 
-# Screenshots: only the final set of the current pass goes into git. Working shots
-# (QA runs) stay local; earlier passes were moved out of the repo.
+# Screenshots: only the final sets go into git: proto-shots/v2/final/ (the zero-key build, in the
+# README) and proto-shots/v3/final/ (one hero errand on the real PayPal sandbox, D-121). Working
+# shots (QA runs, proto-shots/v3/working/) stay local; earlier passes were moved out of the repo.
 proto-shots/*
 !proto-shots/v2/
 proto-shots/v2/*
 !proto-shots/v2/final/
+!proto-shots/v3/
+proto-shots/v3/*
+!proto-shots/v3/final/
 
 # Owner-only notes (may contain Chinese and machine-specific details); never committed.
 private/

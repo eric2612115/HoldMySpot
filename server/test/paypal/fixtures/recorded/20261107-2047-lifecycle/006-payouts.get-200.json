@@ -1,0 +1,72 @@
+{
+  "op": "payouts.get",
+  "method": "GET",
+  "path": "/v1/payments/payouts/GS8Q7QS46SBDS",
+  "status": 200,
+  "debugId": "f40156194b50d",
+  "body": {
+    "batch_header": {
+      "payout_batch_id": "GS8Q7QS46SBDS",
+      "batch_status": "SUCCESS",
+      "time_created": "2026-11-07T12:48:31Z",
+      "time_completed": "2026-11-07T12:48:54Z",
+      "time_closed": "2026-11-07T12:48:54Z",
+      "sender_batch_header": {
+        "sender_batch_id": "payout:job_0001:reimb@mw6ef7ny",
+        "email_subject": "You have a payout from HoldMySpot",
+        "email_message": "Shop price and shipping at cost, 1 x Mochi Bunny plush, Paper Moon Toys."
+      },
+      "funding_source": "BALANCE",
+      "amount": {
+        "currency": "USD",
+        "value": "42.75"
+      },
+      "fees": {
+        "currency": "USD",
+        "value": "0.25"
+      }
+    },
+    "items": [
+      {
+        "payout_item_id": "V36YMC8FRVWTW",
+        "transaction_id": "9G830622PN887872B",
+        "activity_id": "73C24879TP406951P",
+        "transaction_status": "SUCCESS",
+        "payout_item_fee": {
+          "currency": "USD",
+          "value": "0.25"
+        },
+        "payout_batch_id": "GS8Q7QS46SBDS",
+        "payout_item": {
+          "recipient_type": "EMAIL",
+          "amount": {
+            "currency": "USD",
+            "value": "42.75"
+          },
+          "note": "Shop price and shipping at cost, 1 x Mochi Bunny plush, Paper Moon Toys (Wei)",
+          "receiver": "redacted@example.com",
+          "sender_item_id": "po_0002",
+          "recipient_wallet": "PAYPAL",
+          "purpose": "GOODS"
+        },
+        "time_processed": "2026-11-07T12:48:47Z",
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/V36YMC8FRVWTW",
+            "rel": "item",
+            "method": "GET",
+            "encType": "application/json"
+          }
+        ]
+      }
+    ],
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v1/payments/payouts/GS8Q7QS46SBDS",
+        "rel": "self",
+        "method": "GET",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

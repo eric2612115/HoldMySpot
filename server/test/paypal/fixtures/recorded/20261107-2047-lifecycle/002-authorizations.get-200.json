@@ -1,0 +1,63 @@
+{
+  "op": "authorizations.get",
+  "method": "GET",
+  "path": "/v2/payments/authorizations/5XK23595W1944882C",
+  "status": 200,
+  "debugId": "f8386459f5479",
+  "body": {
+    "id": "5XK23595W1944882C",
+    "status": "CAPTURED",
+    "amount": {
+      "currency_code": "USD",
+      "value": "63.70"
+    },
+    "invoice_id": "HMS-mw6ef7ny-bid_0001",
+    "custom_id": "bid_0001",
+    "seller_protection": {
+      "status": "ELIGIBLE",
+      "dispute_categories": [
+        "ITEM_NOT_RECEIVED",
+        "UNAUTHORIZED_TRANSACTION"
+      ]
+    },
+    "supplementary_data": {
+      "related_ids": {
+        "order_id": "6EG92708FG4945307"
+      }
+    },
+    "payee": {
+      "email_address": "redacted@example.com",
+      "merchant_id": "REDACTEDID"
+    },
+    "expiration_time": "2026-12-06T12:48:04Z",
+    "create_time": "2026-11-07T12:48:04Z",
+    "update_time": "2026-11-07T12:48:29Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C/capture",
+        "rel": "capture",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C/void",
+        "rel": "void",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C/reauthorize",
+        "rel": "reauthorize",
+        "method": "POST"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6EG92708FG4945307",
+        "rel": "up",
+        "method": "GET"
+      }
+    ]
+  }
+}

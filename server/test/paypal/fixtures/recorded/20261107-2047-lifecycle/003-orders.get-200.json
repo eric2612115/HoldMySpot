@@ -1,0 +1,286 @@
+{
+  "op": "orders.get",
+  "method": "GET",
+  "path": "/v2/checkout/orders/6EG92708FG4945307",
+  "status": 200,
+  "debugId": "f6048812a1796",
+  "body": {
+    "id": "6EG92708FG4945307",
+    "intent": "AUTHORIZE",
+    "status": "COMPLETED",
+    "payment_source": {
+      "paypal": {
+        "email_address": "redacted@example.com",
+        "account_id": "REDACTEDID",
+        "account_status": "VERIFIED",
+        "name": {
+          "full_name": "Test Buyer"
+        },
+        "address": {
+          "country_code": "US"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "reference_id": "bid_0001",
+        "amount": {
+          "currency_code": "USD",
+          "value": "63.70",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "51.70"
+            },
+            "shipping": {
+              "currency_code": "USD",
+              "value": "12.00"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "display_data": {
+            "brand_name": "HoldMySpot"
+          }
+        },
+        "description": "HoldMySpot hold: up to $63.70 for 1 x Mochi Bunny plush, cherry blossom drop",
+        "custom_id": "bid_0001",
+        "invoice_id": "HMS-mw6ef7ny-bid_0001",
+        "soft_descriptor": "HOLDMYSPOT",
+        "items": [
+          {
+            "name": "Mochi Bunny plush, cherry blossom drop (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "36.00"
+            },
+            "quantity": "1",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "12.00"
+            },
+            "quantity": "1"
+          },
+          {
+            "name": "Processing and payouts, at cost (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "3.70"
+            },
+            "quantity": "1"
+          }
+        ],
+        "shipping": {
+          "name": {
+            "full_name": "Test Buyer"
+          },
+          "address": {
+            "country_code": "US"
+          },
+          "trackers": [
+            {
+              "id": "24U26127PB091713A-HPG-2611-55706958",
+              "status": "SHIPPED",
+              "items": [],
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6EG92708FG4945307",
+                  "rel": "up",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6EG92708FG4945307/trackers/24U26127PB091713A-HPG-2611-55706958",
+                  "rel": "update",
+                  "method": "PATCH"
+                }
+              ],
+              "notify_payer": true
+            }
+          ]
+        },
+        "payments": {
+          "authorizations": [
+            {
+              "status": "CAPTURED",
+              "id": "5XK23595W1944882C",
+              "amount": {
+                "currency_code": "USD",
+                "value": "63.70"
+              },
+              "invoice_id": "HMS-mw6ef7ny-bid_0001",
+              "custom_id": "bid_0001",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "expiration_time": "2026-12-06T12:48:04Z",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C/capture",
+                  "rel": "capture",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C/void",
+                  "rel": "void",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C/reauthorize",
+                  "rel": "reauthorize",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6EG92708FG4945307",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T12:48:04Z",
+              "update_time": "2026-11-07T12:48:29Z"
+            }
+          ],
+          "captures": [
+            {
+              "id": "24U26127PB091713A",
+              "status": "COMPLETED",
+              "amount": {
+                "currency_code": "USD",
+                "value": "48.69"
+              },
+              "final_capture": true,
+              "disbursement_mode": "INSTANT",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "seller_receivable_breakdown": {
+                "gross_amount": {
+                  "currency_code": "USD",
+                  "value": "48.69"
+                },
+                "paypal_fee": {
+                  "currency_code": "USD",
+                  "value": "2.19"
+                },
+                "net_amount": {
+                  "currency_code": "USD",
+                  "value": "46.50"
+                }
+              },
+              "invoice_id": "HMS-mw6ef7ny-job_0001-R",
+              "custom_id": "bid_0001",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/captures/24U26127PB091713A",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/captures/24U26127PB091713A/refund",
+                  "rel": "refund",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T12:48:07Z",
+              "update_time": "2026-11-07T12:48:36Z"
+            },
+            {
+              "id": "01D83946MR897871E",
+              "status": "COMPLETED",
+              "amount": {
+                "currency_code": "USD",
+                "value": "9.57"
+              },
+              "final_capture": true,
+              "disbursement_mode": "INSTANT",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "seller_receivable_breakdown": {
+                "gross_amount": {
+                  "currency_code": "USD",
+                  "value": "9.57"
+                },
+                "paypal_fee": {
+                  "currency_code": "USD",
+                  "value": "0.82"
+                },
+                "net_amount": {
+                  "currency_code": "USD",
+                  "value": "8.75"
+                }
+              },
+              "invoice_id": "HMS-mw6ef7ny-job_0001-S",
+              "custom_id": "bid_0001",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/captures/01D83946MR897871E",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/captures/01D83946MR897871E/refund",
+                  "rel": "refund",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/5XK23595W1944882C",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T12:48:29Z",
+              "update_time": "2026-11-07T12:48:29Z"
+            }
+          ]
+        }
+      }
+    ],
+    "payer": {
+      "name": {
+        "full_name": "Test Buyer"
+      },
+      "email_address": "redacted@example.com",
+      "payer_id": "REDACTEDID",
+      "address": {
+        "country_code": "US"
+      }
+    },
+    "create_time": "2026-11-07T12:48:04Z",
+    "update_time": "2026-11-07T12:48:29Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6EG92708FG4945307",
+        "rel": "self",
+        "method": "GET"
+      }
+    ]
+  }
+}

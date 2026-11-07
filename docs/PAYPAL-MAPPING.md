@@ -25,7 +25,7 @@ Base URL `https://api-m.sandbox.paypal.com`. Every POST sends `PayPal-Request-Id
 | 2 | `POST /api/bids` | `POST /v2/checkout/orders`, intent `AUTHORIZE` | Amount = bid limit, the processing reserve included as its own item line (D-105). Section 4. With `payment_source` PayPal answers **200** (not 201), status `PAYER_ACTION_REQUIRED`, a `payer-action` link to `www.sandbox.paypal.com/checkoutnow`. |
 | 3 | Buyer approves; `POST /api/bids/:id/authorize` | `POST /v2/checkout/orders/{id}/authorize` | 201. Read `purchase_units[0].payments.authorizations[0]`: id, status `CREATED`, `expiration_time` (29 days); funding from the `payment_source` key. The sandbox buyer's approval with `GET_FROM_FILE` returned **no** shipping address (11-07); nothing in the server reads it (the destination comes from the bid). `INSTRUMENT_DECLINED`: restart the SDK session so the buyer can pick another method. |
 | 4 | Sweeper, day 4 to 29, untouched hold of an open bid | `POST /v2/payments/authorizations/{id}/reauthorize` with the same amount | Returns a NEW authorization id; new 3-day honor period; validity still from the original. Never more than the original (PayPal would allow up to 115%, at most +$75, in the US). Before day 4 PayPal refuses with `REAUTHORIZATION_TOO_SOON`, whose text says "only allowed once from Day 4 to Day 29" (11-07); a second renewal of the same original is **probe** (G10 `--probe-second`), as are Venmo-funded holds. |
-| 5 | Proof verified (ship mode) | `POST /v2/payments/authorizations/{id}/capture` with `final_capture: false`, `invoice_id: HMS-<jobId>-R` | Retail at cost (capped), the matched fee and processing at cost: this capture's own PayPal fee plus $0.25 for each of the job's two payouts, grossed up so the net pays them exactly (D-105). 201 and `COMPLETED` at once in the sandbox. PayPal's own fee is in `seller_receivable_breakdown.paypal_fee`: 3.49% + $0.49 ($46.00: $2.10); the server stores it on the ledger line and the job and checks it against `PAYPAL_PRICING`. Payout of the fee only after status `COMPLETED`. Once the authorization is closed, GET shows `final_capture: true` on every one of its captures, including this one: the server keeps what it sent. |
+| 5 | Proof verified (ship mode) | `POST /v2/payments/authorizations/{id}/capture` with `final_capture: false`, `invoice_id: HMS-<jobId>-R` | Retail at cost (capped), the matched fee and processing at cost: this capture's own PayPal fee plus $0.25 for each of the job's two payouts, grossed up so the net pays them exactly (D-105). 201 and `COMPLETED` at once in the sandbox. PayPal's own fee is in `seller_receivable_breakdown.paypal_fee`: 3.49% + $0.49 (the hero's $48.69 receipt capture: $2.19); the server stores it on the ledger line and the job and checks it against `PAYPAL_PRICING`. Payout of the fee only after status `COMPLETED`. Once the authorization is closed, GET shows `final_capture: true` on every one of its captures, including this one: the server keeps what it sent. |
 | 6 | `POST /api/jobs/:id/shipment` | `POST /v2/checkout/orders/{orderId}/track` with `capture_id` of step 5, `carrier: "OTHER"`, `carrier_name_other` | Fictional carrier name. `notify_payer: true`. 201 with the order; the tracker id is `<captureId>-<trackingNumber>` (dashes in the number are fine); the same tracker again answers 200 and adds nothing; a capture of another order is `CAPTURE_ID_NOT_FOUND`. The buyer sees the carrier and number on PayPal's "Report a problem" page. |
 | 7 | Right after step 6 | Capture again, `final_capture` from `isFinalCapture`, `invoice_id: HMS-<jobId>-S` | Shipping and prepaid duty at cost (capped), plus this capture's own PayPal fee at cost. A final capture releases the rest. |
 | 8 | `POST /api/jobs/:id/handover` (local mode) | One capture, `invoice_id: HMS-<jobId>-H` | Retail plus fee plus processing at cost (its PayPal fee and the one payout's $0.25), final if it is the last possible capture. |
@@ -42,7 +42,7 @@ Base URL `https://api-m.sandbox.paypal.com`. Every POST sends `PayPal-Request-Id
 
 ## 3. Browser: JS SDK v6
 
-What is known on this machine: an 11-07 probe (a separate probe script) loaded the v6 core script with the platform app's client ID through `createInstance({ clientId, components, pageType, testBuyerCountry })`, and its screenshot shows a rendered Pay Later message. The session API names below match PayPal's v6 web SDK notes. Which buttons `findEligibleMethods` reports for this app (Venmo in particular) is not recorded yet (**probe**).
+Built in `web/src/services/payments/paypalV6.ts` and proven on the sandbox on 11-07: the web app approved AUTHORIZE orders created with a `payment_source` through these sessions, a max-fee hold, Book now and a Venmo-funded hold (`7RB884471X718305E`, so `findEligibleMethods` offered Venmo; [WEB-INTEGRATION.md](WEB-INTEGRATION.md) section 5), then the hero's $63.70 hold in the web app run (order `0LK56938DW451581H`, authorization `88232929HR885933A`, D-121; [PayPal's window](../proto-shots/v3/final/03-paypal-window.png)). The session API names below match PayPal's v6 web SDK notes; the web app also passes `locale: 'en-US'` to `createInstance`.
 
 ```js
 // script: https://www.sandbox.paypal.com/web-sdk/v6/core  (from GET /api/config: paypal.sdkUrl)
@@ -62,9 +62,11 @@ const session = sdk.createPayPalOneTimePaymentSession({          // or createVen
 await session.start({ presentationMode: 'auto' }, createBid().then((r) => ({ orderId: r.checkout.orderId })));
 ```
 
-`createPayLaterOneTimePaymentSession` exists for the Pay Later button. An AUTHORIZE order approved through these sessions is part of probe G4 and G9. Buttons are PayPal's own components, unaltered. In fake mode (`checkout.next === 'fake_approve'`) the web shows its own plainly labelled "Simulated PayPal" sheet and calls `POST /api/fake/paypal/orders/:orderId/approve`.
+`createPayLaterOneTimePaymentSession` exists for the Pay Later button; Pay Later with intent AUTHORIZE is still **probe** G5, and Venmo is not recorded as gate G4 yet. Buttons are PayPal's own components, unaltered. In fake mode (`checkout.next === 'fake_approve'`) the web shows its own plainly labelled "Simulated PayPal" sheet and calls `POST /api/fake/paypal/orders/:orderId/approve`.
 
 ## 4. Order body
+
+Mia's request for the hero errand, as the server sends it. Run `20261107-2047` sent these purchase-unit values; PayPal's copy is `server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/001-orders.get-200.json`. In sandbox mode the invoice id carries the market run id (D-50), and `return_url` and `cancel_url` name the server's own host and port.
 
 ```json
 {
@@ -72,23 +74,23 @@ await session.start({ presentationMode: 'auto' }, createBid().then((r) => ({ ord
   "purchase_units": [{
     "reference_id": "bid_0001",
     "custom_id": "bid_0001",
-    "invoice_id": "HMS-bid_0001",
-    "description": "HoldMySpot hold: up to $122.22 for 2 x Lucky Cat plush, launch-day drop",
+    "invoice_id": "HMS-mw6ef7ny-bid_0001",
+    "description": "HoldMySpot hold: up to $63.70 for 1 x Mochi Bunny plush, cherry blossom drop",
     "soft_descriptor": "HOLDMYSPOT",
     "amount": {
-      "currency_code": "USD", "value": "122.22",
+      "currency_code": "USD", "value": "63.70",
       "breakdown": {
-        "item_total": { "currency_code": "USD", "value": "87.22" },
-        "shipping": { "currency_code": "USD", "value": "35.00" }
+        "item_total": { "currency_code": "USD", "value": "51.70" },
+        "shipping": { "currency_code": "USD", "value": "12.00" }
       }
     },
     "items": [
-      { "name": "Lucky Cat plush, launch-day drop (shop price, up to)", "quantity": "2",
-        "unit_amount": { "currency_code": "USD", "value": "28.00" }, "category": "PHYSICAL_GOODS" },
-      { "name": "Queue fee (up to)", "quantity": "2",
+      { "name": "Mochi Bunny plush, cherry blossom drop (shop price, up to)", "quantity": "1",
+        "unit_amount": { "currency_code": "USD", "value": "36.00" }, "category": "PHYSICAL_GOODS" },
+      { "name": "Queue fee (up to)", "quantity": "1",
         "unit_amount": { "currency_code": "USD", "value": "12.00" } },
       { "name": "Processing and payouts, at cost (up to)", "quantity": "1",
-        "unit_amount": { "currency_code": "USD", "value": "7.22" } }
+        "unit_amount": { "currency_code": "USD", "value": "3.70" } }
     ]
   }],
   "payment_source": {
@@ -105,25 +107,28 @@ await session.start({ presentationMode: 'auto' }, createBid().then((r) => ({ ord
 }
 ```
 
-- `payment_source` uses the key of the button the buyer chose (`paypal` or `venmo`; Pay Later rides on `paypal`). **probe**: that a v6 session accepts an order created with a `payment_source`; if not, omit `payment_source` and rely on the SDK session.
-- Local errands: `shipping_preference: NO_SHIPPING` and `purchase_units[0].shipping.type: PICKUP_FROM_PERSON` (**probe**; PayPal notes seller protection does not apply to in-person pickup because the payer can check the item first, which is why local mode captures at the handover).
-- The hold screen says "up to": the PayPal page shows the full limit. The processing line is the most two one-plush jobs could pay PayPal at their caps (D-105); it is not called "PayPal processing", because PayPal's user agreement forbids a fee for accepting PayPal as a payment method.
+- `payment_source` uses the key of the button the buyer chose (`paypal` or `venmo`; Pay Later rides on `paypal`). A v6 session accepts an order created with a `payment_source` (section 3), so the server always sends one (the client's `paymentSource: 'send'` default; nothing sets `omit`).
+- Local errands: `shipping_preference: NO_SHIPPING` and `purchase_units[0].shipping.type: PICKUP_FROM_PERSON` (accepted on 11-07, G9; PayPal notes seller protection does not apply to in-person pickup because the payer can check the item first, which is why local mode captures at the handover).
+- The hold screen says "up to": the PayPal page shows the full limit ($63.70 in [PayPal's window](../proto-shots/v3/final/03-paypal-window.png)). The processing line, $3.70 here, is the most the request's one job could pay PayPal at its caps (D-105); it is not called "PayPal processing", because PayPal's user agreement forbids a fee for accepting PayPal as a payment method.
 
 ## 5. Payout body
+
+Wei's fee payout in run `20261107-2047`: batch `5MVTE5WFTZD24`, item `FQCNEBP9F6PWG`, $10.80 `SUCCESS`, PayPal's fee $0.25 (PayPal's copy: `server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/007-payouts.get-200.json`). The second payout of the job, $42.75 for the shop price and shipping (batch `GS8Q7QS46SBDS`), has `payout:job_0001:reimb@<run>` as its `sender_batch_id`.
 
 ```json
 {
   "sender_batch_header": {
-    "sender_batch_id": "payout:job_0001:fee",
+    "sender_batch_id": "payout:job_0001:fee@mw6ef7ny",
     "email_subject": "You have a payout from HoldMySpot",
-    "email_message": "Queue fee for 2 plush at Little Lantern Toys."
+    "email_message": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys.",
+    "recipient_type": "EMAIL"
   },
   "items": [{
     "recipient_type": "EMAIL",
-    "receiver": "<PAYPAL_TW_PAYOUT_EMAIL>",
-    "amount": { "value": "21.60", "currency": "USD" },
-    "note": "Queue fee, 2 x Lucky Cat plush, Little Lantern Toys",
+    "amount": { "value": "10.80", "currency": "USD" },
+    "note": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys (Wei)",
     "sender_item_id": "po_0001",
+    "receiver": "<PAYPAL_TW_PAYOUT_EMAIL>",
     "notification_language": "en-US"
   }]
 }
@@ -225,7 +230,7 @@ This box goes into the README.
 
 ## 12. What the real sandbox showed (11-07)
 
-Runs `20261107-1614` (gates), `20261107-1644-probe`, `20261107-1700-probe-payout`, `20261107-1642-lifecycle` and the `disputes` runs; every answer is saved, sanitized, under `server/test/paypal/fixtures/recorded/` and mapped by `recorded.test.ts`; `sandbox-parity.test.ts` pins the facts below against those files and the emulator.
+Runs `20261107-1614` (gates), `20261107-1644-probe`, `20261107-1700-probe-payout`, `20261107-1642-lifecycle`, `20261107-2047-lifecycle` and the `disputes` runs; every answer is saved, sanitized, under `server/test/paypal/fixtures/recorded/` and mapped by `recorded.test.ts`; `sandbox-parity.test.ts` pins the facts below against those files and the emulator.
 
 - Sign-in and approval: the sandbox buyer's approval page follows the IP's country (Chinese from Taipei) unless the link carries `locale.x=en_US`; it uses a split email-then-password form; reCAPTCHA v3 runs invisibly and never asked for anything; headless Chromium was not challenged.
 - Orders: 200 + `PAYER_ACTION_REQUIRED` with a `payment_source`; the create answer has no `create_time`; an approved order offers `update` (PATCH) and `authorize`; `PICKUP_FROM_PERSON` with `NO_SHIPPING` was accepted (G9); `GET_FROM_FILE` returned no shipping address for this buyer.
@@ -233,4 +238,5 @@ Runs `20261107-1614` (gates), `20261107-1644-probe`, `20261107-1700-probe-payout
 - Fees: 3.49% + $0.49 per capture; a partial refund returns no fee (`paypal_fee` 0.00); $0.25 per payout item.
 - Payouts: PENDING on the first read, then SUCCESS while the batch is PROCESSING, then SUCCESS (G6 and both lifecycle payouts, 15 to 25 s). The G6 batch sent again an hour later, same `sender_batch_id` and same PayPal-Request-Id, was refused as a duplicate (no second payment); the request id does not replay payouts.
 - Disputes: the buyer's report (case `PP-R-UEL-10196964`, opened by `disputes --open-as-buyer`) was listed by the API within minutes as a claim under PayPal's review; adjudicate was refused 10 to 13 minutes in, offered and accepted 23 minutes in, and the dispute read `RESOLVED_SELLER_FAVOUR` about 3 minutes later (G7 passed).
-- Lifecycle (server over HTTP only, sandbox mode, recorded before D-105 passed processing through): hold $60.00, captures $46.00 and $8.75 (final), $5.25 released by the final capture, payouts $10.80 and $42.75 SUCCESS; PayPal's fees on it were $2.10 + $0.80 + 2 x $0.25 = $3.40, which is why D-105 exists (the same errand now holds $63.70 and captures $48.69 and $9.57; a new lifecycle run has not been recorded yet); PayPal's authorization, captures and payout items matched the ledger to the cent.
+- Lifecycle (server over HTTP only, sandbox mode), first run `20261107-1642-lifecycle`, before D-105 passed processing through: hold $60.00, captures $46.00 and $8.75 (final), $5.25 released by the final capture, payouts $10.80 and $42.75 SUCCESS; PayPal's fees on it were $2.10 + $0.80 + 2 x $0.25 = $3.40, which is why D-105 exists. Second run `20261107-2047-lifecycle`, with processing at cost: hold $63.70, captures $48.69 (PayPal's fee $2.19, net $46.50 = $34.00 + $12.00 + 2 x $0.25) and $9.57 (fee $0.82, net $8.75), $5.44 released, payouts $10.80 and $42.75 SUCCESS with $0.25 fees; PayPal's fees, $3.51, equal the processing line to the cent and HoldMySpot kept $1.20 (D-120). In both runs PayPal's authorization, captures and payout items matched the ledger to the cent.
+- Web app (D-121, [`proto-shots/v3/final/`](../proto-shots/v3/final/)): the same errand through the web app on a sandbox server, the hold approved in PayPal's window through the JS SDK v6 PayPal session and the photos read live by Muse Spark: order `0LK56938DW451581H`, authorization `88232929HR885933A` $63.70, captures `54N68839TA957213Y` $48.69 (fee $2.19) and `4U786596DF2537313` $9.57 (fee $0.82), $5.44 released, tracking `HPG-2611-57842795`, payouts $10.80 (batch `88H3RUEBP9L4W`) and $42.75 (batch `32VC3V9YGQ78C`) `SUCCESS` with $0.25 fees. Read back from PayPal after the run and again for the README (GET only), every amount and fee matched the ledger. Its PayPal answers are not saved as fixtures; the screenshots are its record.

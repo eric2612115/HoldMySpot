@@ -265,6 +265,11 @@ export function isFinished(stage: ErrandStage): boolean {
   return stage === 'paid' || stage === 'rejected' || stage === 'sold_out' || stage === 'lapsed' || stage === 'cancelled' || stage === 'ended';
 }
 
+/** The errand sheet's fine print, in the words of the mode banner every screen carries (`useModeBanner`). */
+export function errandFinePrint(banner: string): string {
+  return `${banner}, US dollars throughout. Your codes are shown only on this phone.`;
+}
+
 // ---------------------------------------------------------------------------
 // Place and time
 // ---------------------------------------------------------------------------

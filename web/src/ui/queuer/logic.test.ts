@@ -8,6 +8,7 @@ import {
   countText,
   currentJob,
   durationText,
+  errandFinePrint,
   errandStage,
   etaChoices,
   failureText,
@@ -365,5 +366,12 @@ describe('the AI check as rows', () => {
     const v = lineCheckView(p, claim({ arrival: { at: sf('10:32'), lngLat: shop.lngLat, accuracyM: 8, distanceM: 12 } }));
     expect(v.rows.map((r) => r.value)).toEqual(['M4RT7', '12 m from the shop', 'about 40 people ahead', 'new']);
     expect(v.rows.every((r) => r.ok)).toBe(true);
+  });
+});
+
+describe('the errand sheet fine print', () => {
+  it('names the PayPal the server runs: the sandbox on a sandbox server, never "Simulated PayPal" there', () => {
+    expect(errandFinePrint('PayPal sandbox: no real money')).toBe('PayPal sandbox: no real money, US dollars throughout. Your codes are shown only on this phone.');
+    expect(errandFinePrint('Simulated PayPal')).toBe('Simulated PayPal, US dollars throughout. Your codes are shown only on this phone.');
   });
 });

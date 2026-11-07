@@ -7,7 +7,7 @@ import { ItemIcon } from '../ItemIcon';
 import { useQueuerPhone } from '../queuer/phone';
 import { DemoClock } from './DemoClock';
 import { useBookFeed } from './feed';
-import { askRows, bidLevels, ladderPrices, meetingOf, nextStepAt, rowOf, spreadOf, TRIGGER_TEXT, type AskRow, type BidLevel, type TapeRow } from './model';
+import { askRows, bidLevels, ladderPrices, meetingOf, nextStepAt, noOfferWords, rowOf, spreadOf, TRIGGER_TEXT, type AskRow, type BidLevel, type TapeRow } from './model';
 import { useBook } from './store';
 import './book.css';
 
@@ -100,6 +100,7 @@ function OrderBook({ point, onClose }: { point: TaskPoint; onClose: () => void }
     [order?.bidId],
   );
   const tape = useBookFeed(point, onLive);
+  const noOffer = noOfferWords(tape.length > 0);
   useEffect(() => () => window.clearTimeout(flashTimer.current), []);
   const keep = flash ? [...flash.prices, flash.feeCents, ...(flash.bid ? [flash.bid.feeCents] : []), ...(flash.ask ? [flash.ask.feeNowCents] : [])] : [];
   const prices = ladderPrices(levels, asks, keep);
@@ -157,9 +158,9 @@ function OrderBook({ point, onClose }: { point: TaskPoint; onClose: () => void }
           </div>
           <div className="obook-sum__cell is-ask">
             <span className="obook-sum__label">Best offer</span>
-            <strong>{best ? usd(best.feeNowCents) : 'None yet'}</strong>
+            <strong>{best ? usd(best.feeNowCents) : noOffer.cell}</strong>
             <span className="obook-sum__sub">
-              {best ? `${myAsk(best) ? 'You' : best.queuerName}${best.running ? ', stepping down' : best.clock ? ', on the way' : ', fixed'}` : 'No queuer offered'}
+              {best ? `${myAsk(best) ? 'You' : best.queuerName}${best.running ? ', stepping down' : best.clock ? ', on the way' : ', fixed'}` : noOffer.sub}
             </span>
           </div>
         </section>
@@ -230,7 +231,7 @@ function OrderBook({ point, onClose }: { point: TaskPoint; onClose: () => void }
           </p>
         )}
 
-        <ScheduleNote best={best} meeting={meeting} bidCents={spread.bidCents} now={now} tz={tz} you={best ? myAsk(best) : false} />
+        <ScheduleNote best={best} meeting={meeting} bidCents={spread.bidCents} now={now} tz={tz} you={best ? myAsk(best) : false} empty={noOffer.note} />
 
         <section className="obook-tape" aria-label="Recent matches">
           <h3>Recent matches</h3>
@@ -380,6 +381,7 @@ function ScheduleNote({
   now,
   tz,
   you,
+  empty,
 }: {
   best: AskRow | undefined;
   meeting: ReturnType<typeof meetingOf>;
@@ -387,9 +389,11 @@ function ScheduleNote({
   now: number;
   tz: string;
   you: boolean;
+  /** The note when no offer is open (`noOfferWords`). */
+  empty: string;
 }) {
   if (!best) {
-    return <p className="obook-note">No offer yet. Requests rest here, each held by PayPal, until a queuer&rsquo;s fee reaches them.</p>;
+    return <p className="obook-note">{empty}</p>;
   }
   const who = you ? 'Your' : `${best.queuerName}'s`;
   if (!best.clock) {

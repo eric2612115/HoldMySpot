@@ -1,0 +1,72 @@
+{
+  "op": "payouts.get",
+  "method": "GET",
+  "path": "/v1/payments/payouts/5MVTE5WFTZD24",
+  "status": 200,
+  "debugId": "f8737412e369a",
+  "body": {
+    "batch_header": {
+      "payout_batch_id": "5MVTE5WFTZD24",
+      "batch_status": "SUCCESS",
+      "time_created": "2026-11-07T12:48:09Z",
+      "time_completed": "2026-11-07T12:48:33Z",
+      "time_closed": "2026-11-07T12:48:33Z",
+      "sender_batch_header": {
+        "sender_batch_id": "payout:job_0001:fee@mw6ef7ny",
+        "email_subject": "You have a payout from HoldMySpot",
+        "email_message": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys."
+      },
+      "funding_source": "BALANCE",
+      "amount": {
+        "currency": "USD",
+        "value": "10.80"
+      },
+      "fees": {
+        "currency": "USD",
+        "value": "0.25"
+      }
+    },
+    "items": [
+      {
+        "payout_item_id": "FQCNEBP9F6PWG",
+        "transaction_id": "6JL865952E802794R",
+        "activity_id": "70316795C14004436",
+        "transaction_status": "SUCCESS",
+        "payout_item_fee": {
+          "currency": "USD",
+          "value": "0.25"
+        },
+        "payout_batch_id": "5MVTE5WFTZD24",
+        "payout_item": {
+          "recipient_type": "EMAIL",
+          "amount": {
+            "currency": "USD",
+            "value": "10.80"
+          },
+          "note": "Queue fee, 1 x Mochi Bunny plush, Paper Moon Toys (Wei)",
+          "receiver": "redacted@example.com",
+          "sender_item_id": "po_0001",
+          "recipient_wallet": "PAYPAL",
+          "purpose": "GOODS"
+        },
+        "time_processed": "2026-11-07T12:48:25Z",
+        "links": [
+          {
+            "href": "https://api.sandbox.paypal.com/v1/payments/payouts-item/FQCNEBP9F6PWG",
+            "rel": "item",
+            "method": "GET",
+            "encType": "application/json"
+          }
+        ]
+      }
+    ],
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v1/payments/payouts/5MVTE5WFTZD24",
+        "rel": "self",
+        "method": "GET",
+        "encType": "application/json"
+      }
+    ]
+  }
+}

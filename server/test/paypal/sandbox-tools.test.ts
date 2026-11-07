@@ -113,6 +113,29 @@ describe('the sandbox buyer', () => {
     }
   });
 
+  it('picks a web-app approver by label, sealed like the buyer, and never the payout receiver', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hms-approver-'));
+    try {
+      writeFileSync(join(dir, 'sandbox.env'), 'PAYPAL_BUYER_EMAIL=three@personal.example.com\nPAYPAL_TW_PAYOUT_EMAIL="One@Personal.Example.com"\n');
+      writeFileSync(
+        join(dir, 'sandbox-buyers.json'),
+        JSON.stringify({
+          buyers: [
+            { label: 'person-1', email: 'one@personal.example.com', password: 'pw-one-not-real' },
+            { label: 'person-2', email: 'two@personal.example.com', password: 'pw-two-not-real' },
+          ],
+        }),
+      );
+      const approver = buyer.loadSandboxAccount(dir, 'person-2');
+      assert.deepEqual([approver.label, approver.email, approver.password], ['person-2', 'two@personal.example.com', 'pw-two-not-real']);
+      assert.doesNotMatch(`${JSON.stringify(approver)} ${inspect(approver)} ${Object.keys(approver).join(',')}`, /two@|pw-two/);
+      assert.throws(() => buyer.loadSandboxAccount(dir, 'person-1'), (e: Error) => /is the payout receiver/.test(e.message) && !/one@/i.test(e.message));
+      assert.throws(() => buyer.loadSandboxAccount(dir, 'person-9'), /No account labelled person-9/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it('a challenge error names the reason and the screenshot only', () => {
     const e = new buyer.ApprovalBlocked('challenge page /authflow/challenges', '/tmp/shot.png');
     assert.equal(e.name, 'ApprovalBlocked');

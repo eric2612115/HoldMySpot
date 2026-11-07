@@ -208,6 +208,26 @@ export function nextStepAt(asks: readonly AskRow[]): number | null {
   return next;
 }
 
+/**
+ * What the book's demo clock offers (D-114, D-123): "Start the demo day" while a simulated-PayPal
+ * server's scripted day has not started, else Run, Pause and Next step on the market clock. A sandbox
+ * server never offers the scripted day: its first request waits for a PayPal approval no screen offers,
+ * while the market clock still moves (POST /api/demo/clock) for requests people place themselves.
+ */
+export function demoClockOffer(status: 'idle' | 'running' | 'paused' | 'finished', serverMode: 'fake' | 'sandbox' | null): 'start' | 'clock' {
+  return status === 'idle' && serverMode !== 'sandbox' ? 'start' : 'clock';
+}
+
+/**
+ * The best-offer cell and the note when no offer is open: "None yet" before anyone offered, "None open"
+ * once the book has matched (the offers were taken), so the summary never contradicts the match it shows.
+ */
+export function noOfferWords(matched: boolean): { cell: string; sub: string; note: string } {
+  return matched
+    ? { cell: 'None open', sub: 'every offer taken', note: 'No open offer: every offer here was taken. Requests rest here, each held by PayPal, until a queuer’s fee reaches them.' }
+    : { cell: 'None yet', sub: 'No queuer offered', note: 'No offer yet. Requests rest here, each held by PayPal, until a queuer’s fee reaches them.' };
+}
+
 /** Adds matches to the tape: one line per match id, newest first. */
 export function mergeTape(tape: readonly TapeRow[], add: readonly TapeRow[], limit = 6): TapeRow[] {
   const byId = new Map<string, TapeRow>();

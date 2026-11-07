@@ -1,0 +1,85 @@
+{
+  "op": "orders.get",
+  "method": "GET",
+  "path": "/v2/checkout/orders/6EG92708FG4945307",
+  "status": 200,
+  "debugId": "f885416fdfa95",
+  "body": {
+    "id": "6EG92708FG4945307",
+    "intent": "AUTHORIZE",
+    "status": "PAYER_ACTION_REQUIRED",
+    "payment_source": {
+      "paypal": {}
+    },
+    "purchase_units": [
+      {
+        "reference_id": "bid_0001",
+        "amount": {
+          "currency_code": "USD",
+          "value": "63.70",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "51.70"
+            },
+            "shipping": {
+              "currency_code": "USD",
+              "value": "12.00"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "display_data": {
+            "brand_name": "HoldMySpot"
+          }
+        },
+        "description": "HoldMySpot hold: up to $63.70 for 1 x Mochi Bunny plush, cherry blossom drop",
+        "custom_id": "bid_0001",
+        "invoice_id": "HMS-mw6ef7ny-bid_0001",
+        "soft_descriptor": "HOLDMYSPOT",
+        "items": [
+          {
+            "name": "Mochi Bunny plush, cherry blossom drop (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "36.00"
+            },
+            "quantity": "1",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "12.00"
+            },
+            "quantity": "1"
+          },
+          {
+            "name": "Processing and payouts, at cost (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "3.70"
+            },
+            "quantity": "1"
+          }
+        ]
+      }
+    ],
+    "create_time": "2026-11-07T12:47:48Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/6EG92708FG4945307",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://www.sandbox.paypal.com/checkoutnow",
+        "rel": "payer-action",
+        "method": "GET"
+      }
+    ]
+  }
+}

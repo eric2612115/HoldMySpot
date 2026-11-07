@@ -55,7 +55,7 @@ npm run demo -- --stop               # stops only what the launcher started
 - **The contract** (`shared/src/contract.ts`) changes only together with a new row in `docs/DECISIONS.md`.
 - **Stop only what you started**: `npm run demo -- --stop` with the same port flags, or the process ids you own. Never stop processes by name.
 - **Keep `npm test` green**; `npm test -- --build` adds the web and ops production builds.
-- Only `proto-shots/v2/final/` is tracked among the screenshot folders.
+- Only `proto-shots/v2/final/` (the zero-key build) and `proto-shots/v3/final/` (one hero errand on the real PayPal sandbox through the web app, made by `web/scripts/sandbox-walk.mjs`, D-121) are tracked among the screenshot folders.
 
 ## Where to look
 

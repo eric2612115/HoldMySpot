@@ -81,6 +81,37 @@ describe('the real sandbox, as recorded on 11-07', () => {
     assert.equal(g.amountCents - captureFeeCents(g.amountCents), 4600 + 2 * PAYOUT_ITEM_FEE_CENTS);
   });
 
+  it('charged the D-105 errand exactly its processing line, $2.19 + $0.82 + 2 x $0.25 (lifecycle 20261107-2047)', () => {
+    const run = '20261107-2047-lifecycle';
+    const cents = (v: string) => Math.round(Number(v) * 100);
+    const auth = recorded(`${run}/002-authorizations.get-200.json`).body as { status: string; amount: { value: string } };
+    assert.deepEqual([auth.status, auth.amount.value], ['CAPTURED', '63.70']);
+    type Capture = { amount: { value: string }; invoice_id: string; seller_receivable_breakdown: { paypal_fee: { value: string }; net_amount: { value: string } } };
+    const [receipt, shipping] = ['004', '005'].map((n) => recorded(`${run}/${n}-captures.get-200.json`).body as Capture);
+    assert.match(receipt!.invoice_id, /-R$/);
+    assert.match(shipping!.invoice_id, /-S$/);
+    const parts = (c: Capture) => [c.amount.value, c.seller_receivable_breakdown.paypal_fee.value, c.seller_receivable_breakdown.net_amount.value];
+    assert.deepEqual([parts(receipt!), parts(shipping!)], [
+      ['48.69', '2.19', '46.50'],
+      ['9.57', '0.82', '8.75'],
+    ]);
+    // The receipt capture nets the shop price, the fee and both payout fees; the shipping capture nets the label alone.
+    const r = grossUpCapture(3400 + 1200, 2);
+    const s = grossUpCapture(875, 0);
+    assert.deepEqual([r.amountCents, r.captureFeeCents, s.amountCents, s.captureFeeCents], [4869, 219, 957, 82]);
+    for (const c of [receipt!, shipping!]) assert.equal(paypalCaptureFeeCents(cents(c.amount.value)), cents(c.seller_receivable_breakdown.paypal_fee.value));
+    type Batch = { items: { transaction_status: string; payout_item: { amount: { value: string } }; payout_item_fee: { value: string } }[] };
+    const items = ['006', '007'].flatMap((n) => (recorded(`${run}/${n}-payouts.get-200.json`).body as Batch).items);
+    assert.deepEqual(items.map((i) => [i.transaction_status, i.payout_item.amount.value, i.payout_item_fee.value]).sort(), [
+      ['SUCCESS', '10.80', '0.25'],
+      ['SUCCESS', '42.75', '0.25'],
+    ]);
+    const paypalFees = cents(receipt!.seller_receivable_breakdown.paypal_fee.value) + cents(shipping!.seller_receivable_breakdown.paypal_fee.value) + items.reduce((t, i) => t + cents(i.payout_item_fee.value), 0);
+    const charged = cents(receipt!.amount.value) + cents(shipping!.amount.value);
+    const paidOut = items.reduce((t, i) => t + cents(i.payout_item.amount.value), 0);
+    assert.deepEqual([paypalFees, charged - paidOut - paypalFees], [351, 120], "PayPal's fees equal the $3.51 processing line; HoldMySpot keeps 10% of the $12 fee");
+  });
+
   it('read every capture of a closed authorization as final_capture=true, although the first was sent false', () => {
     const post = recorded('20261107-1614/012-authorizations.capture-201.json').body as { final_capture: boolean };
     assert.equal(post.final_capture, false);

@@ -110,6 +110,25 @@ export function loadPayoutReceiver(secretsDir, label) {
   return sealed(match.label, match.email.trim());
 }
 
+/**
+ * Any sandbox account picked by label from sandbox-buyers.json, with its password, for approving a
+ * hold in PayPal's own window from the web app (web/scripts/sandbox-walk.mjs). It must not be the
+ * payout receiver (PAYPAL_TW_PAYOUT_EMAIL or PAYPAL_PAYOUT_EMAIL), so a buyer is never also paid out.
+ */
+export function loadSandboxAccount(secretsDir, label) {
+  let env = new Map();
+  try {
+    env = parseDotenv(fs.readFileSync(path.join(secretsDir, 'sandbox.env'), 'utf8'));
+  } catch {
+    // No sandbox.env: no receiver to keep apart.
+  }
+  const receivers = new Set(['PAYPAL_TW_PAYOUT_EMAIL', 'PAYPAL_PAYOUT_EMAIL'].map((k) => (env.get(k) ?? '').trim().toLowerCase()).filter(Boolean));
+  const match = readBuyers(secretsDir).find((b) => b.label === label);
+  if (!match) throw new Error(`No account labelled ${label} in sandbox-buyers.json.`);
+  if (receivers.has(match.email.trim().toLowerCase())) throw new Error(`${label} is the payout receiver; approve with another sandbox account.`);
+  return sealed(match.label, match.email.trim(), match.password);
+}
+
 // ---------------------------------------------------------------------------
 // Challenge detection (pure, unit tested)
 // ---------------------------------------------------------------------------

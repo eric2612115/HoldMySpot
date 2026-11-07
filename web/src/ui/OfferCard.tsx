@@ -1,7 +1,7 @@
 import { askSchedule, bidDisclosures, fillPriceForMax, nextDropAt, nextPriceAfter, reachesAt } from '@holdmyspot/shared';
 import type { CheckoutFunding, StepDownSchedule } from '@holdmyspot/shared';
 import { useState } from 'react';
-import { bestOffer, holdFor, offerFeeAt, retailCapFor, supplyLabel } from '../domain/book';
+import { bestOffer, holdFor, noOfferNote, offerFeeAt, retailCapFor, supplyLabel } from '../domain/book';
 import { formatUsd, type Cents } from '../domain/money';
 import type { FeeOffer, TaskPoint } from '../domain/types';
 import { isOpenOrder, useMarket, type UserOrder } from '../state/market';
@@ -50,19 +50,6 @@ function Disclosures({ lines }: { lines: string[] }) {
       ))}
     </div>
   );
-}
-
-/** What the card says when no offer is open: sold out, nobody offered yet, or every queuer here is booked. */
-function noOfferNote(point: TaskPoint, order: UserOrder | undefined): string {
-  if (point.status === 'sold_out') return `${point.shop.name} has sold out of the ${point.itemShort}.`;
-  const inLine = point.queue.queuers;
-  const mine = order && (order.status === 'booked' || order.status === 'settling' || order.status === 'bought' || order.status === 'filled') ? order.queuerName : undefined;
-  if (mine) return `${mine} took your request. No other offer is open right now.`;
-  if (inLine.length > 0 || point.offers.length > 0) {
-    const who = inLine.length === 0 ? 'Every queuer here' : inLine.length === 1 ? inLine[0] : `${inLine.slice(0, -1).join(', ')} and ${inLine[inLine.length - 1]}`;
-    return `${who} ${inLine.length === 1 ? 'is' : 'are'} fully booked. Set your max fee: the next offer that reaches it takes your request.`;
-  }
-  return 'No queuer has offered yet. Set your max fee: the first offer that reaches it takes your request.';
 }
 
 /** Requests that fill before the viewer's: a higher max fee, or the same placed earlier. */

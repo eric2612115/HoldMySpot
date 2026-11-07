@@ -6,8 +6,9 @@ import { useMarket } from '../../state/market';
 import { BottomSheet } from '../BottomSheet';
 import { useNow } from '../hooks';
 import { ItemIcon } from '../ItemIcon';
+import { useModeBanner } from '../MoneyPanel';
 import { ArrivalCard, CheckingCard, FinishCard, InLineCard, OutcomeCard, PayoutCard, ProofCard, VerifyingCard, WaitingCard } from './ErrandCards';
-import { ERRAND_STEPS, buildErrand, countText, currentJob, errandStage, isFinished, payoutSummary, stepIndex, timeIn, type Errand, type ErrandStage } from './logic';
+import { ERRAND_STEPS, buildErrand, countText, currentJob, errandFinePrint, errandStage, isFinished, payoutSummary, stepIndex, timeIn, type Errand, type ErrandStage } from './logic';
 import { queuerActions, useQueuer } from './store';
 
 /**
@@ -128,6 +129,7 @@ export function ErrandSheet({ scene }: { scene: MapScene | null }) {
   const sheetOpen = useQueuer((s) => s.sheetOpen);
   const error = useQueuer((s) => s.error);
   const busy = useQueuer((s) => s.busy);
+  const banner = useModeBanner();
   const selectedId = useMarket((s) => s.selectedId);
   const points = useMarket((s) => s.points);
   const point = errand?.ask ? (points.find((p) => p.id === errand.ask!.itemId) ?? null) : null;
@@ -184,7 +186,7 @@ export function ErrandSheet({ scene }: { scene: MapScene | null }) {
           <Steps stage={stage} />
           {error && !busy && <p className="q-error">{error}</p>}
           <Body errand={errand} point={point} stage={stage} scene={scene} />
-          {!isFinished(stage) && <p className="q-fine">Simulated PayPal and US dollars throughout. Your codes are shown only on this phone.</p>}
+          {!isFinished(stage) && <p className="q-fine">{errandFinePrint(banner)}</p>}
         </article>
       </BottomSheet>
     </>

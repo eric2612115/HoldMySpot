@@ -2,11 +2,19 @@
 
 **Pay someone near the shop to stand in line for you. PayPal holds the most it could cost; you are charged only what an AI-checked receipt proves.**
 
-Some things are sold only in person, in long lines: a viral bakery's cake, a one-per-customer plush drop, a famous bowl of ramen. Paying a stranger to queue for you fails on trust. The requester fears paying for nothing; the queuer fears spending his own cash at the counter and never being paid back.
+| <img src="proto-shots/v3/final/03-paypal-window.png" width="190" alt="PayPal's own sandbox window asking the buyer to approve $63.70"> | <img src="proto-shots/v3/final/08-matched.png" width="190" alt="The order book: Wei's offer, stepped down to $12, matched Mia's request, which PayPal holds for $63.70"> | <img src="proto-shots/v3/final/10-receipt-check.png" width="190" alt="Receipt check passed, read live by Muse Spark and checked by the rules; PayPal captured $48.69"> | <img src="proto-shots/v3/final/16-money-ledger.png" width="190" alt="The money panel: held $63.70, captured $48.69 and $9.57, released $5.44, paid out $10.80 and $42.75"> |
+|:---:|:---:|:---:|:---:|
+| **1. Hold.** Mia approves \$63.70 in PayPal's own window. Nothing is charged yet. | **2. Match.** Wei's fee steps down until it meets her \$12. | **3. Proof.** AI and rules pass his receipt; PayPal captures \$48.69. | **4. Settle.** Shipping is captured at cost, \$5.44 is released, Wei is paid by Payouts. |
 
-HoldMySpot is a live market for queue errands. A requester anywhere in the US asks for an item at a shop and sets the most they will pay someone to queue for it. The request is a PayPal authorization hold, and it lights up the shop on a 3D map. Queuers nearby see the fee, the walk, the wait and what it pays per hour, and offer to go. A queuer checks in at the shop (geofence plus an AI-read line photo). From then on his fee can step down on a clock to a floor he chose: a queuer already in line still finds work, because requests that offered less fill as the clock reaches them, and nobody can run a falling fee from home. He buys and uploads the receipt. AI reads it and rules check it. Only then does PayPal capture the shop price plus the matched fee, then the shipping at cost once tracking is added, each capture with its processing at cost. The rest of the hold is released. The captures land in HoldMySpot's PayPal balance, and the queuer is paid from it with PayPal Payouts. A fake receipt moves \$0.
+**Shot on the real PayPal sandbox**, one errand through the web app on 2026-11-07 with a live AI model: authorization `88232929HR885933A`, captures `54N68839TA957213Y` and `4U786596DF2537313`, payout batches `88H3RUEBP9L4W` and `32VC3V9YGQ78C`. Read back from PayPal, every amount and every PayPal fee matched the server's ledger to the cent. [Every id](#proof-on-the-real-paypal-sandbox) | [Run it with no keys](#quick-start-with-zero-keys)
 
-Built for the PayPal AI Hackathon (Devpost). Sponsor tools: **AG Studio** by AG Grid (the market dashboard: custom widgets, theming, layout tools and a custom market-desk agent on the Studio Agent Framework that hands work to Studio's own agents, thinking with a model on the server's AI port, or an offline planner without a key) and **Bryntum Scheduler** (the queuer board, with a rescheduler whose rules build every allowed move inside the requester's PayPal hold and a model picks one; without a key, the rules pick).
+Some things are sold only in person, in long lines: a viral bakery's cake, a one-per-customer plush drop, a famous bowl of ramen. Paying a stranger to queue for you fails on trust: the requester fears paying for nothing, and the queuer fears spending his own cash at the counter and never being paid back. HoldMySpot is a live market for queue errands:
+
+- **Request.** A requester anywhere in the US asks for an item at a shop and sets the most they will pay someone to queue for it. The request is a PayPal authorization hold for their whole limit, and it lights up the shop on a 3D map.
+- **Offer.** Queuers nearby see the fee, the walk, the wait and what it pays per hour, and offer to go. Once a queuer checks in (geofence plus an AI-read line photo), his fee can step down on a clock to a floor he chose, so a queuer already in line still finds work: requests that offered less fill as the clock reaches them. Nobody can run a falling fee from home.
+- **Proof.** He buys the item and uploads the receipt. AI reads it and rules check it. A fake receipt moves \$0.
+- **Capture.** Only then does PayPal capture the shop price plus the matched fee, then the shipping at cost once tracking is on the order, each capture with its processing at cost. The rest of the hold is released.
+- **Payout.** The captures land in HoldMySpot's PayPal balance, and PayPal Payouts pays the queuer from it.
 
 **Why PayPal**
 
@@ -14,44 +22,28 @@ Built for the PayPal AI Hackathon (Devpost). Sponsor tools: **AG Studio** by AG 
 - **Charge only what is proven.** Partial captures charge the receipt, then the shipping, the last one with `final_capture`; PayPal releases the rest of the hold. A failed proof captures nothing.
 - **Paying casual queuers.** Payouts pays a queuer by email, so a queuer needs a PayPal account, not merchant onboarding.
 
-HoldMySpot is the merchant on every order and pays queuers with Payouts, because a queuer is a person running one errand, not a seller. So the money does pass through HoldMySpot: PayPal holds the requester's money in the authorization, each capture lands in HoldMySpot's PayPal balance, and Payouts sends the queuer's share on: the fee minutes after the receipt capture, the shop price and shipping of a shipped item once tracking is added, a local errand's payout minutes after the handover. PayPal's multiparty or marketplace onboarding, which would pay queuers directly as PayPal sellers in the same payment, is the production path and is not built ([Known limits](#known-limits)).
+**For judges.** Built for the PayPal AI Hackathon (Devpost).
 
-**PayPal at a glance**
-
-- One Orders v2 order with intent `AUTHORIZE` per request. The hold is the requester's own limit: quantity x (shop price cap + max fee) + shipping budget + the most processing the request can cost.
-- Processing and payouts at cost: each capture adds what PayPal charges to take it (3.49% + \$0.49) plus \$0.25 for each payout it funds, grossed up to the cent, and the server reads PayPal's own fee back from every capture and payout. HoldMySpot keeps 10% of the queue fee and never loses money on a completed job ([docs/DECISIONS.md](docs/DECISIONS.md) D-105).
-- Partial captures with `final_capture`: the receipt (shop price + fee), then the shipping at cost after tracking is added to the order. The final capture releases the rest. Captures never exceed the hold, although PayPal accepts up to 115%.
-- Void when a request can capture nothing more (sold out, expired, cancelled, or done without a final capture). Reauthorize untouched holds from day 4 (on the sandbox, from 2026-11-10).
-- PayPal Payouts to the queuer, only after a `COMPLETED` capture. Refunds from the ops side.
-- PayPal's own JS SDK v6 buttons (PayPal, and Venmo when eligible) in sandbox mode.
-- Every money call is idempotent (`PayPal-Request-Id` comes from the ledger), and every PayPal object carries an `HMS-` invoice id.
-- Run against the real PayPal sandbox on 2026-11-07: one full errand through the server, read back from PayPal and matched to the cent, plus PayPal's answers to edge cases ([Tests and evidence](#tests-and-evidence)). The zero-key demo runs the same REST client against an offline emulator that copies those answers.
-
-<table>
-  <tr>
-    <td><img src="proto-shots/v2/final/phone-01-first-screen-3d-390x844.png" width="200" alt="The web app: requests glowing over shops in San Francisco's Japantown"></td>
-    <td><img src="proto-shots/v2/final/phone-12-money-ledger-lines-390x844.png" width="200" alt="The money panel in the zero-key mode after the hero errand: held $63.70, captured $48.69 and $9.57, released $5.44, paid out $10.80 and $42.75"></td>
-    <td><img src="proto-shots/v2/final/ops-02-market-dashboard-agent-1440x900.png" width="420" alt="The ops console's replay at 12:05: the AG Studio market dashboard after the market desk agent built its spotlight widget"></td>
-  </tr>
-  <tr>
-    <td>Requests glow over the shops</td>
-    <td>Every hold, capture, release and payout</td>
-    <td>Ops console: AG Studio dashboard after the market desk agent's answer</td>
-  </tr>
-</table>
-
-All three show the zero-key mode: the money panel says "Simulated PayPal", and the dashboard is the ops console's in-browser replay at 12:05. The real sandbox run's PayPal ids are under [Tests and evidence](#tests-and-evidence).
+| Topic | Where |
+|---|---|
+| Setup | [Quick start with zero keys](#quick-start-with-zero-keys): Node 24, then `npm run setup` and `npm run demo`; no keys, no accounts. On your own PayPal sandbox app: [Real PayPal sandbox](#real-paypal-sandbox-with-your-own-app). |
+| PayPal | [How HoldMySpot uses PayPal](#how-holdmyspot-uses-paypal): each PayPal API and SDK feature, what it does here, its sandbox proof and its code. |
+| AI | [How HoldMySpot uses AI](#how-holdmyspot-uses-ai): each model and service, what it does, and what code decides instead. |
+| Sponsors | [AG Studio](#ag-studio-ag-grid-the-market-dashboard): the market dashboard, with a custom agent on the Studio Agent Framework that hands work to Studio's own agents. [Bryntum Scheduler](#bryntum-scheduler-the-queuer-board): the queuer board, whose rescheduler moves jobs inside each requester's PayPal hold. |
+| Other tools | [Other tools](#other-tools) |
+| Proof | [Real PayPal sandbox ids](#proof-on-the-real-paypal-sandbox), [tests](#tests), [known limits](#known-limits) |
+| Licence | [MIT](LICENSE) |
 
 **Sponsor judges**, after `npm run demo` ([Quick start](#quick-start-with-zero-keys)). Both links open the ops console's in-browser replay of the demo day:
 
 - **AG Studio:** http://127.0.0.1:5197/?backend=mock&at=12:05#/market, then **Widest gap** in the market desk panel on the right. Without a model the desk is its offline planner (the panel says so): it reads the market with our `read_market` tool and calls Studio's own `remove_widget`, `add_widget` and `configure_widget`; the panel lists each step and a spotlight widget appears. With a live model on the server (`npm run demo -- --ai live` and a key), open http://127.0.0.1:5197/#/market and ask anything: the desk hands charts to Studio's own Widget agent. Custom widgets, theming and layout tools: [AG Studio](#ag-studio-ag-grid-the-market-dashboard).
 - **Bryntum Scheduler:** http://127.0.0.1:5197/?backend=mock&at=11:21, then read the two **Rescheduler** cards (hover an option to see it on the board) and click **Approve: Move to Ava at \$8.00** on Jo's, or instead drag Leo's job from Jo's row onto Ava's. Either way the move is checked with the shared matching rules and the job runs at Ava's \$8.00, inside Leo's PayPal hold. More: [Bryntum](#bryntum-scheduler-the-queuer-board).
 
-**Contents:** [30-second story](#the-30-second-story) | [Quick start](#quick-start-with-zero-keys) | [Real PayPal sandbox](#real-paypal-sandbox-with-your-own-app) | [PayPal](#how-holdmyspot-uses-paypal) | [AI](#how-holdmyspot-uses-ai) | [Sponsors](#sponsor-technology-ag-studio-and-bryntum) | [Tests and evidence](#tests-and-evidence) | [Architecture](#architecture) | [AI coding agents](#for-ai-coding-agents) | [Known limits](#known-limits) | [Troubleshooting](#troubleshooting) | [Licence](#licence-and-attribution)
+**Also:** [30-second story](#the-30-second-story) | [Architecture](#architecture) | [For AI coding agents](#for-ai-coding-agents) | [Troubleshooting](#troubleshooting)
 
 ## The 30-second story
 
-The demo day is a plush drop in San Francisco's Japantown on 2026-11-12 (market time). Every number below is checked by the tests and shown by `npm run demo`.
+The demo day is a plush drop in San Francisco's Japantown on 2026-11-12 (market time). Every number below is checked by the tests and shown by `npm run demo`, and PayPal's sandbox charged the same to the cent ([Proof](#proof-on-the-real-paypal-sandbox)).
 
 1. **10:30.** Paper Moon Toys sells the Mochi Bunny plush for \$34.00, one per customer, in person only. Twelve requests already glow over the shop; the top fee is \$11.
 2. **10:31.** Mia lives in New York. She asks for one plush shipped to her: shop price up to \$36, queue fee up to \$12, shipping up to \$12, and up to \$3.70 for processing and payouts at cost. PayPal authorizes a **\$63.70 hold**. Nothing is charged.
@@ -97,6 +89,40 @@ sequenceDiagram
     S->>PP: Capture $9.57 with final_capture true ($8.75 + $0.82), PayPal releases $5.44
     S->>PP: POST /v1/payments/payouts $42.75 to Wei
 ```
+
+## Proof on the real PayPal sandbox
+
+The hero errand ran twice on PayPal's sandbox on 2026-11-07: through the web app on two phones (the screenshots at the top) and through the server's HTTP API alone. After each run, its authorization, order, captures and payout batches were read back from PayPal: every amount, status and PayPal fee matched the server's ledger to the cent.
+
+| | Web app run (the screenshots) | Server run `20261107-2047` |
+|---|---|---|
+| How it ran | Two phones in Playwright, played by `web/scripts/sandbox-walk.mjs`: a sandbox buyer approved Mia's hold in PayPal's own window, Wei's offer stepped down in the order book, Muse Spark read the photos live | `npm run gates -- lifecycle`: the server's HTTP API only, the buyer's approval in a headless browser, recorded AI answers |
+| Order | `0LK56938DW451581H` | `6EG92708FG4945307` |
+| Authorization for \$63.70, now `CAPTURED` | `88232929HR885933A` | `5XK23595W1944882C` |
+| Receipt capture, \$48.69 (PayPal's fee \$2.19) | `54N68839TA957213Y` | `24U26127PB091713A` |
+| Final shipping capture, \$9.57 (PayPal's fee \$0.82) | `4U786596DF2537313` | `01D83946MR897871E` |
+| Released by the final capture | \$5.44 | \$5.44 |
+| Tracking on the order, `SHIPPED` | `HPG-2611-57842795` | `HPG-2611-55706958` |
+| Payout of Wei's fee, \$10.80 (PayPal's fee \$0.25), `SUCCESS` | batch `88H3RUEBP9L4W` | batch `5MVTE5WFTZD24` |
+| Payout of the shop price and shipping, \$42.75 (PayPal's fee \$0.25), `SUCCESS` | batch `32VC3V9YGQ78C` | batch `GS8Q7QS46SBDS` |
+| PayPal's fees, equal to Mia's processing line | \$3.51 | \$3.51 |
+| Left with HoldMySpot: 10% of the \$12 fee | \$1.20 | \$1.20 |
+| Kept in | [`proto-shots/v3/final/`](proto-shots/v3/final/): 16 phone screenshots, 3 ops console screenshots and 3 clips (D-121, D-122) | [docs/SANDBOX-GATES.md](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), and PayPal's sanitized answers in [`server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/`](server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/), pinned by `server/test/paypal/sandbox-parity.test.ts` (D-120) |
+
+- **Gates passed** ([docs/SANDBOX-GATES.md](docs/SANDBOX-GATES.md), written by `scripts/sandbox-gates.mjs`, ids and statuses only): partial and final captures (G1, G2), void after a partial capture (G3), payout by email (G6), a refund and a buyer-opened dispute settled in the seller's favour through `adjudicate` (G7), tracking on an authorized order's capture (G8), orders with `payment_source` and `PICKUP_FROM_PERSON` (G9) and the app's scopes (G11). **Waiting:** reauthorization is allowed only from day 4, so the dated holds wait for 2026-11-10 (G10). **Not on the gates page yet:** Venmo (G4), although the web app's sandbox check approved a Venmo-funded hold (authorization `7RB884471X718305E`, [docs/WEB-INTEGRATION.md](docs/WEB-INTEGRATION.md) section 5); Pay Later (G5) stays off.
+- **Both captures read as final.** Once an authorization is closed, PayPal reports `final_capture: true` on every one of its captures; the server sent `false` on the \$48.69 one ([PAYPAL-MAPPING](docs/PAYPAL-MAPPING.md) section 2, step 5).
+- **The first server run** (`20261107-1642`, before D-105) held \$60.00; PayPal's \$3.40 in fees on it is why the processing line exists.
+- **What PayPal answered at the edges**, which the emulator copies (the full table is on the gates page):
+
+| Call | PayPal's answer |
+|---|---|
+| Capture \$11.51 of a \$10.00 authorization (115.1%) | Refused: `MAX_CAPTURE_AMOUNT_EXCEEDED` |
+| A final capture that brings the total to exactly 115% | Accepted |
+| The same capture again with the same `PayPal-Request-Id` | The first capture again, not a second one |
+| A new capture that reuses a captured invoice id | Refused: `DUPLICATE_TRANSACTION` |
+| Reauthorize on day 1 | Refused: `REAUTHORIZATION_TOO_SOON` |
+| Void after the final capture | Refused: `PREVIOUSLY_CAPTURED` |
+| Refund \$12.01 of a \$12.00 capture | Refused: `REFUND_AMOUNT_EXCEEDED` |
 
 ## Quick start with zero keys
 
@@ -163,29 +189,41 @@ Sandbox mode sends real calls to `api-m.sandbox.paypal.com` (no real money). The
 7. **Approve a hold.** In the web app tap **Mochi Bunny plush**, then **Set my max fee** (or **Book now** when a queuer has offered). PayPal's own buttons appear: PayPal, and Venmo when PayPal reports it eligible. Click one; PayPal's window opens. Sign in as the sandbox buyer and approve. The app shows the hold, for example "\$63.70 held".
 8. **Confirm on PayPal.** Sign in at https://www.sandbox.paypal.com with the app's business account (or the buyer) and open its activity: the authorization is there, not yet captured; captures and payouts appear there as errands finish. The server's ledger names the same PayPal ids: `curl -s -H 'X-HMS-User: mia' 'http://127.0.0.1:8796/api/ledger?mine=1'` lists each money line with its order, authorization and capture ids. **Cancel and release the hold** in the app voids the authorization.
 9. **The whole money cycle on your sandbox, scripted.** `npm run gates -- lifecycle --out .run/gates.md --no-record` plays Mia and Wei over the server's HTTP API on its own port (8798; `--port` to change), approves the order in a headless browser as your sandbox buyer, then reads the authorization, the captures and the payouts back from PayPal and compares them with the server's ledger to the cent. It needs the buyer's sandbox login in `.secrets/sandbox-buyers.json` (`{"buyers":[{"label":"buyer","email":"...","password":"..."}]}`, git-ignored) and Playwright's Chromium (`npx playwright@1.56.1 install chromium`). `--out` and `--no-record` keep the committed evidence page and fixtures as they are. If PayPal shows a challenge (a CAPTCHA or a code), the script stops without answering it and names a screenshot of the page; holds you approve by hand (step 7) are not affected.
+10. **The same errand through the web app, scripted.** `web/scripts/sandbox-walk.mjs` plays Mia's and Wei's phones in Playwright against a sandbox server with a live AI model, approves in PayPal's own window as a second sandbox personal account (`APPROVER`, never the payout receiver), checks the ledger and saves the screenshots and clips shown at the top of this page. It moves the market clock with the order book's Next step and never starts the scripted day. Its header lists what it needs: the server and web app commands, `HMS_SECRETS_DIR=.secrets` for keys saved by `npm run keys`, and ffmpeg for the clips.
 
 Notes:
-- The seeded crowd requests that fill the map stay on simulated PayPal in sandbox mode; every request you place is a real sandbox order. The Play button's scripted day is for the zero-key mode: in sandbox mode its first request waits for a PayPal approval that no screen offers, so place your own requests instead. To see captures and payouts on your own sandbox, use the scripted run in step 9.
+- The seeded crowd requests that fill the map stay on simulated PayPal in sandbox mode; every request you place is a real sandbox order. The Play button's scripted day is for the zero-key mode: in sandbox mode its first request waits for a PayPal approval that no screen offers, so place your own requests instead; the order book's **Next step** moves the market clock for them (D-123). To see captures and payouts on your own sandbox, use the scripted runs in steps 9 and 10.
 - Pay Later stays off until it is proven with intent `AUTHORIZE` (gate G5). PayPal's own window may still list Pay Later options, which the app cannot hide.
 - `npm run gates -- run --fake` runs the gate checks against the emulator with no keys (its page goes to a temporary file).
 
 ## How HoldMySpot uses PayPal
 
-The hero errand's calls are in [the sequence diagram above](#the-same-errand-call-by-call). Every call, with what the real sandbox proved on 2026-11-07 (gate ids from [docs/SANDBOX-GATES.md](docs/SANDBOX-GATES.md); "full run" is the errand under [Tests and evidence](#tests-and-evidence)):
+- One Orders v2 order with intent `AUTHORIZE` per request. The hold is the requester's own limit: quantity x (shop price cap + max fee) + shipping budget + the most processing the request can cost.
+- Processing and payouts at cost: each capture adds what PayPal charges to take it (3.49% + \$0.49) plus \$0.25 for each payout it funds, grossed up to the cent, and the server reads PayPal's own fee back from every capture and payout. HoldMySpot keeps 10% of the queue fee and never loses money on a completed job ([docs/DECISIONS.md](docs/DECISIONS.md) D-105).
+- Partial captures with `final_capture`: the receipt (shop price + fee), then the shipping at cost after tracking is added to the order. The final capture releases the rest. Captures never exceed the hold, although PayPal accepts up to 115%.
+- Void when a request can capture nothing more (sold out, expired, cancelled, or done without a final capture). Reauthorize untouched holds from day 4 (on the sandbox, from 2026-11-10).
+- PayPal Payouts to the queuer, only after a `COMPLETED` capture. Refunds from the ops side.
+- PayPal's own JS SDK v6 buttons (PayPal, and Venmo when eligible) in sandbox mode.
+- Every money call is idempotent (`PayPal-Request-Id` comes from the ledger), and every PayPal object carries an `HMS-` invoice id.
+- Run against the real PayPal sandbox on 2026-11-07: the hero errand through the web app and through the server's API alone, each read back from PayPal and matched to the cent, plus PayPal's answers to edge cases ([Proof](#proof-on-the-real-paypal-sandbox)). The zero-key demo runs the same REST client against an offline emulator that copies those answers.
+
+**Who holds the money.** HoldMySpot is the merchant on every order and pays queuers with Payouts, because a queuer is a person running one errand, not a seller. So the money does pass through HoldMySpot: PayPal holds the requester's money in the authorization, each capture lands in HoldMySpot's PayPal balance, and Payouts sends the queuer's share on: the fee minutes after the receipt capture, the shop price and shipping of a shipped item once tracking is added, a local errand's payout minutes after the handover. PayPal's multiparty or marketplace onboarding, which would pay queuers directly as PayPal sellers in the same payment, is the production path and is not built ([Known limits](#known-limits)).
+
+**Every call**, with what the real sandbox proved on 2026-11-07 (gate ids from [docs/SANDBOX-GATES.md](docs/SANDBOX-GATES.md); "both runs" are the two errands under [Proof](#proof-on-the-real-paypal-sandbox)). The hero errand's calls in order are in [the sequence diagram above](#the-same-errand-call-by-call).
 
 | PayPal feature | Call | What HoldMySpot does with it | Sandbox proof | Code |
 |---|---|---|---|---|
 | OAuth 2.0 | `POST /v1/oauth2/token` | Client credentials for every server call, cached until 60 s before they expire. `npm run keys` and `npm run doctor` use the same call to check the app's scopes. | G0, G11 | `server/src/paypal/http.ts`, `scripts/common.mjs` |
-| JS SDK v6 | `createInstance`, `findEligibleMethods`, `createPayPalOneTimePaymentSession`, `createVenmoOneTimePaymentSession`, `<paypal-button>`, `<venmo-button>` | The requester approves the hold in PayPal's own window. The client ID comes from `GET /api/config`; the secret stays on the server. Fake mode shows a "Simulated PayPal" sheet instead. | Holds approved in the web app with PayPal, Book now and Venmo ([WEB-INTEGRATION](docs/WEB-INTEGRATION.md) section 5) | `web/src/services/payments/paypalV6.ts`, `web/src/services/payments/approval.ts`, `web/src/ui/PayPalButton.tsx` |
-| Orders v2, intent `AUTHORIZE` | `POST /v2/checkout/orders` | One order per request for its limit, with item lines, an `HMS-` invoice id, our id in `custom_id`, the soft descriptor `HOLDMYSPOT`, and `GET_FROM_FILE` shipping or `PICKUP_FROM_PERSON` for local errands. | G1 to G3, G9; full run | `server/src/app/bids.ts`, `server/src/paypal/wire.ts` |
-| Authorize | `POST /v2/checkout/orders/{id}/authorize` | Creates the hold (valid 29 days, 3-day honor period). | Full run (\$60.00, recorded before processing was passed through) | `server/src/app/money.ts` |
-| Partial capture | `POST /v2/payments/authorizations/{id}/capture` with `final_capture` | Receipt capture (shop price at cost + matched fee + processing at cost), then the shipping capture (shipping + its own PayPal fee), final when it is the last one; a local errand gets one capture at the handover code. PayPal's fee comes back in `seller_receivable_breakdown.paypal_fee` and is stored on the ledger. Our code refuses any capture past 100% of the hold. | G1, G2; full run (\$46.00, then \$8.75 final) | `server/src/app/money.ts`, `shared/src/money.ts` |
+| JS SDK v6 | `createInstance`, `findEligibleMethods`, `createPayPalOneTimePaymentSession`, `createVenmoOneTimePaymentSession`, `<paypal-button>`, `<venmo-button>` | The requester approves the hold in PayPal's own window. The client ID comes from `GET /api/config`; the secret stays on the server. Fake mode shows a "Simulated PayPal" sheet instead. | The web app run: Mia's \$63.70 hold `88232929HR885933A`, approved in PayPal's own window (picture 1 at the top); earlier holds with Book now and Venmo ([WEB-INTEGRATION](docs/WEB-INTEGRATION.md) section 5) | `web/src/services/payments/paypalV6.ts`, `web/src/services/payments/approval.ts`, `web/src/ui/PayPalButton.tsx` |
+| Orders v2, intent `AUTHORIZE` | `POST /v2/checkout/orders` | One order per request for its limit, with item lines, an `HMS-` invoice id, our id in `custom_id`, the soft descriptor `HOLDMYSPOT`, and `GET_FROM_FILE` shipping or `PICKUP_FROM_PERSON` for local errands. | G1 to G3, G9; both runs (orders `0LK56938DW451581H`, `6EG92708FG4945307`) | `server/src/app/bids.ts`, `server/src/paypal/wire.ts` |
+| Authorize | `POST /v2/checkout/orders/{id}/authorize` | Creates the hold (valid 29 days, 3-day honor period). | Both runs: \$63.70 (`88232929HR885933A`, `5XK23595W1944882C`) | `server/src/app/money.ts` |
+| Partial capture | `POST /v2/payments/authorizations/{id}/capture` with `final_capture` | Receipt capture (shop price at cost + matched fee + processing at cost), then the shipping capture (shipping + its own PayPal fee), final when it is the last one; a local errand gets one capture at the handover code. PayPal's fee comes back in `seller_receivable_breakdown.paypal_fee` and is stored on the ledger. Our code refuses any capture past 100% of the hold. | G1, G2; both runs: \$48.69 (PayPal's fee \$2.19), then \$9.57 final (fee \$0.82) | `server/src/app/money.ts`, `shared/src/money.ts` |
 | Void | `POST /v2/payments/authorizations/{id}/void` | Releases a hold that can capture nothing more: a sold-out line, an expired or cancelled request, or one whose jobs are done without a final capture (also after partial captures). After a fake receipt the request first goes back on the map. | G3 (after a partial capture) | `server/src/app/money.ts` |
 | Reauthorize | `POST /v2/payments/authorizations/{id}/reauthorize` | Renews an untouched hold of an open request from day 4; otherwise asks the requester to approve again. | Waiting: dated holds can be renewed from 2026-11-10 (G10); day 1 refused as expected | `server/src/app/money.ts`, `server/src/app/scheduler.ts` |
-| Add tracking | `POST /v2/checkout/orders/{id}/track` | The queuer's tracking number goes onto the requester's order before the shipping capture. | G8; full run | `server/src/app/jobs.ts` |
-| Payouts | `POST /v1/payments/payouts`, `GET /v1/payments/payouts/{batch_id}` | Pays the queuer after a `COMPLETED` capture: the fee minus 10% after the receipt, the shop price and shipping after the final capture. One item per batch; `sender_batch_id` is the ledger key. | G6; full run (\$10.80 and \$42.75) | `server/src/app/money.ts`, `server/src/app/sync.ts` |
+| Add tracking | `POST /v2/checkout/orders/{id}/track` | The queuer's tracking number goes onto the requester's order before the shipping capture. | G8; both runs | `server/src/app/jobs.ts` |
+| Payouts | `POST /v1/payments/payouts`, `GET /v1/payments/payouts/{batch_id}` | Pays the queuer after a `COMPLETED` capture: the fee minus 10% after the receipt, the shop price and shipping after the final capture. One item per batch; `sender_batch_id` is the ledger key. | G6; both runs: \$10.80 and \$42.75, each `SUCCESS` with PayPal's \$0.25 fee | `server/src/app/money.ts`, `server/src/app/sync.ts` |
 | Refunds | `POST /v2/payments/captures/{id}/refund` | Full or partial refund from the ops side (`POST /api/ops/jobs/:jobId/refund`). | G7 (refund `COMPLETED`) | `server/src/app/money.ts` |
-| Status sync | `GET` captures and payout batches | A poller settles pending captures and payouts (default every 20 s). | Full run (payout batches read back) | `server/src/app/sync.ts` |
+| Status sync | `GET` captures and payout batches | A poller settles pending captures and payouts (default every 20 s). | Both runs (payout batches read back) | `server/src/app/sync.ts` |
 | Webhooks | `POST /v1/notifications/verify-webhook-signature` | Client and signature check exist; the server's webhook route is not built yet (it needs a public URL), so status comes from polling. | Not connected | `server/src/paypal/webhook.ts` |
 | Disputes | list, get, `provide-evidence`, `accept-claim`, `adjudicate` (sandbox) | Used by the gate script on the real sandbox; the server's dispute routes are not built yet. | G7: a buyer-opened dispute settled in the seller's favour through `adjudicate` (gate script only) | `server/src/paypal/client.ts`, `scripts/sandbox-gates.mjs` |
 
@@ -213,14 +251,15 @@ Models read and explain; code decides money. A model never sets an amount, a pro
 
 The two agents on the ops console think on the same AI port when the server runs a live model (`POST /api/ops/agents/turn`; never recorded or replayed): the market desk, a custom agent that works with AG Studio's built-in agents ([AG Studio](#ag-studio-ag-grid-the-market-dashboard)), and the queuer board's rescheduler, which picks among the moves the rules allow ([Bryntum](#bryntum-scheduler-the-queuer-board)). Without one they run offline, a planner with fixed topics and the rules' pick, and the console says so.
 
-Providers (`HMS_AI_PROVIDER`; `auto` picks Anthropic, then Meta, then OpenAI, by which key is present):
+**Models and services.** One provider answers every AI job above (`HMS_AI_PROVIDER`; `auto` picks Anthropic, then Meta, then OpenAI, by which key is present):
 
-| Provider | Default model | Key | Status |
+| Model or service | What it does here | Key | Status |
 |---|---|---|---|
-| `muse`: Meta Muse Spark | `muse-spark-1.3` at `https://api.meta.ai/v1/chat/completions` | `MODEL_API_KEY` | Live on 2026-11-07 on all 21 demo photos: 21/21 verdicts, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine ones failed, median 8.1 s per photo. That run is the demo's recorded answers. |
-| `openai`: any OpenAI-compatible Chat Completions endpoint (`HMS_AI_BASE_URL`) | `gpt-6.1-sol` (`HMS_AI_MODEL`) at api.openai.com | `OPENAI_API_KEY` | The code path ran live against Meta's endpoint (one photo, 4/4 fields). Not yet called with an OpenAI key. |
-| `anthropic` | `claude-opus-5-5` (`HMS_ANTHROPIC_MODEL`), official SDK | `ANTHROPIC_API_KEY` | Unit-tested; not yet called live. |
-| `fake` | `rules-v1` | none | The rules-only reader used by the tests and when no key is present. |
+| Meta **Muse Spark** (`muse`): `muse-spark-1.3` at `https://api.meta.ai/v1/chat/completions` | The jobs above: reads line photos and receipts into JSON for the rules, writes the estimates' reasons, and thinks for both ops agents when the server runs it live. The zero-key demo replays its recorded answers. | `MODEL_API_KEY` | Live on 2026-11-07 on all 21 demo photos: 21/21 verdicts, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine ones failed, median 8.1 s per photo; that run is the demo's recorded answers. Also live in the web app's sandbox run: the line photo, the receipt (picture 3 at the top) and the market desk. |
+| **Any OpenAI-compatible** Chat Completions endpoint (`openai`, `HMS_AI_BASE_URL`): `gpt-6.1-sol` (`HMS_AI_MODEL`) at api.openai.com by default | The same jobs | `OPENAI_API_KEY` | The code path ran live against Meta's endpoint (one photo, 4/4 fields). Not yet called with an OpenAI key. |
+| Anthropic **Claude** (`anthropic`): `claude-opus-5-5` (`HMS_ANTHROPIC_MODEL`) through the official TypeScript SDK | The same jobs | `ANTHROPIC_API_KEY` | Unit-tested; not yet called live. |
+| **Rules only** (`fake`): `rules-v1` | No model: a simulated reading for a photo without a recorded answer, so the rules still decide | none | Used by the tests and when no key is present. |
+| **AG Studio's built-in agents**: Widget, Page and Data | Add and configure dashboard widgets, lay out the page and query the dashboard's data when the market desk delegates to them; they think on the server's model through our adapter | The server's model key (no AG key needed) | Live with Muse Spark on 11-07: the Widget agent configured a bar chart; a hand-off to the Data agent timed out ([AG Studio](#ag-studio-ag-grid-the-market-dashboard)). |
 
 **Without a key** (`npm run demo`): the 21 rendered demo photos in `server/fixtures/proofs/` (5 line photos, 16 receipt sets, each with a `truth.json`) replay Muse Spark's recorded answers from `server/fixtures/ai/`, stamped `muse / muse-spark-1.3 / replay`, and the rules decide exactly as in a live run. Other photos (the script's placeholders, your own uploads) get a simulated reading stamped `fake / rules-v1`. Estimates use the formulas. Nothing touches the network.
 
@@ -248,7 +287,11 @@ Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run dem
 
 ### AG Studio (AG Grid): the market dashboard
 
-**Where:** ops console > **Market** (`#/market`). The screenshot at the top is the replay at 12:05: http://127.0.0.1:5197/?backend=mock&at=12:05#/market.
+<img src="proto-shots/v3/final/ops-03-desk.png" width="640" alt="The AG Studio market dashboard on the sandbox server at 12:10: PayPal money tiles, the gap board, the PayPal ledger grid with sandbox ids, the holds pivot, and the market desk's answer from Muse Spark">
+
+*The sandbox server at 12:10, after the web app run. Asked "How much did PayPal capture and pay out today, and what did HoldMySpot keep?", the market desk (Muse Spark, two model turns) read the captures, the payouts and the queuer earnings with `read_market` and answered from them: \$58.26 captured in two captures, \$53.55 paid out to Wei, \$1.20 kept. The PayPal ledger grid lists the sandbox ids; the seeded crowd's requests stay on simulated PayPal (`FAKE-` ids).*
+
+**Where:** ops console > **Market** (`#/market`), on the live server and on the zero-key replay, for example at 12:05: http://127.0.0.1:5197/?backend=mock&at=12:05#/market.
 
 | What AG Studio offers | How the dashboard uses it | Code |
 |---|---|---|
@@ -261,13 +304,13 @@ Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run dem
 - **Ask it anything about the market.** With a live model on the server (for example `npm run demo -- --ai live` with Meta's key, `HMS_AI_KEY_FILES=<file>#MODEL_API_KEY`), the desk takes free questions about holds, captures, payouts, fill rates, step-downs and disputes, and answers with numbers from `read_market` only (the snapshot the console draws: code decides the figures). Checked live on 11-07 with Muse Spark 1.3: "How much is PayPal holding right now, and did any capture fail?" took two turns (17 s) and answered with the held, captured and released totals and Rex's rejected receipt; "Chart the money PayPal captured, by shop" added a bar chart, handed it to Studio's Widget agent, which configured it (category `shops.shop`, sum of `holds.capturedUsd`) and checked it, and named the largest capture with its PayPal id (ten turns, 95 s; a hand-off to the Data agent in the same run timed out, and the desk answered from `read_market`).
 - **Without a model** the desk is an **offline planner**, and the AI panel title, the strip above Studio and the top bar say so: it maps a question by keywords to the same topics ("Widest gap", "Holds and captures", "Fill rates", "Step-downs", "Disputes"), builds the gap spotlight or the depth ladder through the same Studio tools, and filters the page for "only <shop>". On the replay (`?backend=mock`) the desk stays offline unless the URL adds `?agents=model`, so the scripted checks never call a model.
 - **Data:** the eight datasets the server's API serves (fills, bids, asks, jobs, holds, ledger, payouts, books) at `GET /api/ops/datasets/:name`, built once in `shared/src/opsviews.ts`, plus the shops table. The page holds a PayPal money tile, two value tiles, the gap board, the PayPal ledger and holds pivot, three AG charts (matches over time, queuer earnings, holds versus captures), the depth ladder and the payouts grid. Code: `ops/src/market/studioData.ts`, `ops/src/market/studioState.ts`.
-- **Keys:** none needed. AG's trial mode unlocks every feature, the AI panel included; AG Studio then prints "License Key Not Found" in the browser console, and on hosts other than `localhost` and `127.0.0.1` it shows a "For Trial Use Only" watermark for about five seconds. An **AG Studio Pro with AI** trial key from AG Grid removes both: `npm run keys` (AG section), or `AG_STUDIO_LICENSE_KEY=... npm run keys -- --from-env`, or `VITE_AG_STUDIO_LICENSE_KEY` in `ops/.env.local`. It is read when the ops dev server or build starts and never printed. An AG Grid and AG Charts Enterprise key is optional, since every grid and chart here is drawn inside AG Studio. With the ops dev server running, `npm run licence:check` in `ops/` reports what AG makes of the keys, and that AG Studio drew the grids and the three charts and the agent answered ([Tests and evidence](#tests-and-evidence)). Details: [ops/README.md](ops/README.md#licences).
+- **Keys:** none needed. AG's trial mode unlocks every feature, the AI panel included; AG Studio then prints "License Key Not Found" in the browser console, and on hosts other than `localhost` and `127.0.0.1` it shows a "For Trial Use Only" watermark for about five seconds. An **AG Studio Pro with AI** trial key from AG Grid removes both: `npm run keys` (AG section), or `AG_STUDIO_LICENSE_KEY=... npm run keys -- --from-env`, or `VITE_AG_STUDIO_LICENSE_KEY` in `ops/.env.local`. It is read when the ops dev server or build starts and never printed. An AG Grid and AG Charts Enterprise key is optional, since every grid and chart here is drawn inside AG Studio. With the ops dev server running, `npm run licence:check` in `ops/` reports what AG makes of the keys, and that AG Studio drew the grids and the three charts and the agent answered ([Tests](#tests)). Details: [ops/README.md](ops/README.md#licences).
 
 ### Bryntum Scheduler: the queuer board
 
-<img src="proto-shots/v2/final/ops-01-queuer-board-1440x900.png" width="640" alt="The Bryntum Scheduler queuer board on the replay at 11:21, with a synced map and the rescheduler's two proposals">
+<img src="proto-shots/v3/final/ops-01-board.png" width="640" alt="The Bryntum Scheduler queuer board on the sandbox server at 12:10: Wei's walk, time in line, fee clock and Mia's job, captured $58.26, beside a synced map">
 
-*The replay at 11:21 (`?backend=mock&at=11:21`): the rescheduler's two proposals wait for an operator.*
+*The sandbox server at 12:10, after the web app run: Wei's row holds his walk, his time in line, his fee clock from \$15 and Mia's job (matched at \$12 at 10:50, captured \$58.26); the map follows him to Paper Moon Toys; the rescheduler runs on Muse Spark and has nothing to move. Its two proposals are on the replay at 11:21 (`?backend=mock&at=11:21`).*
 
 - **Where:** ops console > **Queuer board** (the default page), on the live server and on the replay, http://127.0.0.1:5197/?backend=mock&at=11:21. Approvals and drags reach the server through `POST /api/ops/moves`, which checks every move again with its own rules (D-102).
 - **Two problems at 11:21.** Jo is 2.7 km from Little Lantern Toys and will miss his check-in window at 11:25, so the rescheduler proposes moving Leo's plush to Ava, already in line, at \$8.00, under Leo's \$10.00 max fee. Noor's hold, funded with Venmo, is past its honor period and needs a new approval (the server does not reauthorize Venmo-funded holds until the sandbox shows it works), while Rin waits in line for Noor's two cakes; the rescheduler proposes giving the cakes to Sam and Leo, whose holds can still capture, at \$8.50 each. Each card lists every option the rules allow (for Jo: move to Ava, give Jo 9 more minutes, release Jo now); hovering one draws its dry run on the board, and **Approve** applies the selected one at once. Without approval, Jo's claim lapses at 11:25 and the rules give the plush to Ava then; Rin buys Noor's cakes at noon and the capture fails.
@@ -278,7 +321,22 @@ Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run dem
 - **Code:** `ops/src/board/QueuerBoard.tsx` (the `BryntumScheduler` React component), `ops/src/board/boardModel.ts`, `ops/src/board/MapPanel.tsx`, `ops/src/board/ReschedulerPanel.tsx`.
 - **Package and key:** `@bryntum/scheduler-community` and `@bryntum/scheduler-react-community` 8.0.0, MIT licensed, from the public npm registry, so a judge's clone needs no Bryntum account or trial key and shows no trial badge. The market-clock line and the shop-opening labels are an overlay placed with the scheduler's `getCoordinateFromDate`.
 
-## Tests and evidence
+## Other tools
+
+| Tool | What it does here |
+|---|---|
+| Node.js 24 and TypeScript 5.9 | The server runs its TypeScript directly (`node src/main.ts`); `npm test` type-checks all four packages. |
+| Fastify 5, Zod 4 and `node:sqlite` | The server's REST and server-sent-events API, request validation, and the market and ledger in one SQLite file. |
+| React 19 and Vite 8 (with Zustand and React Router in the web app) | The phone web app and the ops console. |
+| MapLibre GL JS with OpenFreeMap tiles | The maps in the web app and beside the Bryntum board. |
+| three.js | The 3D scene over the map: KayKit City Builder and Restaurant Bits props (CC0), characters and items drawn in code. |
+| jsQR, jpeg-js and qrcode | Reading a receipt's QR code against its print, decoding JPEG photos, and drawing the QR codes on the synthetic demo receipts. |
+| Playwright with Chromium | Approving sandbox orders as the test buyer in the gate script, rendering the 21 demo photos, and the screenshots, clips and sponsor checks. |
+| ffmpeg | Joins the sandbox walk's frames into its three clips. |
+| node:test and Vitest | The test suites: node:test for shared, server and ops; Vitest for the web app. |
+| Fontsource: Figtree and Fredoka | The fonts. |
+
+## Tests
 
 ```sh
 npm test              # shared, server, web and ops: type checks and tests, about 40 s, ends with "All green: 6 steps"
@@ -297,22 +355,6 @@ npm run licence:check                     # exit 0: "Drawn by AG Studio: 3 grid(
 ```
 
 Both open the console's replay, so the server's state does not matter. Without an AG key the second ends "Verdict: not fully licensed. Every feature still works (AG trial mode)". With other ports, add `BASE_URL=http://127.0.0.1:<ops port>`.
-
-Real sandbox evidence (2026-11-07, [docs/SANDBOX-GATES.md](docs/SANDBOX-GATES.md), written by `scripts/sandbox-gates.mjs`, ids and statuses only):
-
-- **One full errand through the server's HTTP API on the sandbox** (recorded before processing was passed through, so its numbers are the old \$60.00 model; PayPal's fees on it, \$3.40, are why it changed), then read back from PayPal: order `37U93450B4252724X`, authorization `1E796973JR5822318` for \$60.00; captures `7RU11396ML001835N` (\$46.00) and `7LS50944XC7820028` (\$8.75), both `COMPLETED`; \$5.25 released; tracking `HPG-2611-40974582`; payouts of \$10.80 (batch `J3793PVGQALCJ`) and \$42.75 (batch `ZYK8RLDKRPUE8`), both items `SUCCESS`. PayPal matched the ledger to the cent. The gates page shows both captures as final: once an authorization is closed, PayPal reports `final_capture: true` on every one of its captures; the server sent `false` on the \$46.00 one ([PAYPAL-MAPPING](docs/PAYPAL-MAPPING.md) section 2, step 5).
-- **Gates passed:** partial and final captures (G1, G2), void after a partial capture (G3), payout by email (G6), a refund and a buyer-opened dispute settled in the seller's favour through `adjudicate` (G7), tracking on an authorized order's capture (G8), orders with `payment_source` and `PICKUP_FROM_PERSON` (G9) and the app's scopes (G11). **Waiting:** reauthorization is allowed only from day 4, so the dated holds wait for 2026-11-10 (G10). **Not on the gates page yet:** Venmo (G4), although the web app's sandbox check approved a Venmo-funded hold (authorization `7RB884471X718305E`, [docs/WEB-INTEGRATION.md](docs/WEB-INTEGRATION.md) section 5); Pay Later (G5) stays off.
-- **What PayPal answered at the edges**, which the emulator copies (the full table is on the gates page):
-
-| Call | PayPal's answer |
-|---|---|
-| Capture \$11.51 of a \$10.00 authorization (115.1%) | Refused: `MAX_CAPTURE_AMOUNT_EXCEEDED` |
-| A final capture that brings the total to exactly 115% | Accepted |
-| The same capture again with the same `PayPal-Request-Id` | The first capture again, not a second one |
-| A new capture that reuses a captured invoice id | Refused: `DUPLICATE_TRANSACTION` |
-| Reauthorize on day 1 | Refused: `REAUTHORIZATION_TOO_SOON` |
-| Void after the final capture | Refused: `PREVIOUSLY_CAPTURED` |
-| Refund \$12.01 of a \$12.00 capture | Refused: `REFUND_AMOUNT_EXCEEDED` |
 
 ## Architecture
 
@@ -403,11 +445,11 @@ npm run demo -- --stop               # stops only what the launcher started
 
 ## Known limits
 
-- **PayPal's fees are passed through at a fixed schedule.** The processing line uses the rate the sandbox charged on 2026-11-07 (3.49% + \$0.49 per capture, \$0.25 per payout); the server compares it with PayPal's reported fee, but a difference (another rate, an international buyer) is only shown to ops and settled by hand. A refund after a capture loses the capture fee PayPal keeps, and a queuer who never ships keeps the fee payout. The sandbox lifecycle run on the gates page predates the change; a new one has not been recorded.
+- **PayPal's fees are passed through at a fixed schedule.** The processing line uses the rate the sandbox charged on 2026-11-07 (3.49% + \$0.49 per capture, \$0.25 per payout); the server compares it with PayPal's reported fee, but a difference (another rate, an international buyer) is only shown to ops and settled by hand. A refund after a capture loses the capture fee PayPal keeps, and a queuer who never ships keeps the fee payout. Both sandbox runs of the hero errand ([Proof](#proof-on-the-real-paypal-sandbox)) were charged exactly this schedule: \$2.19 and \$0.82 on the captures, \$0.25 per payout.
 - **Production PayPal steps are not built:** PayPal's approval as a marketplace, multiparty or marketplace onboarding so queuers are paid directly as PayPal sellers instead of through HoldMySpot's balance, Payouts approval for live use, Venmo payouts (they need US phone numbers) and webhooks on a public URL ([docs/PAYPAL-MAPPING.md](docs/PAYPAL-MAPPING.md) section 11).
 - **Sandbox proof still open:** reauthorization of the dated holds from 2026-11-10 (G10); Venmo is not recorded as gate G4 yet; Pay Later stays off (G5). Webhooks are not connected (status comes from polling), and disputes run only in the gate script (G7); the server's dispute routes are not built.
-- **Sandbox mode by hand:** the Play button's scripted day needs the zero-key mode (in sandbox mode it waits for a PayPal approval that no screen offers); captures and payouts on your own sandbox come from `npm run gates -- lifecycle` (step 9 of the sandbox section).
-- **Live AI:** only Meta's Muse Spark has been called live (all 21 demo photos). The OpenAI provider's default model `gpt-6.1-sol` has not been called with an OpenAI key, and the Anthropic provider has not been called live; `auto` picks Anthropic first when its key is present (`HMS_AI_PROVIDER` picks another).
+- **Sandbox mode by hand:** the Play button's scripted day needs the zero-key mode (in sandbox mode it waits for a PayPal approval that no screen offers); captures and payouts on your own sandbox come from `npm run gates -- lifecycle` or `web/scripts/sandbox-walk.mjs` (steps 9 and 10 of the sandbox section).
+- **Live AI:** only Meta's Muse Spark has been called live (all 21 demo photos, the ops agents, and the web app's sandbox run). The OpenAI provider's default model `gpt-6.1-sol` has not been called with an OpenAI key, and the Anthropic provider has not been called live; `auto` picks Anthropic first when its key is present (`HMS_AI_PROVIDER` picks another).
 - **Agents:** the ops console's agents need a live model on the server to think (offline they are a planner with fixed topics and the rules' pick); with Muse Spark a chart through Studio's Widget agent takes about ten turns, and a delegate can fail on a large schema (the desk then says the widget is not configured). The bidding agent has no screen yet (API only; without a key it follows a formula).
 - **Ops on the live server:** approvals and drags work there (`POST /api/ops/moves`), but the server's demo day has no late queuer, so the rescheduler's two problems show on the replay. The console draws queuer positions from the synthetic walk model and does not read the server's `queuer.moved` events yet, so on the server a late queuer is found by his ETA passing without a check-in.
 - **Test data:** all 21 demo photos are synthetic, and so are the walks on the map.
@@ -437,5 +479,5 @@ HoldMySpot is released under the [MIT Licence](LICENSE).
 - **Map:** tiles and the "liberty" style from OpenFreeMap, data from OpenStreetMap contributors through OpenMapTiles; the attribution is shown on every map. Rendered with MapLibre GL JS (BSD-3-Clause).
 - **Fonts:** Figtree and Fredoka (SIL Open Font License 1.1), bundled through Fontsource.
 - **Sponsor libraries:** AG Studio, AG Grid Enterprise and AG Charts Enterprise (commercial; they run in AG's trial mode without a key, or with your own trial key); Bryntum Scheduler Community (MIT).
-- **Libraries:** React, three.js, Vite, Zustand, React Router, Fastify, Zod (MIT); jsQR, the Anthropic TypeScript SDK and Playwright (Apache-2.0); jpeg-js (BSD-3-Clause). PayPal's JS SDK is loaded from PayPal at run time.
+- **Libraries:** React, three.js, Vite, Vitest, Zustand, React Router, Fastify, Zod, qrcode (MIT); TypeScript, jsQR, the Anthropic TypeScript SDK and Playwright (Apache-2.0); jpeg-js (BSD-3-Clause). PayPal's JS SDK is loaded from PayPal at run time.
 - **Fictional content:** every shop, item, person, store ID and receipt in the demo is made up. The demo photos are rendered by `server/scripts/render-receipts.ts`.

@@ -121,3 +121,24 @@ export function matchPoint(point: TaskPoint, now: number): Fill[] {
   }));
   return matchBook(bids, asks, { shopCityId: point.cityId === 'taipei' ? 'sf' : point.cityId, now });
 }
+
+/**
+ * The offer card's line when no offer is open: sold out, the viewer's queuer took the request, every
+ * queuer here is booked, or nobody offered yet. Once the viewer's own request rests, it says so instead
+ * of asking them to set the max fee they already set.
+ */
+export function noOfferNote(
+  point: Pick<TaskPoint, 'status' | 'shop' | 'itemShort' | 'queue' | 'offers'>,
+  order: { status: string; queuerName?: string } | undefined,
+): string {
+  if (point.status === 'sold_out') return `${point.shop.name} has sold out of the ${point.itemShort}.`;
+  const inLine = point.queue.queuers;
+  const mine = order && (order.status === 'booked' || order.status === 'settling' || order.status === 'bought' || order.status === 'filled') ? order.queuerName : undefined;
+  if (mine) return `${mine} took your request. No other offer is open right now.`;
+  const resting = order?.status === 'resting';
+  if (inLine.length > 0 || point.offers.length > 0) {
+    const who = inLine.length === 0 ? 'Every queuer here' : inLine.length === 1 ? inLine[0] : `${inLine.slice(0, -1).join(', ')} and ${inLine[inLine.length - 1]}`;
+    return `${who} ${inLine.length === 1 ? 'is' : 'are'} fully booked. ${resting ? 'Your request rests at your max fee: the next offer that reaches it takes it.' : 'Set your max fee: the next offer that reaches it takes your request.'}`;
+  }
+  return resting ? 'No queuer has offered yet. Your request rests at your max fee: the first offer that reaches it takes it.' : 'No queuer has offered yet. Set your max fee: the first offer that reaches it takes your request.';
+}
