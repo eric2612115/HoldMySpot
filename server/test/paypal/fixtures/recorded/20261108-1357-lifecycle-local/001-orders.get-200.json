@@ -1,0 +1,81 @@
+{
+  "op": "orders.get",
+  "method": "GET",
+  "path": "/v2/checkout/orders/15B12811F4599863Y",
+  "status": 200,
+  "debugId": "f995919dfe8f4",
+  "body": {
+    "id": "15B12811F4599863Y",
+    "intent": "AUTHORIZE",
+    "status": "PAYER_ACTION_REQUIRED",
+    "payment_source": {
+      "paypal": {}
+    },
+    "purchase_units": [
+      {
+        "reference_id": "bid_0001",
+        "amount": {
+          "currency_code": "USD",
+          "value": "50.50",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "50.50"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID",
+          "display_data": {
+            "brand_name": "HoldMySpot"
+          }
+        },
+        "description": "HoldMySpot hold: up to $50.50 for 1 x Mochi Bunny plush, cherry blossom drop",
+        "custom_id": "bid_0001",
+        "invoice_id": "HMS-mw7f70th-bid_0001",
+        "soft_descriptor": "HOLDMYSPOT",
+        "items": [
+          {
+            "name": "Mochi Bunny plush, cherry blossom drop (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "36.00"
+            },
+            "quantity": "1",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "12.00"
+            },
+            "quantity": "1"
+          },
+          {
+            "name": "Processing and payouts, at cost (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "2.50"
+            },
+            "quantity": "1"
+          }
+        ]
+      }
+    ],
+    "create_time": "2026-11-08T05:57:12Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/15B12811F4599863Y",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://www.sandbox.paypal.com/checkoutnow",
+        "rel": "payer-action",
+        "method": "GET"
+      }
+    ]
+  }
+}

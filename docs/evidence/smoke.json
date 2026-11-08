@@ -3,21 +3,21 @@
   "format": 1,
   "ok": true,
   "exitCode": 0,
-  "startedAt": "2026-11-08T05:25:34.113Z",
+  "startedAt": "2026-11-08T06:08:01.968Z",
   "seconds": 1.6,
-  "commit": "f2413fb",
+  "commit": "2b84dde",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "d1d4e15059d1",
-    "server": "93090ae1b09f",
-    "web": "1cc62a8a9289",
+    "server": "6e4e99431eb6",
+    "web": "7872fc7c7250",
     "ops": "294dd17095a7",
-    "scripts": "fe8d98e70d60"
+    "scripts": "e51fb1dd8d0f"
   },
   "node": "24.22.2",
   "npm": "11.19.1",
   "platform": "darwin arm64",
-  "portOffset": 1900,
+  "portOffset": 400,
   "answered": [
     "server",
     "web",

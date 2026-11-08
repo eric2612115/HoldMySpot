@@ -3,6 +3,7 @@
 //
 //   node scripts/sandbox-gates.mjs lifecycle --payout-to person-1 [--headed] [--keep]
 //   node scripts/sandbox-gates.mjs lifecycle --by-hand [--open] [--wait 15]   you approve in your own browser
+//   node scripts/sandbox-gates.mjs lifecycle --local                          the local pickup errand (below)
 //
 // It starts its own server (HMS_MODE=sandbox, port 8798 by default, a temporary database and
 // upload folder, demo staging so the rendered hero photos carry the right codes, recorded AI
@@ -20,6 +21,15 @@
 // PayPal's own fees are compared too (D-120): each capture's seller_receivable_breakdown.paypal_fee
 // and each payout item's payout_item_fee against the fee the server recorded and the D-105 schedule
 // ($2.19 + $0.82 + 2 x $0.25 = $3.51 on this errand), and the job's processing line against their sum.
+//
+// With `local` (D-156) it plays the local pickup errand instead, the pair `npm run attack` uses for its
+// handover row (ATTACK_HANDOVER in server/src/demo/attack.ts, whose receipt code the demo market pins):
+// Sam in San Francisco holds for the same plush on a PICKUP_FROM_PERSON order (no shipping budget),
+// Wei claims it for local delivery, checks in, buys it and sends the same receipt and item photos;
+// nothing is captured at the receipt. At the handover Wei enters the code Sam's phone shows, and the
+// server makes the job's one capture (shop price, fee and processing at cost, final, so PayPal releases
+// the rest) and one payout of the shop price and the fee minus 10%. The same GET calls and checks follow,
+// with "no shipping on the order" and "one capture at the handover" in place of the tracking check.
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -155,6 +165,8 @@ async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
 
 /** The market times of the hero errand's rendered photos (server/fixtures/proofs): the clock must be at or before the first. */
 export const ERRAND_TIMES = Object.freeze({ claim: '10:40', checkIn: '10:50', bought: '11:38', proof: '11:42', ship: '14:00' });
+/** A local errand's handover, after the proof (the time `npm run attack` hands over on its local errand). */
+export const HANDOVER_AT = '11:50';
 
 /**
  * Wei's side of Mia's Mochi Bunny plush errand at Paper Moon Toys, over the server's HTTP API only: a
@@ -163,8 +175,12 @@ export const ERRAND_TIMES = Object.freeze({ claim: '10:40', checkIn: '10:50', bo
  * photos carry the one-time codes a demo market pins on Wei's first visit there (D-48), so the server
  * must be a fresh demo market whose clock is at or before 10:40. `clock(hhmm)` moves the market clock.
  * Used by the sandbox lifecycle and by `npm run errand` (a hold approved by hand, D-129).
+ *
+ * `mode: 'local'` plays a local errand instead (D-156): the claim is for local delivery, nothing is
+ * captured at the receipt, and at HANDOVER_AT Wei enters the handover code the requester's phone shows
+ * (read as the requester), which makes the job's one capture and its one payout.
  */
-export async function playQueuerErrand({ api, shared, bidId, clock, step, requesterId = 'mia' }) {
+export async function playQueuerErrand({ api, shared, bidId, clock, step, requesterId = 'mia', mode = 'ship' }) {
   const { HERO, SEED_USERS, findShop, travelMinutes, zonedLocalToEpoch } = shared;
   const sf = (hhmm) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles');
   const shop = findShop(HERO.shopId);
@@ -172,11 +188,12 @@ export async function playQueuerErrand({ api, shared, bidId, clock, step, reques
   const fixture = (rel) => fs.readFileSync(path.join(PROOFS, rel));
   const T = ERRAND_TIMES;
 
+  if (mode !== 'ship' && mode !== 'local') throw new Error(`Unknown errand mode ${mode}.`);
   // 4. Wei claims the request at its max fee and checks in at the shop with his line photo.
   await clock(T.claim);
   const travel = travelMinutes(wei.home, shop.lngLat);
   const eta = Math.max(sf(T.checkIn), sf(T.claim) + (travel + 1) * 60_000);
-  const claim = await api('POST', `/api/bids/${bidId}/claim`, { as: 'wei', body: { qty: 1, etaAt: eta, modes: ['ship'], from: { lngLat: wei.home, accuracyM: 10 } } });
+  const claim = await api('POST', `/api/bids/${bidId}/claim`, { as: 'wei', body: { qty: 1, etaAt: eta, modes: [mode], from: { lngLat: wei.home, accuracyM: 10 } } });
   const jobId = claim.job.id;
   step('claimed', `${claim.claim.id}, job ${jobId}, fee ${usd(claim.match.feeCents)}`);
   await clock(T.checkIn);
@@ -200,7 +217,7 @@ export async function playQueuerErrand({ api, shared, bidId, clock, step, reques
   const receipt = (await api('POST', '/api/files?purpose=receipt', { as: 'wei', bytes: fixture('paper-moon-mia-genuine/receipt.png') })).file;
   const item = (await api('POST', '/api/files?purpose=item_photo', { as: 'wei', bytes: fixture('paper-moon-mia-genuine/item.png') })).file;
   await api('POST', `/api/jobs/${jobId}/proof`, { as: 'wei', body: { receiptFileId: receipt.id, itemFileId: item.id } });
-  const verified = await waitFor('the receipt check and the receipt capture', async () => {
+  const verified = await waitFor(mode === 'ship' ? 'the receipt check and the receipt capture' : 'the receipt check', async () => {
     const d = await api('GET', `/api/jobs/${jobId}`, { as: requesterId });
     if (d.job.status === 'verified' || d.job.status === 'shipped') return d;
     if (['failed', 'payment_failed', 'disputed'].includes(d.job.status)) throw new Error(`The job ended as ${d.job.status}: ${JSON.stringify(d.job.failure ?? null)}`);
@@ -209,11 +226,34 @@ export async function playQueuerErrand({ api, shared, bidId, clock, step, reques
     return null;
   }, { timeoutMs: 180_000, everyMs: 1_500 });
   const proof = verified.proofs.find((p) => p.kind === 'purchase');
-  step('proof', `${proof.status} (${proof.ai?.provider ?? '-'} ${proof.ai?.mode ?? '-'}), retail ${usd(proof.amounts.retailCents)}, capture ${usd(proof.amounts.captureCents)}`);
+  step('proof', `${proof.status} (${proof.ai?.provider ?? '-'} ${proof.ai?.mode ?? '-'}), retail ${usd(proof.amounts.retailCents)}, capture ${usd(proof.amounts.captureCents)}${mode === 'local' ? ' at the handover' : ''}`);
   const payoutStatus = async (purpose) => {
     const list = (await api('GET', '/api/payouts?mine=1', { as: 'wei' })).payouts;
     return list.find((p) => p.reference === jobId && p.purpose === purpose) ?? null;
   };
+
+  if (mode === 'local') {
+    // 5b. Nothing is charged at the receipt: the ledger has no capture for this job yet.
+    const before = await api('GET', `/api/bids/${bidId}`, { as: 'ops' });
+    const early = before.ledger.filter((e) => e.kind === 'captured' && e.jobId === jobId);
+    if (early.length > 0) throw new Error(`A local errand captured at the receipt: ${early.map((e) => `${usd(e.amount.cents)} ${e.status}`).join(', ')}.`);
+    step('nothing captured at the receipt', `hold ${before.hold.status} ${usd(before.hold.amount.cents)}, captured ${usd(before.hold.capturedCents)}`);
+
+    // 6. The handover: the requester's phone shows the code, Wei enters it, and the server captures once and pays out.
+    await clock(HANDOVER_AT);
+    const code = (await api('GET', `/api/jobs/${jobId}`, { as: requesterId })).job.handoverCode;
+    if (!code) throw new Error("The requester's phone shows no handover code.");
+    const handed = await api('POST', `/api/jobs/${jobId}/handover`, { as: 'wei', body: { code } });
+    step('handover', `the requester's code accepted, job ${handed.job.status}`);
+    const paid = await waitFor('the payout to succeed at PayPal', async () => {
+      const p = await payoutStatus('fee_and_reimbursement');
+      if (p && ['failed', 'returned', 'cancelled'].includes(p.status)) throw new Error(`The payout ended as ${p.status}.`);
+      return p && p.status === 'succeeded' ? p : null;
+    }, { timeoutMs: 240_000, everyMs: 3_000 });
+    step('payout', `${paid.id} ${usd(paid.amount.cents)} ${paid.status}`);
+    return { claimId: claim.claim.id, jobId, trackingNumber: null, proof, capturedAtReceiptCents: 0, payouts: [paid] };
+  }
+
   const fee = await waitFor('the fee payout to succeed at PayPal', async () => {
     const p = await payoutStatus('fee');
     if (p && ['failed', 'returned', 'cancelled'].includes(p.status)) throw new Error(`The fee payout ended as ${p.status}.`);
@@ -239,7 +279,10 @@ export async function playQueuerErrand({ api, shared, bidId, clock, step, reques
   return { claimId: claim.claim.id, jobId, trackingNumber, proof, fee, reimb };
 }
 
-/** Runs the lifecycle. `pp` is server/src/paypal, `port` an HmsPayPal on the sandbox (for the checks on PayPal). */
+/**
+ * Runs the lifecycle. `pp` is server/src/paypal, `port` an HmsPayPal on the sandbox (for the checks on PayPal).
+ * `local`: the local pickup errand (D-156) instead of the shipped one.
+ */
 export async function runLifecycle({
   pp,
   port: paypal,
@@ -254,12 +297,21 @@ export async function runLifecycle({
   byHand = false,
   openLink = null,
   waitMinutes = 15,
+  local = false,
   log = console.log,
 }) {
   const shared = await import(pathToFileURL(path.join(REPO, 'shared', 'src', 'index.ts')).href);
-  const { HERO, PAYPAL_PRICING, jobSettlement, paypalCaptureFeeCents, platformFeeCents, zonedLocalToEpoch } = shared;
+  const { HERO, PAYPAL_PRICING, SEED_USERS, jobSettlement, paypalCaptureFeeCents, platformFeeCents, zonedLocalToEpoch } = shared;
+  // The local errand's pair is the attack's handover pair: the demo market pins the receipt's code on it.
+  const { ATTACK_HANDOVER } = await import(pathToFileURL(path.join(REPO, 'server', 'src', 'demo', 'attack.ts')).href);
   const sf = (hhmm) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles');
   const NY = { mode: 'ship', country: 'US', region: 'NY', city: 'New York', postalCode: '10012' };
+  const mode = local ? 'local' : 'ship';
+  const requesterId = local ? ATTACK_HANDOVER.requesterId : HERO.requesterId;
+  if (local && ATTACK_HANDOVER.queuerId !== HERO.queuerId) throw new Error(`The local errand's queuer is ${ATTACK_HANDOVER.queuerId}; the rendered line photo is ${HERO.queuerId}'s.`);
+  const requester = SEED_USERS.find((u) => u.id === requesterId);
+  const destination = local ? { mode: 'local', cityId: requester.cityId } : NY;
+  const who = requester.displayName;
   if (!settings.payoutReceiverEmail && !payoutEmail) throw new Error('No payout receiver: set PAYPAL_PAYOUT_EMAIL in sandbox.env (npm run keys) or pass --payout-to <label>.');
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-lifecycle-'));
@@ -273,7 +325,7 @@ export async function runLifecycle({
   const { api } = server;
   const clock = (hhmm) => api('POST', '/api/demo/clock', { body: { jumpTo: sf(hhmm), paused: true } });
   let buyer = null;
-  const result = { ok: false, steps, ids: {}, server: {}, paypal: {}, checks: [], tmp };
+  const result = { ok: false, mode, steps, ids: {}, server: {}, paypal: {}, checks: [], tmp };
   try {
     const health = await api('GET', '/api/health');
     if (health.mode !== 'sandbox') throw new Error(`The server runs in ${health.mode} mode, not sandbox (credentials incomplete?).`);
@@ -281,11 +333,11 @@ export async function runLifecycle({
     step('server', `mode ${cfg.mode}, AI ${cfg.ai.provider}/${cfg.ai.model} ${cfg.ai.mode}`);
     result.ai = cfg.ai;
 
-    // 1. Mia's hold.
+    // 1. The requester's hold: Mia's, shipped to New York, or Sam's, a local pickup in San Francisco.
     await clock('10:31');
-    const quote = await api('POST', '/api/bids/quote', { as: 'mia', body: { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination: NY } });
+    const quote = await api('POST', '/api/bids/quote', { as: requesterId, body: { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination } });
     const created = await api('POST', '/api/bids', {
-      as: 'mia',
+      as: requesterId,
       idem: `lifecycle-${Date.now()}`,
       body: {
         shopId: HERO.shopId,
@@ -294,7 +346,7 @@ export async function runLifecycle({
         retailCapCents: quote.suggested.retailCapCents,
         maxFeeCents: quote.suggested.maxFeeCents,
         shippingBudgetCents: quote.suggested.shippingBudgetCents,
-        destination: NY,
+        destination,
         deadlineAt: sf('10:31') + 2 * 86_400_000,
         funding: 'paypal',
         agent: null,
@@ -304,7 +356,8 @@ export async function runLifecycle({
     const orderId = created.checkout.orderId;
     result.ids.bid = bidId;
     result.ids.order = orderId;
-    step('bid', `${bidId}, hold ${usd(created.hold.amount.cents)}, PayPal order ${orderId} (${created.checkout.mode}, next ${created.checkout.next})`);
+    result.request = { requester: requesterId, mode, retailCapCents: created.bid.retailCapCents, maxFeeCents: created.bid.maxFeeCents, shippingBudgetCents: created.bid.shippingBudgetCents };
+    step('bid', `${bidId} (${who}, ${mode === 'local' ? 'local pickup' : 'shipped'}), hold ${usd(created.hold.amount.cents)}, PayPal order ${orderId} (${created.checkout.mode}, next ${created.checkout.next})`);
     if (created.checkout.mode !== 'sandbox') throw new Error('The bid did not go to the PayPal sandbox.');
 
     // 2. The sandbox buyer approves on PayPal's page: in a headless browser with the saved login, or by hand (D-129).
@@ -327,26 +380,37 @@ export async function runLifecycle({
     }
 
     // 3. Authorize through the server.
-    const auth = await api('POST', `/api/bids/${bidId}/authorize`, { as: 'mia', body: { orderId } });
+    const auth = await api('POST', `/api/bids/${bidId}/authorize`, { as: requesterId, body: { orderId } });
     result.ids.authorization = auth.hold.authorizationId;
     result.ids.hold = auth.hold.id;
     step('authorized', `${auth.hold.authorizationId}, hold ${auth.hold.status} ${usd(auth.hold.amount.cents)}, bid ${auth.bid.status}`);
 
-    // 4 to 6. Wei's side of the errand: claim, check-in, purchase, proof, payouts, shipment (shared with npm run errand).
-    const errand = await playQueuerErrand({ api, shared, bidId, clock, step });
+    // 4 to 6. Wei's side of the errand: claim, check-in, purchase, proof, then payouts and the shipment, or
+    // the handover with the requester's code (shared with npm run errand).
+    const errand = await playQueuerErrand({ api, shared, bidId, clock, step, requesterId, mode });
     const { jobId, trackingNumber } = errand;
     Object.assign(result.ids, { claim: errand.claimId, job: jobId, tracking: trackingNumber });
 
     // 7. What the server says.
-    const bid = await api('GET', `/api/bids/${bidId}`, { as: 'mia' });
-    const ledger = (await api('GET', '/api/ledger?mine=1', { as: 'mia' })).entries.slice().reverse();
+    const bid = await api('GET', `/api/bids/${bidId}`, { as: requesterId });
+    const ledger = (await api('GET', `/api/ledger?mine=1&bidId=${encodeURIComponent(bidId)}`, { as: requesterId })).entries.slice().reverse();
     const opsPayouts = (await api('GET', '/api/payouts', { as: 'ops' })).payouts.filter((p) => p.reference === jobId);
     const job = (await api('GET', `/api/jobs/${jobId}`, { as: 'ops' })).job;
     result.server = {
       hold: { status: bid.hold.status, amountCents: bid.hold.amount.cents, capturedCents: bid.hold.capturedCents, releasedCents: bid.hold.releasedCents },
-      ledger: ledger.map((e) => ({ kind: e.kind, cents: e.amount.cents, status: e.status, mode: e.mode, captureId: e.paypal?.captureId ?? null, authorizationId: e.paypal?.authorizationId ?? null, feeCents: e.paypal?.feeCents ?? null })),
+      ledger: ledger.map((e) => ({
+        kind: e.kind,
+        cents: e.amount.cents,
+        status: e.status,
+        mode: e.mode,
+        // Which part of the job a capture paid for (its idempotency key, cap:<job>:<part>), never sent anywhere.
+        part: e.kind === 'captured' ? (/^cap:[^:]+:([a-z]+)/.exec(e.idempotencyKey)?.[1] ?? null) : null,
+        captureId: e.paypal?.captureId ?? null,
+        authorizationId: e.paypal?.authorizationId ?? null,
+        feeCents: e.paypal?.feeCents ?? null,
+      })),
       payouts: opsPayouts.map((p) => ({ id: p.id, purpose: p.purpose, cents: p.amount.cents, status: p.status, batchId: p.paypalBatchId, itemId: p.paypalItemId, feeCents: p.paypalFeeCents ?? null })),
-      job: { feeCents: job.feeCents, qty: job.qty, amounts: job.amounts },
+      job: { status: job.status, mode: job.mode, feeCents: job.feeCents, qty: job.qty, amounts: job.amounts },
     };
 
     // 8. What PayPal says.
@@ -359,7 +423,7 @@ export async function runLifecycle({
     for (const p of result.server.payouts) if (p.batchId) batches.push({ purpose: p.purpose, batch: await paypal.getPayoutBatch(p.batchId) });
     result.paypal = {
       authorization: { id: pa.authorizationId, status: pa.status, amountCents: pa.amountCents },
-      order: { id: po.orderId, status: po.status, trackers: po.trackers.map((t) => ({ trackingNumber: t.trackingNumber, captureId: t.captureId, status: t.status })) },
+      order: { id: po.orderId, status: po.status, shipTo: po.shipTo ? po.shipTo.country : null, trackers: po.trackers.map((t) => ({ trackingNumber: t.trackingNumber, captureId: t.captureId, status: t.status })) },
       captures: captures.map((c) => ({ id: c.captureId, status: c.status, amountCents: c.amountCents, finalCapture: c.finalCapture, paypalFeeCents: c.paypalFeeCents })),
       payouts: batches.map(({ purpose, batch }) => ({ purpose, batchId: batch.batchId, batchStatus: batch.batchStatus, items: batch.items.map((i) => ({ itemId: i.itemId, status: i.status, amountCents: i.amountCents, feeCents: i.feeCents ?? null })) })),
     };
@@ -381,7 +445,29 @@ export async function runLifecycle({
       captureIds.length === result.paypal.captures.length && result.server.ledger.filter((e) => e.kind === 'captured').every((e) => result.paypal.captures.some((c) => c.id === e.captureId && c.amountCents === e.cents && c.status === 'COMPLETED')),
       result.paypal.captures.map((c) => `${c.id} ${usd(c.amountCents)} ${c.status}${c.finalCapture ? ' final' : ''}`).join(', '),
     );
-    check('tracking on the order', result.paypal.order.trackers.some((t) => t.trackingNumber === trackingNumber), result.paypal.order.trackers.map((t) => `${t.trackingNumber} ${t.status ?? ''}`).join(', ') || 'none');
+    if (mode === 'ship') {
+      check('tracking on the order', result.paypal.order.trackers.some((t) => t.trackingNumber === trackingNumber), result.paypal.order.trackers.map((t) => `${t.trackingNumber} ${t.status ?? ''}`).join(', ') || 'none');
+    } else {
+      // A PICKUP_FROM_PERSON order: PayPal keeps no ship-to address and the job adds no tracker.
+      check(
+        'no shipping on the order',
+        result.paypal.order.shipTo === null && result.paypal.order.trackers.length === 0 && result.server.job.mode === 'local',
+        `PayPal ship-to ${result.paypal.order.shipTo ?? 'none'}, trackers ${result.paypal.order.trackers.length === 0 ? 'none' : result.paypal.order.trackers.map((t) => t.trackingNumber).join(', ')}; server job ${result.server.job.mode}, ${result.server.job.status}`,
+      );
+      const serverCaptures = result.server.ledger.filter((e) => e.kind === 'captured');
+      const only = result.paypal.captures[0] ?? null;
+      check(
+        'one capture at the handover',
+        errand.capturedAtReceiptCents === 0 &&
+          serverCaptures.length === 1 &&
+          serverCaptures[0].part === 'handover' &&
+          result.paypal.captures.length === 1 &&
+          only.status === 'COMPLETED' &&
+          only.finalCapture === true &&
+          result.server.job.status === 'delivered',
+        `nothing captured at the receipt; ${only ? `${only.id} ${usd(only.amountCents)} ${only.status}${only.finalCapture ? ' final' : ''}` : 'no capture'} (ledger part ${serverCaptures.map((e) => e.part ?? '-').join(', ') || 'none'}) after the requester's code; job ${result.server.job.status}`,
+      );
+    }
     check(
       'payouts',
       result.server.payouts.length === result.paypal.payouts.length &&

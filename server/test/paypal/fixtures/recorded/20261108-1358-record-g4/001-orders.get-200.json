@@ -1,0 +1,167 @@
+{
+  "op": "orders.get",
+  "method": "GET",
+  "path": "/v2/checkout/orders/03979024TL691052W",
+  "status": 200,
+  "debugId": "f849785d2219f",
+  "body": {
+    "id": "03979024TL691052W",
+    "intent": "AUTHORIZE",
+    "status": "COMPLETED",
+    "payment_source": {
+      "venmo": {
+        "email_address": "redacted@example.com",
+        "account_id": "REDACTEDID",
+        "name": {
+          "full_name": "Test Buyer"
+        },
+        "address": {
+          "country_code": "US"
+        }
+      }
+    },
+    "purchase_units": [
+      {
+        "reference_id": "bid_0070",
+        "amount": {
+          "currency_code": "USD",
+          "value": "56.00",
+          "breakdown": {
+            "item_total": {
+              "currency_code": "USD",
+              "value": "44.00"
+            },
+            "shipping": {
+              "currency_code": "USD",
+              "value": "12.00"
+            },
+            "handling": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "insurance": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "shipping_discount": {
+              "currency_code": "USD",
+              "value": "0.00"
+            }
+          }
+        },
+        "payee": {
+          "email_address": "redacted@example.com",
+          "merchant_id": "REDACTEDID"
+        },
+        "description": "HoldMySpot hold: up to $56.00 for 1 x Cloud Pup plush, first drop",
+        "custom_id": "bid_0070",
+        "invoice_id": "HMS-mw6588ph-bid_0070",
+        "items": [
+          {
+            "name": "Cloud Pup plush, first drop (shop price, up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "34.00"
+            },
+            "tax": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "quantity": "1",
+            "category": "PHYSICAL_GOODS"
+          },
+          {
+            "name": "Queue fee (up to)",
+            "unit_amount": {
+              "currency_code": "USD",
+              "value": "10.00"
+            },
+            "tax": {
+              "currency_code": "USD",
+              "value": "0.00"
+            },
+            "quantity": "1"
+          }
+        ],
+        "shipping": {
+          "name": {
+            "full_name": "Test Buyer"
+          },
+          "address": {
+            "country_code": "US"
+          }
+        },
+        "payments": {
+          "authorizations": [
+            {
+              "status": "CREATED",
+              "id": "7RB884471X718305E",
+              "amount": {
+                "currency_code": "USD",
+                "value": "56.00"
+              },
+              "invoice_id": "HMS-mw6588ph-bid_0070",
+              "custom_id": "bid_0070",
+              "seller_protection": {
+                "status": "ELIGIBLE",
+                "dispute_categories": [
+                  "ITEM_NOT_RECEIVED",
+                  "UNAUTHORIZED_TRANSACTION"
+                ]
+              },
+              "expiration_time": "2026-12-06T08:36:23Z",
+              "links": [
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/7RB884471X718305E",
+                  "rel": "self",
+                  "method": "GET"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/7RB884471X718305E/capture",
+                  "rel": "capture",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/7RB884471X718305E/void",
+                  "rel": "void",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/payments/authorizations/7RB884471X718305E/reauthorize",
+                  "rel": "reauthorize",
+                  "method": "POST"
+                },
+                {
+                  "href": "https://api.sandbox.paypal.com/v2/checkout/orders/03979024TL691052W",
+                  "rel": "up",
+                  "method": "GET"
+                }
+              ],
+              "create_time": "2026-11-07T08:36:23Z",
+              "update_time": "2026-11-07T08:36:23Z"
+            }
+          ]
+        }
+      }
+    ],
+    "payer": {
+      "name": {
+        "full_name": "Test Buyer"
+      },
+      "email_address": "redacted@example.com",
+      "payer_id": "REDACTEDID",
+      "address": {
+        "country_code": "US"
+      }
+    },
+    "create_time": "2026-11-07T08:36:01Z",
+    "update_time": "2026-11-07T08:36:23Z",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/03979024TL691052W",
+        "rel": "self",
+        "method": "GET"
+      }
+    ]
+  }
+}

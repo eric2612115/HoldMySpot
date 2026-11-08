@@ -14,7 +14,10 @@
 //                                                port 8798), then GET the authorization, captures and payouts from PayPal
 //                                                and compare them with the server's ledger (scripts/lib/sandbox-lifecycle.mjs).
 //                                                --by-hand: you approve PayPal's link yourself; no stored password.
-//   node scripts/sandbox-gates.mjs record G4 pass --note "..."   Record a gate checked by hand (Venmo, Pay Later).
+//                                                --local: the local pickup errand (one capture at the handover code, D-156).
+//   node scripts/sandbox-gates.mjs record G4 pass --note "..." [--order <id>]
+//                                                Record a gate checked by hand (Venmo, Pay Later); --order adds PayPal's
+//                                                own answer for that order (GET calls only) to the evidence.
 //
 // Add --fake to run against the in-process fake PayPal (no network, no credentials); its page goes to a
 // temporary file unless --out is given, never to docs/.
@@ -50,8 +53,8 @@ const GATES = [
   ['G1', 'Capture below the held amount with final_capture=true; nothing left to capture', 'approve order B (or --auto-approve)'],
   ['G2', 'Partial capture (final_capture=false), then a final capture; a third is refused', 'approve order A (or --auto-approve)'],
   ['G3', 'Void after a partial capture', 'approve order C (or --auto-approve)'],
-  ['G4', 'Venmo AUTHORIZE with testBuyerCountry US', 'manual: approve a Venmo hold in the web app, then `record G4`'],
-  ['G5', 'Pay Later with intent AUTHORIZE (bonus)', 'manual: approve a Pay Later hold in the web app, then `record G5`'],
+  ['G4', 'Venmo AUTHORIZE with testBuyerCountry US', 'manual: approve a Venmo hold in the web app, then `record G4 <result> --order <PayPal order id>`'],
+  ['G5', 'Pay Later with intent AUTHORIZE (bonus)', 'manual: approve a Pay Later hold in the web app, then `record G5 <result> --order <PayPal order id>`'],
   ['G6', 'Payout by email to the payout receiver sandbox account', 'only if UNCLAIMED: accept it on sandbox.paypal.com as that account'],
   ['G7', 'Refund; then a buyer-opened dispute settled with adjudicate', 'open a dispute as the buyer (or `disputes --open-as-buyer`), then run `disputes`'],
   ['G8', 'Tracking with carrier OTHER on a capture of an authorized order', 'approve order A (or --auto-approve)'],
@@ -72,6 +75,11 @@ Options:
   --open               run: open the approval links in the browser (macOS). lifecycle: implies --by-hand.
   --by-hand            lifecycle: print PayPal's approval link and wait while you approve it in your own
                        browser as your sandbox buyer, instead of signing in with a saved password.
+  --local              lifecycle: the local pickup errand instead of the shipped one: Sam's PICKUP_FROM_PERSON
+                       hold, nothing captured at the receipt, one capture when Wei enters Sam's handover code,
+                       one payout (its own page section and fixtures folder <run>-lifecycle-local).
+  --order <id>         record: read this PayPal order and its authorizations back (GET calls only), add PayPal's
+                       answer to the gate's evidence and save it, sanitized, as fixtures.
   --auto-approve       run: approve every order in a headless browser as the sandbox buyer (stops at any challenge).
   --headed             With --auto-approve or --open-as-buyer: show the browser window.
   --shots <dir>        Where the buyer browser saves screenshots of a challenge (default: a temporary folder).
@@ -129,7 +137,7 @@ function secretsDirFrom(args) {
 }
 
 function emptyState() {
-  return { version: 1, app: null, gates: {}, orders: {}, datedHolds: [], payout: null, disputeTarget: null, lifecycle: null, runs: [] };
+  return { version: 1, app: null, gates: {}, orders: {}, datedHolds: [], payout: null, disputeTarget: null, lifecycle: null, localLifecycle: null, runs: [] };
 }
 
 function loadState(file) {
@@ -181,9 +189,26 @@ function ownerActions(state) {
   }
   for (const id of ['G4', 'G5']) {
     const g = state.gates[id];
-    if (!g || g.status === 'manual' || g.status === 'not_run') out.push(`${id}: approve a ${id === 'G4' ? 'Venmo' : 'Pay Later'} hold in the web app's sandbox mode, then \`node scripts/sandbox-gates.mjs record ${id} pass --note "<authorization id>, funding ${id === 'G4' ? 'venmo' : 'paylater'}"\` (or fail).`);
+    if (!g || g.status === 'manual' || g.status === 'not_run') out.push(`${id}: approve a ${id === 'G4' ? 'Venmo' : 'Pay Later'} hold in the web app's sandbox mode, then \`node scripts/sandbox-gates.mjs record ${id} pass --order <PayPal order id> --note "..."\` (or fail).`);
+  }
+  // G4 passes when a capture works too (PAYPAL-MAPPING.md section 7): a Venmo-funded hold that an errand captures.
+  if (state.gates.G4?.status === 'partial') {
+    out.push("G4: capture a Venmo-funded hold: in the web app's sandbox mode approve Mia's plush request with the Venmo button, finish it with `npm run errand`, then `node scripts/sandbox-gates.mjs record G4 pass --order <its PayPal order id> --note \"...\"`.");
   }
   return out;
+}
+
+/** The checks table, ids and ledger of one lifecycle run (`lifecycle` or `lifecycle --local`). */
+function lifecycleLines(lines, lc, intro, ids) {
+  lines.push(`${fmtBoth(lc.at)}: ${lc.ok ? 'passed' : 'FAILED'}. ${intro}`);
+  lines.push('');
+  lines.push('| Check | Result | PayPal and server |');
+  lines.push('|---|---|---|');
+  for (const c of lc.checks ?? []) lines.push(`| ${cell(c.name)} | ${c.ok ? 'match' : 'MISMATCH'} | ${cell(c.detail)} |`);
+  lines.push('');
+  lines.push(`Ids: ${ids}.`);
+  if (lc.ledger) lines.push(`Server ledger: ${lc.ledger.map((e) => `${e.kind} ${usd(e.cents)} ${e.status}`).join(', ')}.`);
+  if (lc.error) lines.push(`Stopped: ${cell(lc.error)}`);
 }
 
 function renderDoc(state, meta) {
@@ -230,16 +255,27 @@ function renderDoc(state, meta) {
   const lc = state.lifecycle;
   if (!lc) lines.push('Not run yet: `node scripts/sandbox-gates.mjs lifecycle --payout-to <label>`.');
   else {
-    lines.push(`${fmtBoth(lc.at)}: ${lc.ok ? 'passed' : 'FAILED'}. Server on HTTP only (bid, authorize, claim, check-in, bought, proof, shipment), AI ${lc.ai ?? '-'}; PayPal read back afterwards.`);
-    lines.push('');
-    lines.push('| Check | Result | PayPal and server |');
-    lines.push('|---|---|---|');
-    for (const c of lc.checks ?? []) lines.push(`| ${cell(c.name)} | ${c.ok ? 'match' : 'MISMATCH'} | ${cell(c.detail)} |`);
-    lines.push('');
     const ids = lc.ids ?? {};
-    lines.push(`Ids: bid ${ids.bid ?? '-'}, order ${ids.order ?? '-'}, authorization ${ids.authorization ?? '-'}, job ${ids.job ?? '-'}, tracking ${ids.tracking ?? '-'}.`);
-    if (lc.ledger) lines.push(`Server ledger: ${lc.ledger.map((e) => `${e.kind} ${usd(e.cents)} ${e.status}`).join(', ')}.`);
-    if (lc.error) lines.push(`Stopped: ${cell(lc.error)}`);
+    lifecycleLines(
+      lines,
+      lc,
+      `Server on HTTP only (bid, authorize, claim, check-in, bought, proof, shipment), AI ${lc.ai ?? '-'}; PayPal read back afterwards.`,
+      `bid ${ids.bid ?? '-'}, order ${ids.order ?? '-'}, authorization ${ids.authorization ?? '-'}, job ${ids.job ?? '-'}, tracking ${ids.tracking ?? '-'}`,
+    );
+  }
+  lines.push('');
+  lines.push('## Local errand through the server (sandbox)');
+  lines.push('');
+  const ll = state.localLifecycle;
+  if (!ll) lines.push('Not run yet: `node scripts/sandbox-gates.mjs lifecycle --local`.');
+  else {
+    const ids = ll.ids ?? {};
+    lifecycleLines(
+      lines,
+      ll,
+      `A local pickup errand (\`lifecycle --local\`, D-156): a \`PICKUP_FROM_PERSON\` order with no shipping, nothing captured at the receipt, one capture when the queuer enters the requester's handover code, one payout. Server on HTTP only (bid, authorize, claim, check-in, bought, proof, handover), AI ${ll.ai ?? '-'}; PayPal read back afterwards.`,
+      `bid ${ids.bid ?? '-'}, order ${ids.order ?? '-'}, authorization ${ids.authorization ?? '-'}, job ${ids.job ?? '-'}${ll.payouts?.length ? `, payout batch ${ll.payouts.map((p) => p.batchId ?? '-').join(', ')}` : ''}`,
+    );
   }
   lines.push('');
   lines.push('## Edge cases: what PayPal answered (`probe`)');
@@ -1128,7 +1164,10 @@ async function cmdLifecycle(ctx, args) {
     payoutLabel = r.label;
   }
   const shotDir = args.shots ? path.resolve(args.shots) : path.join(os.tmpdir(), 'holdmyspot-sandbox-shots');
-  console.log('\nFull job through the server on the PayPal sandbox');
+  const local = Boolean(args.local);
+  // The shipped errand and the local one keep their own results (and page sections).
+  const key = local ? 'localLifecycle' : 'lifecycle';
+  console.log(local ? '\nLocal pickup errand through the server on the PayPal sandbox' : '\nFull job through the server on the PayPal sandbox');
   const started = Date.now();
   try {
     const r = await runLifecycle({
@@ -1146,14 +1185,41 @@ async function cmdLifecycle(ctx, args) {
       byHand: Boolean(args['by-hand'] || args.open),
       openLink: args.open ? openInBrowser : null,
       waitMinutes: Number(args.wait),
+      local,
       log: (line) => console.log(line),
     });
-    ctx.state.lifecycle = { at: started, ok: r.ok, ai: r.ai ? `${r.ai.provider}/${r.ai.model} ${r.ai.mode}` : null, ids: r.ids, checks: r.checks, ledger: r.server.ledger.map((e) => ({ kind: e.kind, cents: e.cents, status: e.status })), paypal: r.paypal, payouts: r.server.payouts.map((p) => ({ purpose: p.purpose, cents: p.cents, status: p.status, batchId: p.batchId, itemId: p.itemId })) };
+    ctx.state[key] = {
+      at: started,
+      ok: r.ok,
+      ...(local ? { mode: 'local', request: r.request } : {}),
+      ai: r.ai ? `${r.ai.provider}/${r.ai.model} ${r.ai.mode}` : null,
+      ids: r.ids,
+      checks: r.checks,
+      ledger: r.server.ledger.map((e) => ({ kind: e.kind, cents: e.cents, status: e.status })),
+      paypal: r.paypal,
+      payouts: r.server.payouts.map((p) => ({ purpose: p.purpose, cents: p.cents, status: p.status, batchId: p.batchId, itemId: p.itemId })),
+    };
     console.log(`\nLifecycle ${r.ok ? 'PASSED: PayPal matches the ledger' : 'FAILED: see the mismatches above'}.${r.ok ? '' : ` Temporary files kept in ${r.tmp}.`}`);
   } catch (e) {
-    ctx.state.lifecycle = { at: started, ok: false, error: errText(e), ids: {}, checks: [] };
+    ctx.state[key] = { at: started, ok: false, ...(local ? { mode: 'local' } : {}), error: errText(e), ids: {}, checks: [] };
     console.log(`\nLifecycle stopped: ${errText(e)}`);
   }
+}
+
+/**
+ * `record <gate> <result> --order <id>`: PayPal's own answer for a gate checked by hand, read with GET calls
+ * only (the order, then each of its authorizations), as evidence lines: ids, statuses, amounts and the
+ * payment source PayPal recorded (never a name or an email).
+ */
+async function orderEvidence(port, orderId) {
+  const o = await port.getOrder(orderId);
+  const lines = [`PayPal, read back ${fmtBoth(Date.now())} with GET calls only: order ${o.orderId} ${o.status}, intent ${o.intent ?? '-'}, ${o.amountCents === null ? '-' : usd(o.amountCents)}, payment_source ${o.fundingSource ?? 'none'}`];
+  for (const a of o.authorizations) {
+    const full = await port.getAuthorization(a.authorizationId);
+    lines.push(`authorization ${full.authorizationId} ${full.status} ${usd(full.amountCents)}, valid until ${fmtBoth(full.expiresAt)}`);
+  }
+  lines.push(o.captures.length === 0 ? 'no capture' : o.captures.map((c) => `capture ${c.captureId} ${usd(c.amountCents)} ${c.status}`).join(', '));
+  return { lines, order: o };
 }
 
 async function cmdStatus(ctx) {
@@ -1214,6 +1280,8 @@ async function main() {
         port: { type: 'string' },
         keep: { type: 'boolean' },
         'by-hand': { type: 'boolean' },
+        local: { type: 'boolean' },
+        order: { type: 'string' },
         help: { type: 'boolean', short: 'h' },
       },
     });
@@ -1254,20 +1322,52 @@ async function main() {
     const [gate, result] = rest;
     const id = String(gate ?? '').toUpperCase();
     if (!GATE_IDS.includes(id) || !['pass', 'fail', 'partial', 'skip'].includes(result ?? '')) {
-      console.error('Usage: record <G0..G11> <pass|fail|partial|skip> [--note "..."]');
+      console.error('Usage: record <G0..G11> <pass|fail|partial|skip> [--note "..."] [--order <PayPal order id>]');
       return 1;
     }
     const state = args.fake ? emptyState() : loadState(sandboxStateFile);
-    setGate(state, id, result === 'skip' ? 'skipped' : result, args.note ? `Recorded by hand: ${args.note}` : 'Recorded by hand');
-    state.runs.push({ runId, at: now, mode: args.fake ? 'fake' : 'sandbox', command: `record ${id} ${result}`, note: args.note ?? '' });
+    let evidence = [];
+    if (args.order) {
+      // PayPal's own answer for the order, so the gate does not rest on a note alone (GET calls only).
+      if (args.fake) {
+        console.error('record --order reads the order from the real sandbox; leave out --fake.');
+        return 1;
+      }
+      const recordDir = args['no-record'] ? null : `${runId}-record-${id.toLowerCase()}`;
+      const conn = await connect(args, runId, recordDir);
+      state.app = { clientId: mask(conn.settings.clientId) };
+      try {
+        const r = await orderEvidence(conn.port, args.order);
+        evidence = r.lines;
+        if (id === 'G4' && r.order.fundingSource !== 'venmo') console.log(`  Warning: PayPal records payment_source ${r.order.fundingSource ?? 'none'} on order ${r.order.orderId}, not venmo.`);
+      } catch (e) {
+        console.error(`\nCould not read order ${args.order} from PayPal: ${errText(e)}. Nothing was recorded.`);
+        return 1;
+      }
+      for (const line of evidence) console.log(`  ${line}`);
+      if (recordDir && fs.existsSync(path.join(RECORD_DIR, recordDir))) console.log(`Sanitized responses: ${path.join(RECORD_DIR, recordDir)} (checked by server/test/paypal/recorded.test.ts)`);
+    }
+    setGate(state, id, result === 'skip' ? 'skipped' : result, args.note ? `Recorded by hand: ${args.note}` : 'Recorded by hand', evidence);
+    state.runs.push({ runId, at: now, mode: args.fake ? 'fake' : 'sandbox', command: `record ${id} ${result}${args.order ? ' --order' : ''}`, note: args.note ?? '' });
     if (!args.fake) saveState(sandboxStateFile, state);
     writeDoc(outFile, state, { mode: args.fake ? 'fake' : 'sandbox' });
     return 0;
   }
 
-  const record = ['run', 'lifecycle', 'probe', 'disputes', 'reauthorize', 'status'].includes(command) && !args['no-record'] && !args.fake ? (command === 'run' ? runId : `${runId}-${command}`) : null;
+  // `lifecycle --local` keeps its own fixtures folder and its own line in the runs table.
+  const label = command === 'lifecycle' && args.local ? 'lifecycle --local' : command;
+  const record =
+    ['run', 'lifecycle', 'probe', 'disputes', 'reauthorize', 'status'].includes(command) && !args['no-record'] && !args.fake
+      ? command === 'run'
+        ? runId
+        : `${runId}-${command}${label === 'lifecycle --local' ? '-local' : ''}`
+      : null;
   if ((command === 'lifecycle' || command === 'probe') && args.fake) {
     console.error(`${command} runs on the real sandbox only (the offline tests cover fake mode).`);
+    return 1;
+  }
+  if (args.local && command !== 'lifecycle') {
+    console.error('--local belongs to lifecycle.');
     return 1;
   }
   const conn = await connect(args, runId, record);
@@ -1275,7 +1375,7 @@ async function main() {
   // Masked client ID only: no account emails in the state file or on the page.
   state.app = { clientId: mask(conn.settings.clientId) };
   const ctx = { ...conn, state };
-  console.log(`\nHoldMySpot sandbox gates: ${command} (${conn.mode}, run ${runId}, app ${mask(conn.settings.clientId)})`);
+  console.log(`\nHoldMySpot sandbox gates: ${label} (${conn.mode}, run ${runId}, app ${mask(conn.settings.clientId)})`);
 
   try {
     if (command === 'run') await cmdRun(args, ctx, runId);
@@ -1286,7 +1386,7 @@ async function main() {
     else if (command === 'probe') await cmdProbe(ctx, args, runId);
   } catch (e) {
     console.error(`\nStopped: ${errText(e)}`);
-    state.runs.push({ runId, at: now, mode: conn.mode, command, note: `stopped: ${errText(e)}` });
+    state.runs.push({ runId, at: now, mode: conn.mode, command: label, note: `stopped: ${errText(e)}` });
     saveState(conn.stateFile, state);
     writeDoc(outFile, state, { mode: conn.mode });
     return 1;
@@ -1294,7 +1394,7 @@ async function main() {
   const summary = Object.entries(state.gates)
     .map(([id, g]) => `${id} ${g.status}`)
     .join(', ');
-  state.runs.push({ runId, at: now, mode: conn.mode, command, note: summary });
+  state.runs.push({ runId, at: now, mode: conn.mode, command: label, note: summary });
   saveState(conn.stateFile, state);
   writeDoc(outFile, state, { mode: conn.mode });
   if (record && fs.existsSync(path.join(RECORD_DIR, record))) console.log(`Sanitized responses: ${path.join(RECORD_DIR, record)} (checked by server/test/paypal/recorded.test.ts)`);

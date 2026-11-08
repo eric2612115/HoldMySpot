@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { PAYPAL_PRICING, grossUpCapture, paypalCaptureFeeCents } from '@holdmyspot/shared';
+import { PAYPAL_PRICING, bidLimitCents, grossUpCapture, jobCaps, paypalCaptureFeeCents, payoutsForCapture, receiptCapture } from '@holdmyspot/shared';
 import {
   captureFeeCents,
   createFakePayPal,
@@ -17,8 +17,9 @@ import { heroOrderInput, makeClient, OAUTH } from './helpers.ts';
 
 /**
  * What the real PayPal sandbox answered on 11-07 (scripts/sandbox-gates.mjs run, probe,
- * lifecycle and disputes; sanitized copies in fixtures/recorded), and the emulator and the
- * client following it. The emulator runs fake mode, so it must not tell a different story.
+ * lifecycle and disputes) and 11-08 (lifecycle --local, and the GET read-back of the Venmo-button
+ * hold for gate G4); sanitized copies in fixtures/recorded, and the emulator and the client
+ * following them. The emulator runs fake mode, so it must not tell a different story.
  */
 
 const recorded = (rel: string) => JSON.parse(readFileSync(new URL(`./fixtures/recorded/${rel}`, import.meta.url), 'utf8')) as RecordedResponse;
@@ -110,6 +111,58 @@ describe('the real sandbox, as recorded on 11-07', () => {
     const charged = cents(receipt!.amount.value) + cents(shipping!.amount.value);
     const paidOut = items.reduce((t, i) => t + cents(i.payout_item.amount.value), 0);
     assert.deepEqual([paypalFees, charged - paidOut - paypalFees], [351, 120], "PayPal's fees equal the $3.51 processing line; HoldMySpot keeps 10% of the $12 fee");
+  });
+
+  it('charged the local pickup errand one capture at the handover, exactly its processing line, $2.18 + $0.25 (lifecycle 20261108-1357-local, D-156)', () => {
+    const run = '20261108-1357-lifecycle-local';
+    const cents = (v: string) => Math.round(Number(v) * 100);
+    type Capture = { id: string; status: string; final_capture: boolean; amount: { value: string }; invoice_id: string; seller_receivable_breakdown: { paypal_fee: { value: string }; net_amount: { value: string } } };
+    type Order = {
+      intent: string;
+      purchase_units: { shipping?: unknown; items: { name: string; unit_amount: { value: string } }[]; payments: { authorizations: { id: string; status: string }[]; captures: Capture[] } }[];
+    };
+    // Sam's request: a PICKUP_FROM_PERSON order, so PayPal keeps no shipping at all; the items are the plush cap, the fee and the processing reserve.
+    const order = recorded(`${run}/003-orders.get-200.json`).body as Order;
+    const pu = order.purchase_units[0]!;
+    assert.equal(order.intent, 'AUTHORIZE');
+    assert.equal(pu.shipping, undefined, 'no ship-to and no tracker on a local pickup order');
+    assert.deepEqual(pu.items.map((i) => i.unit_amount.value), ['36.00', '12.00', '2.50']);
+    const bid = { qty: 1, retailCapCents: 3600, maxFeeCents: 1200, shippingBudgetCents: 0 };
+    const auth = recorded(`${run}/002-authorizations.get-200.json`).body as { status: string; amount: { value: string } };
+    assert.deepEqual([auth.status, cents(auth.amount.value)], ['CAPTURED', bidLimitCents(bid, 'local')]);
+    // Nothing at the receipt: the order holds one capture, the handover's (invoice suffix H), final, and the rest was released.
+    assert.equal(pu.payments.captures.length, 1);
+    const capture = recorded(`${run}/004-captures.get-200.json`).body as Capture;
+    assert.deepEqual([capture.id, capture.status, capture.final_capture], [pu.payments.captures[0]!.id, 'COMPLETED', true]);
+    assert.match(capture.invoice_id, /-H$/, 'the handover capture');
+    const handover = receiptCapture(jobCaps(bid, { qty: 1, feeCents: 1200 }, 'local'), 3400, 'local');
+    assert.deepEqual(
+      [cents(capture.amount.value), cents(capture.seller_receivable_breakdown.paypal_fee.value), cents(capture.seller_receivable_breakdown.net_amount.value)],
+      [handover.amountCents, handover.captureFeeCents, 3400 + 1200 + PAYPAL_PRICING.payoutItemCents],
+      'the capture nets the shop price, the fee and the one payout fee',
+    );
+    assert.deepEqual([handover.amountCents, handover.captureFeeCents, handover.processingCents], [4843, 218, 243]);
+    assert.equal(bidLimitCents(bid, 'local') - handover.amountCents, 207, 'released by the final capture');
+    // One payout: the shop price and the fee minus HoldMySpot's 10%, with PayPal's $0.25 item fee.
+    type Batch = { batch_header: { sender_batch_header: { sender_batch_id: string } }; items: { transaction_status: string; payout_item: { amount: { value: string } }; payout_item_fee: { value: string } }[] };
+    const batch = recorded(`${run}/005-payouts.get-200.json`).body as Batch;
+    assert.match(batch.batch_header.sender_batch_header.sender_batch_id, /^payout:job_\d+:all@/);
+    const [payout] = payoutsForCapture('local', 'handover', { retailCents: 3400, feeCents: 1200, shippingCents: 0 });
+    assert.deepEqual(
+      batch.items.map((i) => [i.transaction_status, cents(i.payout_item.amount.value), cents(i.payout_item_fee.value)]),
+      [['SUCCESS', payout!.amountCents, PAYOUT_ITEM_FEE_CENTS]],
+    );
+    const paypalFees = cents(capture.seller_receivable_breakdown.paypal_fee.value) + cents(batch.items[0]!.payout_item_fee.value);
+    assert.deepEqual([paypalFees, cents(capture.amount.value) - cents(batch.items[0]!.payout_item.amount.value) - paypalFees], [handover.processingCents, 120], "PayPal's fees equal the $2.43 processing line; HoldMySpot keeps 10% of the $12 fee");
+  });
+
+  it('recorded the Venmo-button hold as Venmo-funded: an AUTHORIZE order whose payment_source is venmo, its authorization CREATED and nothing captured (gate G4, partial)', () => {
+    const run = '20261108-1358-record-g4';
+    const order = recorded(`${run}/001-orders.get-200.json`).body as { id: string; intent: string; payment_source: Record<string, unknown>; purchase_units: { payments: { captures?: unknown[] } }[] };
+    assert.deepEqual([order.id, order.intent, Object.keys(order.payment_source)], ['03979024TL691052W', 'AUTHORIZE', ['venmo']]);
+    assert.equal(order.purchase_units[0]!.payments.captures?.length ?? 0, 0);
+    const auth = recorded(`${run}/002-authorizations.get-200.json`).body as { id: string; status: string; amount: { value: string } };
+    assert.deepEqual([auth.id, auth.status, auth.amount.value], ['7RB884471X718305E', 'CREATED', '56.00']);
   });
 
   it('read every capture of a closed authorization as final_capture=true, although the first was sent false', () => {

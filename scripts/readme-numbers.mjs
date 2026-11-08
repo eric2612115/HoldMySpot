@@ -15,10 +15,11 @@
 // -- --json, recorded answers replayed), docs/evidence/attack.json (npm run attack -- --json),
 // docs/evidence/smoke.json (written by --record around npm run demo -- --smoke), docs/evidence/ablation.json
 // (npm run ablation), docs/SANDBOX-GATES.md and PayPal's recorded answers in
-// server/test/paypal/fixtures/recorded/ (written by scripts/sandbox-gates.mjs), the logs of the 11-07 sandbox
-// runs in docs/evidence/ (PayPal's GET-only read-back of both hero errands, the web app walk, the Venmo
-// check), the recorded model answers in server/fixtures/ai/, and the worked example computed by the shared
-// money rules (shared/src/money.ts).
+// server/test/paypal/fixtures/recorded/ (written by scripts/sandbox-gates.mjs: both lifecycle runs, the shipped
+// hero errand and the local pickup errand, and PayPal's read-back of the Venmo-button hold for gate G4), the logs
+// of the 11-07 sandbox runs in docs/evidence/ (PayPal's GET-only read-back of both hero errands, the web app walk,
+// the Venmo check), the recorded model answers in server/fixtures/ai/, and the worked examples computed by the
+// shared money rules (shared/src/money.ts).
 //
 // README.md holds generated blocks between <!-- numbers:NAME:start --> and <!-- numbers:NAME:end -->
 // markers, rewritten from numbers.json, and prose that the checks below read: a hand edit of a number
@@ -60,7 +61,9 @@ const SRC = {
   ablation: 'docs/evidence/ablation.json',
   gates: 'docs/SANDBOX-GATES.md',
   serverRun: 'server/test/paypal/fixtures/recorded/20261107-2047-lifecycle',
+  localRun: 'server/test/paypal/fixtures/recorded/20261108-1357-lifecycle-local',
   firstRun: 'server/test/paypal/fixtures/recorded/20261107-1642-lifecycle',
+  venmoReadback: 'server/test/paypal/fixtures/recorded/20261108-1358-record-g4',
   readback: 'docs/evidence/sandbox-readback-20261107.txt',
   webRun: 'docs/evidence/web-run-20261107.txt',
   venmo: 'docs/evidence/venmo-hold-20261107.txt',
@@ -71,6 +74,11 @@ const NUMBERS = 'docs/evidence/numbers.json';
 
 /** The worked example's inputs (docs/DOMAIN.md section 7, shared/src/money.test.ts): Mia's request and Wei's receipt and label. */
 const WORKED = { bid: { qty: 1, retailCapCents: 3600, maxFeeCents: 1200, shippingBudgetCents: 1200 }, receiptCents: 3400, labelCents: 875 };
+/**
+ * The local pickup errand's inputs (`lifecycle --local`, D-156): Sam's request in San Francisco for the same plush,
+ * no shipping budget, taken by Wei at the \$12 max fee, with the same \$34.00 receipt; one capture at the handover.
+ */
+const LOCAL = { bid: { qty: 1, retailCapCents: 3600, maxFeeCents: 1200, shippingBudgetCents: 0 }, receiptCents: 3400, feeCents: 1200 };
 
 class Stale extends Error {}
 
@@ -189,6 +197,39 @@ async function deriveWorkedExample() {
   };
 }
 
+/** The local pickup errand by the shared rules: the hold, the one capture at the handover, the one payout. */
+async function deriveLocalExample() {
+  const m = await import(pathToFileURL(rel(SRC.rules)).href);
+  const { bid, receiptCents, feeCents } = LOCAL;
+  const held = m.bidLimitCents(bid, 'local');
+  const caps = m.jobCaps(bid, { qty: 1, feeCents }, 'local');
+  const capture = m.receiptCapture(caps, receiptCents, 'local');
+  const payouts = m.payoutsForCapture('local', 'handover', { retailCents: capture.retailCents, feeCents, shippingCents: 0 });
+  const captureFee = m.paypalCaptureFeeCents(capture.amountCents);
+  const payoutFee = m.PAYPAL_PRICING.payoutItemCents;
+  const settlement = m.jobSettlement({
+    capturedCents: capture.amountCents,
+    refundedCents: 0,
+    paidOutCents: sum(payouts.map((p) => p.amountCents)),
+    processingCents: capture.processingCents,
+    paypalFeesCents: captureFee + payouts.length * payoutFee,
+  });
+  return {
+    inputs: { retailCapCents: bid.retailCapCents, maxFeeCents: bid.maxFeeCents, shippingBudgetCents: bid.shippingBudgetCents, receiptCents, feeCents },
+    processingReserveCents: m.processingReserveCents(bid, 'local'),
+    heldCents: held,
+    handoverCapture: { amountCents: capture.amountCents, retailCents: capture.retailCents, feeCents: capture.feeCents, processingCents: capture.processingCents, paypalFeeCents: captureFee, payoutFeesCents: capture.payoutFeesCents },
+    payoutItemFeeCents: payoutFee,
+    capturedCents: settlement.chargedCents,
+    releasedCents: held - settlement.chargedCents,
+    payouts: payouts.map((p) => ({ purpose: p.purpose, amountCents: p.amountCents })),
+    paidOutCents: settlement.paidOutCents,
+    processingCents: settlement.processingCents,
+    paypalFeesCents: settlement.paypalFeesCents,
+    platformCents: settlement.platformCents,
+  };
+}
+
 function readFixtures(dir) {
   const full = rel(dir);
   if (!fs.existsSync(full)) throw new Stale(`${dir} is missing.`);
@@ -210,10 +251,12 @@ function deriveRun(dir) {
     .map((c) => ({ id: c.id, status: c.status, amountCents: toCents(c.amount.value), paypalFeeCents: toCents(c.seller_receivable_breakdown.paypal_fee.value), final: c.final_capture, at: c.create_time }))
     .sort((a, b) => a.at.localeCompare(b.at))
     .map(({ at, ...c }) => c);
+  // The payout's sender_batch_id is the server's ledger key, payout:<job>:<fee|reimb|all>@<run> (money.ts).
+  const purposeOf = (senderBatchId) => ({ fee: 'fee', reimb: 'reimbursement', all: 'fee_and_reimbursement' })[/:(fee|reimb|all)@/.exec(senderBatchId)?.[1]] ?? 'reimbursement';
   const payouts = of('payouts.get')
     .map((p) => ({
       batch: p.batch_header.payout_batch_id,
-      purpose: /:fee@/.test(p.batch_header.sender_batch_header.sender_batch_id) ? 'fee' : 'reimbursement',
+      purpose: purposeOf(p.batch_header.sender_batch_header.sender_batch_id),
       status: p.batch_header.batch_status,
       amountCents: toCents(p.batch_header.amount.value),
       paypalFeeCents: sum((p.items ?? []).map((i) => toCents(i.payout_item_fee?.value ?? 0))),
@@ -226,9 +269,11 @@ function deriveRun(dir) {
   const paidOutCents = sum(payouts.map((p) => p.amountCents));
   const paypalFeesCents = sum(captures.map((c) => c.paypalFeeCents)) + sum(payouts.map((p) => p.paypalFeeCents));
   return {
-    run: path.basename(dir).replace(/-[a-z]+$/, ''),
+    run: path.basename(dir).replace(/-[a-z-]+$/, ''),
     fixtures: dir,
     order: order.id,
+    // A PICKUP_FROM_PERSON order keeps no ship-to address (the local errand); a shipped one does.
+    shipTo: order.purchase_units?.[0]?.shipping?.address?.country_code ?? null,
     authorization: { id: auth.id, status: auth.status, amountCents: toCents(auth.amount.value) },
     captures,
     capturedCents,
@@ -302,6 +347,23 @@ function deriveVenmo(text) {
   return { authorization: rec.authorization, order: rec.order, amountCents: rec.amount, button: rec.funding, holdStatus: rec.holdStatus, takenAt: /^# The web app's Venmo check on the real PayPal sandbox, (\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC)/m.exec(text)?.[1] ?? null };
 }
 
+/** PayPal's own answer for the Venmo-button hold (`record G4 ... --order`, GET calls only): payment source and status. */
+function deriveVenmoReadback(dir) {
+  const fx = readFixtures(dir);
+  const order = fx.find((f) => f.op === 'orders.get')?.body;
+  const auth = fx.find((f) => f.op === 'authorizations.get')?.body;
+  if (!order || !auth) throw new Stale(`${dir} has no order or authorization answer.`);
+  const captures = order.purchase_units?.[0]?.payments?.captures ?? [];
+  return {
+    fixtures: dir,
+    order: order.id,
+    intent: order.intent,
+    paymentSource: Object.keys(order.payment_source ?? {})[0] ?? null,
+    authorization: { id: auth.id, status: auth.status, amountCents: toCents(auth.amount.value) },
+    captures: captures.length,
+  };
+}
+
 /** A Markdown table's rows after a line that starts with `header`: the cells of each row, trimmed. */
 function tableAfter(text, header) {
   const lines = text.split('\n');
@@ -312,30 +374,36 @@ function tableAfter(text, header) {
   return rows;
 }
 
-function deriveGates(text, serverRun) {
+function deriveGates(text, serverRun, localRun) {
   const gates = {};
   for (const [id, , status] of tableAfter(text, '| Gate |')) gates[id] = status;
   const by = (status) => Object.keys(gates).filter((g) => gates[g] === status).sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
-  const section = text.split('## Full job through the server (sandbox)')[1]?.split('\n## ')[0] ?? '';
-  const checks = tableAfter(section, '| Check |');
-  const idsLine = /^Ids: (.*)$/m.exec(section)?.[1] ?? '';
   const runs = tableAfter(text, '| Run |');
-  const lifecycle = runs.find(([run, , , command]) => run === serverRun.run && command === 'lifecycle');
+  /** One lifecycle section of the page: its checks and ids, and its line in the runs table. */
+  const lifecycleOf = (heading, run, command) => {
+    const section = text.split(heading)[1]?.split('\n## ')[0] ?? '';
+    const checks = tableAfter(section, '| Check |');
+    const line = runs.find(([id, , , cmd]) => id === run.run && cmd === command);
+    return {
+      run: line ? line[0] : null,
+      passed: /\): passed\./.test(section),
+      checks: checks.length,
+      matches: checks.filter((c) => c[1] === 'match').length,
+      checkNames: checks.map((c) => c[0]),
+      ids: /^Ids: (.*)$/m.exec(section)?.[1] ?? '',
+    };
+  };
   const edges = tableAfter(text.split('## Edge cases')[1] ?? '', '| Call |').map(([call, answer]) => ({ call, answer }));
   const probeRun = /run (\d{8}-\d{4})\. The emulator/.exec(text)?.[1] ?? null;
   return {
     page: SRC.gates,
     lastUpdate: /^Last update: ([^.]+)\./m.exec(text)?.[1] ?? null,
     pass: by('pass'),
+    partial: by('partial'),
     waiting: by('waiting'),
     notRun: by('not run'),
-    serverRun: {
-      run: lifecycle ? lifecycle[0] : null,
-      passed: /\): passed\./.test(section),
-      checks: checks.length,
-      matches: checks.filter((c) => c[1] === 'match').length,
-      ids: idsLine,
-    },
+    serverRun: lifecycleOf('## Full job through the server (sandbox)', serverRun, 'lifecycle'),
+    localRun: lifecycleOf('## Local errand through the server (sandbox)', localRun, 'lifecycle --local'),
     probeRun,
     edges,
   };
@@ -482,12 +550,15 @@ function deriveLogs() {
 async function derive() {
   const tests = deriveTests(readJson(SRC.tests, 'run npm run numbers -- --record'));
   const worked = await deriveWorkedExample();
+  const localExample = await deriveLocalExample();
   const serverRun = deriveRun(SRC.serverRun);
+  const localRun = deriveRun(SRC.localRun);
   const firstRun = deriveRun(SRC.firstRun);
   const readback = deriveReadback(readText(SRC.readback));
   const walk = deriveWalk(readText(SRC.webRun));
   const venmo = deriveVenmo(readText(SRC.venmo));
-  const gates = deriveGates(readText(SRC.gates), serverRun);
+  const venmoPayPal = deriveVenmoReadback(SRC.venmoReadback);
+  const gates = deriveGates(readText(SRC.gates), serverRun, localRun);
   const answers = deriveAnswers(SRC.aiAnswers);
   const aiEval = deriveAiEval(readJson(SRC.aiEval, 'run npm run numbers -- --record'), answers);
   const ablation = deriveAblation(readJson(SRC.ablation, 'run npm run ablation'));
@@ -517,6 +588,36 @@ async function derive() {
   const off = Object.keys(same).filter((k) => !same[k]);
   if (off.length > 0) throw new Stale(`PayPal's recorded run ${serverRun.run} differs from the worked example in shared/src/money.ts: ${off.join(', ')}.`);
   if (!serverRun.tracking) throw new Stale(`${SRC.serverRun} has no tracker on the order.`);
+
+  // The local pickup errand (D-156): PayPal's recorded answers must be the shared rules' local errand to the cent,
+  // with one capture (the handover's), no ship-to and no tracker, and the gates page must record the run as passed.
+  const sameLocal = {
+    held: localRun.authorization.amountCents === localExample.heldCents && localRun.authorization.status === 'CAPTURED',
+    capture: isDeepStrictEqual(
+      localRun.captures.map((c) => [c.amountCents, c.paypalFeeCents, c.status, c.final]),
+      [[localExample.handoverCapture.amountCents, localExample.handoverCapture.paypalFeeCents, 'COMPLETED', true]],
+    ),
+    released: localRun.releasedCents === localExample.releasedCents,
+    payouts: isDeepStrictEqual(
+      localRun.payouts.map((p) => [p.purpose, p.amountCents, p.paypalFeeCents, p.status]),
+      localExample.payouts.map((p) => [p.purpose, p.amountCents, localExample.payoutItemFeeCents, 'SUCCESS']),
+    ),
+    fees: localRun.paypalFeesCents === localExample.paypalFeesCents && localExample.paypalFeesCents === localExample.processingCents,
+    platform: localRun.platformCents === localExample.platformCents,
+    noShipping: localRun.shipTo === null && localRun.tracking === null,
+  };
+  const offLocal = Object.keys(sameLocal).filter((k) => !sameLocal[k]);
+  if (offLocal.length > 0) throw new Stale(`PayPal's recorded local run ${localRun.run} differs from the local errand by the shared rules in shared/src/money.ts: ${offLocal.join(', ')}.`);
+  if (!gates.localRun.run || !gates.localRun.passed || gates.localRun.matches !== gates.localRun.checks || gates.localRun.checks === 0) {
+    throw new Stale(`${SRC.gates} does not record the local run ${localRun.run} as passed with every check matching.`);
+  }
+  for (const id of [localRun.order, localRun.authorization.id, ...localRun.payouts.map((p) => p.batch)]) {
+    if (!gates.localRun.ids.includes(id)) throw new Stale(`${SRC.gates}'s local errand section does not name ${id} from ${SRC.localRun}.`);
+  }
+
+  // Gate G4: PayPal's own answer for the Venmo-button hold must be the hold the web app's check made.
+  const sameVenmo = venmoPayPal.order === venmo.order && venmoPayPal.authorization.id === venmo.authorization && venmoPayPal.authorization.amountCents === venmo.amountCents;
+  if (!sameVenmo) throw new Stale(`${SRC.venmoReadback} (PayPal) and ${SRC.venmo} (the web app's check) name different holds.`);
 
   // Two reads of the server run from PayPal (the gate script's fixtures, the later GET-only read-back) must agree.
   const again = readback.runs[serverRun.run];
@@ -585,7 +686,15 @@ async function derive() {
     sources: SRC,
     tests,
     workedExample: worked,
-    sandbox: { serverRun: { ...serverRun, matchesWorkedExample: true, readBackAgain: readback.takenAt }, webRun, firstRun, venmo, gates },
+    localExample,
+    sandbox: {
+      serverRun: { ...serverRun, matchesWorkedExample: true, readBackAgain: readback.takenAt },
+      localRun: { ...localRun, matchesLocalExample: true },
+      webRun,
+      firstRun,
+      venmo: { ...venmo, paypal: venmoPayPal },
+      gates,
+    },
     aiEval,
     ablation,
     attack,
@@ -657,6 +766,16 @@ const BLOCKS = {
       ? `The ${days.runs} days of ${days.name.split(':')[0]} reached ${c.checkIns} passed check-ins, ${c.matches} matches (${c.clockFills} below the opening fee), ${c.completed} completed jobs, ${c.rejected} receipts failing a hard check, ${c.failures} PayPal failures injected, ${c.restarts} server restarts and ${c.reassigned} reassignments`
       : 'The server days printed no coverage';
     const list = (xs) => xs.join(', ');
+    const lr = n.sandbox.localRun;
+    const gateLists = [
+      ['pass', g.pass],
+      ['partial', g.partial],
+      ['waiting', g.waiting],
+      ['not run', g.notRun],
+    ]
+      .filter(([, xs]) => xs.length > 0)
+      .map(([k, xs]) => `${k}: ${list(xs)}`)
+      .join('; ');
     return [
       '| Claim | Result | Run it | Log or fixture |',
       '|---|---|---|---|',
@@ -664,7 +783,8 @@ const BLOCKS = {
       `| The money and market rules hold on generated cases (${t.properties.covers[0]} to ${t.properties.covers.at(-1)}) | ${t.properties.tests} property tests, ${grouped(t.properties.runs)} generated cases in every \`npm test\` (fixed seed; each test's name gives its runs): ${grouped(t.properties.runsByPackage.shared)} cases of the shared rules, ${grouped(t.properties.runsByPackage.ops)} rescheduler mornings on the ops console's replay model, and ${grouped(t.properties.runsByPackage.server)} generated market days on the server with the PayPal emulator${p5 ? ` (P5 plays each of its ${p5.runs} days twice, with and without PayPal failures)` : ''}. ${daysLine} | \`npm test\` | [tests.json](docs/evidence/tests.json) |`,
       `| PayPal's sandbox charged what the rules say | Run \`${run.run}\`: held \\${usd(run.authorization.amountCents)}, captured ${capt}, released \\${usd(run.releasedCents)}, paid out ${paid}; PayPal's fees ${fees} = \\${usd(run.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(run.platformCents)}; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match; the same amounts as the worked example in \`shared/src/money.ts\` | \`npm run gates -- lifecycle\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), [PayPal's answers](${run.fixtures}/) |`,
       `| The web app run on PayPal's sandbox read back the same | PayPal on ${web.readBackAt}: authorization \`${web.authorization.id}\` \\${usd(web.authorization.amountCents)} ${web.authorization.status}; captures ${web.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')} ${[...new Set(web.captures.map((c) => c.status))].join(', ')} (PayPal's fees ${web.captures.map((c) => `\\${usd(c.paypalFeeCents)}`).join(' + ')}); released \\${usd(web.releasedCents)}; payouts ${web.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')} ${[...new Set(web.payouts.map((p) => p.status))].join(', ')}; tracking ${web.tracking.status}; HoldMySpot kept \\${usd(web.platformCents)}. The walk's own checks of the server's ledger: ${web.walkChecks.passed}/${web.walkChecks.of}, the same ids and amounts | \`web/scripts/sandbox-walk.mjs\` (your sandbox keys, a second sandbox buyer) | [web-run-20261107.txt](docs/evidence/web-run-20261107.txt), [sandbox-readback-20261107.txt](docs/evidence/sandbox-readback-20261107.txt) |`,
-      `| Sandbox gates | pass: ${list(g.pass)}; waiting: ${list(g.waiting)}; not run: ${list(g.notRun)} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md) |`,
+      `| A local pickup errand on PayPal's sandbox charged what the rules say | Run \`${lr.run}\` (Sam's plush, a \`PICKUP_FROM_PERSON\` order): held \\${usd(lr.authorization.amountCents)}, nothing captured at the receipt, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)} in one payout; PayPal's fees \\${usd(lr.captures[0].paypalFeeCents)} + \\${usd(lr.payouts[0].paypalFeeCents)} = \\${usd(lr.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(lr.platformCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match; the same amounts as the shared rules give for this local errand | \`npm run gates -- lifecycle --local\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox), [PayPal's answers](${lr.fixtures}/) |`,
+      `| Sandbox gates | ${gateLists} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md) |`,
       `| The model reads, the rules decide (${a.cases} demo photos, recorded ${a.stamp} answers) | ${a.modelCalls} model calls: ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | \`npm run ai:eval\` | [ai-eval.json](docs/evidence/ai-eval.json) |`,
       `| Which layer stops which fake | Fakes stopped: Rules + AI ${ab.rulesAndAi.fakesStopped}/${ab.cases.fake}; the rules on the true reading (each photo's truth.json, not a reader) ${ab.rulesOnly.fakesStopped}/${ab.cases.fake}; the model without the job, not asked for a verdict, ${ab.aiOnly.fakesStopped}/${ab.cases.fake}; code alone ${ab.codeAlone}/${ab.cases.fake}, a rule on the model's reading for the other ${ab.readingOnly}; genuine proofs passed ${ab.rulesAndAi.genuinePassed}/${ab.cases.genuine} in each | \`npm run ablation\` | [ABLATION.md](docs/ABLATION.md), [ablation.json](docs/evidence/ablation.json) |`,
       `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as claimed, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} got through, ${at.knownLimits.length === 1 ? 'the known limit' : 'the known limits'} (${at.knownLimits.map((x) => LIMIT_WORDS[x.id] ?? x.id).join(', ')}); ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](docs/evidence/attack.json) |`,
@@ -721,6 +841,7 @@ function renderReadme(readme, numbers, blocks = BLOCKS) {
 function proseChecks(n) {
   const w = n.workedExample;
   const run = n.sandbox.serverRun;
+  const local = n.sandbox.localRun;
   const first = n.sandbox.firstRun;
   const a = n.aiEval;
   const fee = w.payouts.find((p) => p.purpose === 'fee');
@@ -787,6 +908,37 @@ function proseChecks(n) {
       required: true,
     },
     { name: 'the Venmo-button hold', re: new RegExp(`approved a ${$}${amt} hold through PayPal's Venmo button \\(authorization \`(\\w+)\``, 'g'), want: [d(n.sandbox.venmo.amountCents), n.sandbox.venmo.authorization], required: true },
+    // Gate G4: PayPal's own answer for that hold (the record G4 --order fixtures)
+    {
+      name: "G4: PayPal's answer for the Venmo-button hold",
+      re: /PayPal's own order records `payment_source` `(\w+)` with the authorization `(\w+)`/g,
+      want: [n.sandbox.venmo.paypal.paymentSource, n.sandbox.venmo.paypal.authorization.status],
+      required: true,
+    },
+    // The local pickup errand on the sandbox (fixtures of lifecycle --local; the gates page's checks)
+    {
+      name: 'local errand: the sandbox run in the story',
+      re: new RegExp(`nothing at the receipt, one capture of ${$}${amt} at Sam's handover code, ${$}${amt} released, ${$}${amt} paid to Wei`, 'g'),
+      want: [d(local.captures[0].amountCents), d(local.releasedCents), d(local.paidOutCents)],
+      required: true,
+    },
+    { name: 'local proof: checks', re: /(\d+) of (\d+) checks on the \[gates page\]/g, want: [String(n.sandbox.gates.localRun.matches), String(n.sandbox.gates.localRun.checks)], required: true },
+    { name: 'local proof: hold', re: new RegExp(`Hold for ${$}${amt} on a \`PICKUP_FROM_PERSON\` order`, 'g'), want: [d(local.authorization.amountCents)], required: true },
+    {
+      name: 'local proof: the capture',
+      re: new RegExp(`One capture at the handover code, ${$}${amt} \\(PayPal's fee ${$}${amt}\\)`, 'g'),
+      want: [d(local.captures[0].amountCents), d(local.captures[0].paypalFeeCents)],
+      required: true,
+    },
+    { name: 'local proof: released', re: new RegExp(`Released by that capture \\| ${$}${amt}`, 'g'), want: [d(local.releasedCents)], required: true },
+    {
+      name: 'local proof: the payout',
+      re: new RegExp(`Payout of the shop price and fee, ${$}${amt} \\(PayPal's fee ${$}${amt}\\)`, 'g'),
+      want: [d(local.payouts[0].amountCents), d(local.payouts[0].paypalFeeCents)],
+      required: true,
+    },
+    { name: "local proof: PayPal's fees", re: new RegExp(`PayPal's fees, equal to Sam's processing line \\| ${$}${amt}`, 'g'), want: [d(local.paypalFeesCents)], required: true },
+    { name: "local proof: HoldMySpot's share", re: new RegExp(`HoldMySpot's 10% of the ${$}(\\d+) fee \\| ${$}${amt}`, 'g'), want: [String(n.localExample.inputs.feeCents / 100), d(local.platformCents)], required: true },
     // Versions of the recorded runs (docs/evidence/tests.json)
     { name: 'checked platform', re: /Checked on (\w+) with Node (\d+\.\d+) and npm (\d+\.\d+)/g, want: [n.tests.os, majorMinor(n.tests.node), majorMinor(n.tests.npm)], required: true },
     { name: 'known limits platform', re: /checked on (\w+) \(Node (\d+\.\d+), npm (\d+\.\d+)\)/g, want: [n.tests.os, majorMinor(n.tests.node), majorMinor(n.tests.npm)], required: true },
@@ -795,11 +947,17 @@ function proseChecks(n) {
   ];
 }
 
-/** Ids that must appear in README.md as written: both runs' PayPal objects and the Venmo hold. */
+/** Ids that must appear in README.md as written: the three runs' PayPal objects and the Venmo hold. */
 function anchors(n) {
   const run = n.sandbox.serverRun;
   const web = n.sandbox.webRun;
+  const local = n.sandbox.localRun;
   return [
+    ['local run id', `\`${local.run}\``],
+    ['local run order', `\`${local.order}\``],
+    ['local run authorization', `\`${local.authorization.id}\``],
+    ...local.captures.map((c) => ['local run capture', `\`${c.id}\``]),
+    ...local.payouts.map((p) => [`local run ${p.purpose} payout batch`, `batch \`${p.batch}\``]),
     ['web app run order', `\`${web.order}\``],
     ['web app run authorization', `\`${web.authorization.id}\``],
     ...web.captures.map((c, i) => [`web app run capture ${i + 1}`, `\`${c.id}\``]),
@@ -819,14 +977,28 @@ function anchors(n) {
 function gateLineProblems(readme, n) {
   const line = readme.split('\n').find((l) => l.startsWith('- **Gates passed**'));
   if (!line) return ['README.md has no "- **Gates passed**" line'];
-  const [passedPart, rest = ''] = line.split('**Waiting:**');
-  const [waitingPart, notYet = ''] = rest.split('**Not on the gates page yet:**');
+  // The line's parts by their bold labels: the passed gates first, then any of Partial, Waiting and "Not on the gates page yet".
+  const labels = [
+    ['**Partial:**', 'partial'],
+    ['**Waiting:**', 'waiting'],
+    ['**Not on the gates page yet:**', 'notYet'],
+  ];
+  const marks = labels
+    .map(([label, key]) => ({ key, at: line.indexOf(label), length: label.length }))
+    .filter((m) => m.at >= 0)
+    .sort((a, b) => a.at - b.at);
+  const parts = { passed: line.slice(0, marks[0]?.at ?? line.length), partial: '', waiting: '', notYet: '' };
+  marks.forEach((m, i) => {
+    parts[m.key] = line.slice(m.at + m.length, marks[i + 1]?.at ?? line.length);
+  });
   const gatesIn = (s) => [...s.matchAll(/\bG(\d+)\b/g)].map((m) => `G${m[1]}`);
   const g = n.sandbox.gates;
   const problems = [];
-  for (const id of gatesIn(passedPart)) if (!g.pass.includes(id)) problems.push(`README lists ${id} as passed; ${SRC.gates} says ${id} is not a pass`);
-  for (const id of gatesIn(waitingPart)) if (!g.waiting.includes(id)) problems.push(`README lists ${id} as waiting; ${SRC.gates} says otherwise`);
-  for (const id of gatesIn(notYet)) if (g.pass.includes(id)) problems.push(`README says ${id} is not on the gates page yet; ${SRC.gates} records it as a pass`);
+  for (const id of gatesIn(parts.passed)) if (!g.pass.includes(id)) problems.push(`README lists ${id} as passed; ${SRC.gates} says ${id} is not a pass`);
+  for (const id of gatesIn(parts.partial)) if (!g.partial.includes(id)) problems.push(`README lists ${id} as partial; ${SRC.gates} says otherwise`);
+  for (const id of gatesIn(parts.waiting)) if (!g.waiting.includes(id)) problems.push(`README lists ${id} as waiting; ${SRC.gates} says otherwise`);
+  for (const id of gatesIn(parts.notYet)) if (g.pass.includes(id) || g.partial.includes(id)) problems.push(`README says ${id} is not on the gates page yet; ${SRC.gates} records it as ${g.pass.includes(id) ? 'a pass' : 'partial'}`);
+  for (const id of g.partial) if (!gatesIn(parts.partial).includes(id)) problems.push(`${SRC.gates} records ${id} as partial; README's gates line does not list it under **Partial:**`);
   return problems;
 }
 
@@ -1150,7 +1322,7 @@ async function main() {
   const a = numbers.aiEval;
   console.log(
     dim(
-      `Tests ${t.passed}/${t.tests} (${t.properties.tests} property tests, ${grouped(t.properties.runs)} cases); sandbox run ${numbers.sandbox.serverRun.run} = worked example (${usd(numbers.workedExample.heldCents)} held, ${usd(numbers.workedExample.capturedCents)} charged); AI ${a.verdicts}/${a.cases} verdicts, ${a.fields.ok}/${a.fields.of} fields; attack ${numbers.attack.movedNothing}/${numbers.attack.attempts} moved $0.00.`,
+      `Tests ${t.passed}/${t.tests} (${t.properties.tests} property tests, ${grouped(t.properties.runs)} cases); sandbox run ${numbers.sandbox.serverRun.run} = worked example (${usd(numbers.workedExample.heldCents)} held, ${usd(numbers.workedExample.capturedCents)} charged); local run ${numbers.sandbox.localRun.run} = the rules' local errand (${usd(numbers.localExample.heldCents)} held, ${usd(numbers.localExample.capturedCents)} charged at the handover); AI ${a.verdicts}/${a.cases} verdicts, ${a.fields.ok}/${a.fields.of} fields; attack ${numbers.attack.movedNothing}/${numbers.attack.attempts} moved $0.00.`,
     ),
   );
   if (problems.length > 0) {

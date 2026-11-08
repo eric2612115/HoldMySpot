@@ -56,9 +56,27 @@ interface Moved {
   n: number;
   capturedCents: number;
 }
+interface Run {
+  run: string;
+  authorization: { id: string; amountCents: number };
+  captures: { amountCents: number; paypalFeeCents: number }[];
+  payouts: { purpose: string; amountCents: number; paypalFeeCents: number }[];
+  releasedCents: number;
+  paidOutCents: number;
+  paypalFeesCents: number;
+  platformCents: number;
+  shipTo: string | null;
+  tracking: unknown;
+}
 interface Numbers {
   workedExample: { heldCents: number; capturedCents: number; releasedCents: number; paypalFeesCents: number; processingCents: number; platformCents: number; payouts: { purpose: string; amountCents: number }[] };
-  sandbox: { serverRun: { run: string; authorization: { id: string; amountCents: number }; captures: { amountCents: number; paypalFeeCents: number }[]; releasedCents: number; platformCents: number; matchesWorkedExample: boolean } };
+  localExample: { heldCents: number; capturedCents: number; releasedCents: number; paypalFeesCents: number; processingCents: number; platformCents: number; payouts: { purpose: string; amountCents: number }[] };
+  sandbox: {
+    serverRun: Run & { matchesWorkedExample: boolean };
+    localRun: Run & { matchesLocalExample: boolean };
+    venmo: { authorization: string; paypal: { paymentSource: string; authorization: { id: string; status: string } } };
+    gates: { pass: string[]; partial: string[]; localRun: { checks: number; matches: number } };
+  };
   aiEval: { cases: number; verdicts: number; modelCalls: number };
   attack: { attempts: number; refused: number; toPerson: number[]; intended: Moved[]; capped: Moved[]; knownLimits: Moved[]; violations: number };
   tests: { tests: number; failed: number; properties: { serverDays: { name: string; runs: number; coverage: Record<string, number> }[] } };
@@ -85,6 +103,23 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     assert.deepEqual(w.payouts.map((p) => [p.purpose, p.amountCents]), [['fee', 1080], ['reimbursement', 4275]]);
     assert.deepEqual([s.authorization.amountCents, ...s.captures.map((c) => [c.amountCents, c.paypalFeeCents]), s.releasedCents, s.platformCents], [6370, [4869, 219], [957, 82], 544, 120]);
     assert.equal(s.matchesWorkedExample, true);
+    // The local pickup errand (D-156): one capture at the handover, one payout, no shipping; PayPal's fees are its processing line.
+    const l = n.sandbox.localRun;
+    const le = n.localExample;
+    assert.equal(l.run, '20261108-1357');
+    assert.equal(l.authorization.id, '2KG09036B9936292Y');
+    assert.deepEqual([le.heldCents, le.capturedCents, le.releasedCents, le.paypalFeesCents, le.platformCents], [5050, 4843, 207, 243, 120]);
+    assert.equal(le.processingCents, le.paypalFeesCents, "PayPal's fees are exactly the local errand's processing line");
+    assert.deepEqual(le.payouts.map((p) => [p.purpose, p.amountCents]), [['fee_and_reimbursement', 4480]]);
+    assert.deepEqual(
+      [l.authorization.amountCents, l.captures.map((c) => [c.amountCents, c.paypalFeeCents]), l.releasedCents, l.payouts.map((p) => [p.purpose, p.amountCents, p.paypalFeeCents]), l.platformCents, l.shipTo, l.tracking],
+      [5050, [[4843, 218]], 207, [['fee_and_reimbursement', 4480, 25]], 120, null, null],
+    );
+    assert.equal(l.matchesLocalExample, true);
+    assert.deepEqual([n.sandbox.gates.localRun.matches, n.sandbox.gates.localRun.checks], [11, 11]);
+    // Gate G4 is partial: PayPal records the Venmo-button hold as Venmo-funded, and no such hold has been captured.
+    assert.deepEqual([n.sandbox.gates.partial, n.sandbox.gates.pass.includes('G4')], [['G4'], false]);
+    assert.deepEqual([n.sandbox.venmo.paypal.paymentSource, n.sandbox.venmo.paypal.authorization.id, n.sandbox.venmo.paypal.authorization.status], ['venmo', n.sandbox.venmo.authorization, 'CREATED']);
     assert.equal(n.aiEval.modelCalls, 0, 'the AI numbers come from replayed recordings');
     assert.equal(n.tests.failed, 0);
     assert.equal(n.attack.violations, 0);
@@ -114,6 +149,13 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const web = checkEdited((t) => t.replace('authorization `88232929HR885933A`, captures', 'authorization `88232929HR885933B`, captures'));
     assert.equal(web.code, 1, web.out);
     assert.match(web.out, /top line: the web app run as 88232929HR885933B/);
+    // The local pickup errand on the sandbox: its ids and the amounts README states in its own words.
+    const localId = checkEdited((t) => t.replaceAll('`5KN64357P0403214L`', '`5KN64357P0403214M`'));
+    assert.equal(localId.code, 1, localId.out);
+    assert.match(localId.out, /local run capture, `5KN64357P0403214L`/);
+    const localStory = checkEdited((t) => t.replace("one capture of \\$48.43 at Sam's handover code", "one capture of \\$48.44 at Sam's handover code"));
+    assert.equal(localStory.code, 1, localStory.out);
+    assert.match(localStory.out, /local errand: the sandbox run in the story as 48\.44, 2\.07, 44\.80; the source says 48\.43, 2\.07, 44\.80/);
   });
 
   it('turns red when a generated block is edited by hand, a gate is claimed that the gates page does not record, or a sentence it reads is removed', () => {
@@ -123,6 +165,11 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const gate = checkEdited((t) => t.replace('(G1, G2), void', '(G1, G2, G10), void'));
     assert.equal(gate.code, 1, gate.out);
     assert.match(gate.out, /README lists G10 as passed/);
+    // G4 is partial on the gates page: README may not count it as passed, nor leave it out of its Partial part.
+    const venmoPassed = checkEdited((t) => t.replace('and the app\'s scopes (G11). **Partial:** Venmo (G4):', 'the app\'s scopes (G11) and Venmo (G4). **Partial:**'));
+    assert.equal(venmoPassed.code, 1, venmoPassed.out);
+    assert.match(venmoPassed.out, /README lists G4 as passed/);
+    assert.match(venmoPassed.out, /records G4 as partial; README's gates line does not list it/);
     const gone = checkEdited((t) => t.replace(/readings of all 21 demo photos, recorded live on 2026-11-07/, 'readings of the demo photos'));
     assert.equal(gone.code, 1, gone.out);
     assert.match(gone.out, /no longer states live run date and photos/);
