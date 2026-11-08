@@ -1248,12 +1248,73 @@ async function cmdLifecycle(ctx, args) {
 const usdc = (c) => `$${(c / 100).toFixed(2)}`;
 
 /**
+ * `people --dispute <id> [--outcome seller|buyer]`: finishes a run that stopped at PayPal's review. A fresh server in
+ * sandbox mode finds the open dispute through the status sync (no job on a new database) and settles it through the
+ * route, then reads it back; every answer is added to the same page section.
+ */
+async function peopleSettle(ctx, args) {
+  const { state } = ctx;
+  const { startServer, waitFor } = await import('./lib/sandbox-lifecycle.mjs');
+  const outcome = args.outcome === 'buyer' ? 'buyer_favor' : 'seller_favor';
+  const record = state.peopleRun ?? { at: Date.now(), result: 'running', steps: [], error: null, ids: {} };
+  state.peopleRun = record;
+  const note = (step, detail) => {
+    record.steps.push({ step, detail, at: Date.now() });
+    console.log(`  ${step}: ${detail}`);
+  };
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-people-'));
+  const server = await startServer({ port: Number(args.port ?? 8799), tmp, secretsDir: secretsDirFrom(args), payoutEmail: ctx.settings.payoutReceiverEmail ?? 'unused@example.com', log: (l) => console.log(`  ${l}`) });
+  try {
+    const { api } = server;
+    const found = await waitFor(
+      "the status sync to list the dispute on a fresh server",
+      async () => (await api('GET', '/api/ops/disputes')).disputes.find((d) => d.id === args.dispute) ?? null,
+      { timeoutMs: 6 * 60_000, everyMs: 10_000 },
+    );
+    note('Fresh server: status sync listed it', `${found.id}: ${found.status}, ${usdc(found.amount.cents)}, no job on the new database`);
+    let accepted = null;
+    let last = '';
+    const deadline = Date.now() + Number(args.wait ?? 25) * 60_000;
+    while (!accepted && Date.now() < deadline) {
+      try {
+        accepted = await api('POST', `/api/ops/disputes/${found.id}/adjudicate`, { body: { outcome }, idem: `people-settle-${found.id}-${outcome}` });
+      } catch (e) {
+        last = String(e.message).slice(0, 200);
+        console.log(`  adjudicate refused: ${last}`);
+        await sleep(60_000);
+      }
+    }
+    if (!accepted) throw new Error(`PayPal did not accept adjudicate ${outcome} within ${args.wait ?? 25} minutes: ${last}`);
+    note(`Adjudicate through the route (${outcome})`, `accepted; dispute now ${accepted.dispute.status}`);
+    const settled = await waitFor(
+      'the dispute to resolve',
+      async () => (await api('GET', '/api/ops/disputes')).disputes.find((d) => d.id === found.id && d.status === 'resolved') ?? null,
+      { timeoutMs: 12 * 60_000, everyMs: 20_000 },
+    );
+    const read = await ctx.port.getDispute(found.id);
+    note('Dispute read back on PayPal', `${read.disputeId} ${read.status} ${read.outcome ?? 'no outcome'} ${usdc(read.amountCents)}; server: ${settled.status} ${settled.outcome}`);
+    record.result = 'passed';
+    record.error = null;
+  } catch (e) {
+    record.error = errText(e);
+    record.result = 'stopped';
+    console.log(`\npeople stopped: ${errText(e)}`);
+  } finally {
+    await server.stop();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+  saveState(ctx.stateFile ?? null, state);
+  console.log(`\npeople: ${record.result}`);
+}
+
+/**
  * `people` (D-158): one shipped errand on the sandbox, then a refund through POST /api/ops/jobs/:id/refund, a buyer's
  * "item not received" dispute (as gate G7), found by the server's status sync, then evidence and sandbox adjudicate
  * through the new routes, and everything read back from PayPal with GET calls. A step PayPal refuses is recorded as
  * refused and the run goes on where it can; nothing is papered over.
  */
 async function cmdPeople(ctx, args) {
+  if (args.dispute) return peopleSettle(ctx, args);
   const { state } = ctx;
   const secretsDir = secretsDirFrom(args);
   const { runLifecycle, waitFor } = await import('./lib/sandbox-lifecycle.mjs');
@@ -1349,7 +1410,7 @@ async function cmdPeople(ctx, args) {
           try {
             adjudicated = await api('POST', `/api/ops/disputes/${found.id}/adjudicate`, { body: { outcome: 'buyer_favor' }, idem: `people-adj-${record.at}` });
           } catch (e) {
-            log(`  adjudicate not open yet: ${e.status} ${e.code}`);
+            log(`  adjudicate not open yet: ${e.status} ${e.code} ${String(e.message).slice(0, 160)}`);
             await new Promise((r) => setTimeout(r, 60_000));
           }
         }
@@ -1531,6 +1592,7 @@ async function main() {
         'probe-second': { type: 'boolean' },
         again: { type: 'boolean' },
         settle: { type: 'string' },
+        dispute: { type: 'string' },
         outcome: { type: 'string' },
         note: { type: 'string' },
         verbose: { type: 'boolean' },

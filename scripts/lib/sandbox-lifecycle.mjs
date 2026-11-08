@@ -109,7 +109,7 @@ export async function waitFor(what, fn, { timeoutMs = 60_000, everyMs = 1_000 } 
  * Starts the server in sandbox mode on its own port, database and upload folder.
  * `payoutEmail` (from --payout-to) goes to the child's environment only; it is never printed.
  */
-async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
+export async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
   if (await portInUse(port)) throw new Error(`Port ${port} is already in use; the lifecycle only uses a server it starts itself.`);
   const logFile = path.join(tmp, 'server.log');
   const out = fs.openSync(logFile, 'a');

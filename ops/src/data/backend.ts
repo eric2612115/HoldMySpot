@@ -289,7 +289,10 @@ export class ServerBackend implements OpsBackend {
   }
 
   async refund(jobId: string, amountCents: number, reason: string): Promise<string> {
-    await this.post(`/api/ops/jobs/${encodeURIComponent(jobId)}/refund`, { amountCents, reason }, `people-refund-${jobId}-${amountCents}-${reason}`);
+    // The key names what was left: a double click is one refund, and a later refund of the same amount is a new one.
+    const job = this.last?.records.jobs.find((j) => j.id === jobId);
+    const left = job ? job.amounts.capturedCents - job.amounts.refundedCents : 'unknown';
+    await this.post(`/api/ops/jobs/${encodeURIComponent(jobId)}/refund`, { amountCents, reason }, `people-refund-${jobId}-${left}-${amountCents}`);
     return `Refunded $${(amountCents / 100).toFixed(2)} through PayPal.`;
   }
 

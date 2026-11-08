@@ -180,12 +180,12 @@ async function writeDraft(app: App, disputeId: string, queued: boolean): Promise
 /**
  * Reads PayPal's disputes on our HMS- invoices into store.disputes. Runs in the
  * status sync; `queued: true` is for callers already inside app.exec (a demo step).
- * Only adapters that captured money are asked.
  */
 export async function syncDisputes(app: App, opts: { queued?: boolean } = {}): Promise<number> {
   const queued = opts.queued === true;
   let changed = 0;
-  const adapters = [...new Set(app.store.ledger.where("kind = 'captured'").map((e) => e.mode))];
+  // Every adapter that captured here, and the sandbox even on a fresh database: a dispute outlives a reset.
+  const adapters = [...new Set([...app.store.ledger.where("kind = 'captured'").map((e) => e.mode), ...(app.config.mode === 'sandbox' ? (['sandbox'] as const) : [])])];
   for (const adapter of adapters) {
     if (adapter === 'sandbox' && !queued) {
       const last = lastSandboxRead.get(app) ?? 0;

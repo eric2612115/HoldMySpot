@@ -41,10 +41,15 @@ The `needs-person` script runs three errands on its own market: Wei's receipt re
 
 ## On PayPal's sandbox
 
-`node scripts/sandbox-gates.mjs people` (with `HMS_SECRETS_DIR` set) runs one shipped errand, a refund through the route, a buyer-opened dispute, then evidence and adjudicate through the routes, and reads everything back with GET calls. It takes about 30 minutes because PayPal keeps a fresh claim under its own review. Results: [SANDBOX-GATES.md](SANDBOX-GATES.md#needs-a-person-a-refund-and-a-dispute-through-the-server-sandbox).
+`node scripts/sandbox-gates.mjs people` (with `HMS_SECRETS_DIR` set) runs one shipped errand, a refund through the route, a buyer-opened dispute, then evidence and adjudicate through the routes, and reads the answers back with GET calls. Run on 2026-11-08; the answers are in [SANDBOX-GATES.md](SANDBOX-GATES.md#needs-a-person-a-refund-and-a-dispute-through-the-server-sandbox).
+
+- **Proven:** the refund went through the route (a request over the limit refused, the same key twice one refund) and PayPal reads the capture PARTIALLY_REFUNDED. The status sync found the buyer's dispute on the job and a draft was written.
+- **Refused by PayPal:** evidence (`ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE`, while the claim was under PayPal's review) and adjudicate: buyer favour retried every minute for 40 minutes from the moment evidence was refused (the issue was not logged for those), then, 50 to 60 minutes after the claim opened, both buyer and seller favour refused with `EVIDENCE_TYPE_IS_NOT_ALLOWED`. The dispute `PP-R-QUP-10197113` stays open on the sandbox.
+- **Not proven on the sandbox:** settling a dispute through these routes, booking a buyer-favour outcome, and `Accept claim`. They run on the emulator and in tests. Gate G7 settled a dispute on the real sandbox through the gate script, on a capture with no tracking.
+
+`node scripts/sandbox-gates.mjs people --dispute <id> [--outcome buyer|seller] [--wait <minutes>]` tries again on a fresh server.
 
 ## Limits
 
-- `Accept claim` runs on the emulator and in tests; the sandbox run settles with adjudicate instead, as gate G7 does.
 - PayPal's refund of a dispute in the buyer's favour is booked from the dispute outcome; the payouts already sent to the queuer are not clawed back by code. A person decides that.
 - The requester's refund request has a server route and no phone screen yet.
