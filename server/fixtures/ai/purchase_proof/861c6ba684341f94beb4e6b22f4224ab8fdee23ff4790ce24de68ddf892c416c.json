@@ -1,30 +1,30 @@
 {
   "format": 1,
   "task": "purchase_proof",
-  "fixtureKey": "f5054db1e3934897acce131988eec3ee108ba427ebb996e0ffa580a4740c8dca",
+  "fixtureKey": "861c6ba684341f94beb4e6b22f4224ab8fdee23ff4790ce24de68ddf892c416c",
   "provider": "muse",
   "model": "muse-spark-1.3",
-  "recordedAt": "2026-11-07T02:40:13.227Z",
-  "latencyMs": 6414,
+  "recordedAt": "2026-11-08T11:25:26.314Z",
+  "latencyMs": 8749,
   "data": {
     "anomalies": [],
     "currency": "USD",
-    "invoiceNumber": "PM-1112-0429",
-    "issuedAtLocal": "2026-11-12 11:47",
+    "invoiceNumber": "PM-1112-0452",
+    "issuedAtLocal": "2026-11-12 12:02",
     "itemPhoto": {
-      "codeSeen": "H4NP7",
+      "codeSeen": "F9RM6",
       "unitsVisible": 1
     },
     "lines": [
       {
         "name": "MOCHI BUNNY PLUSH SAKURA",
         "qty": 1,
-        "totalMinor": 3400,
-        "unitMinor": 3400
+        "totalMinor": 3800,
+        "unitMinor": 3800
       }
     ],
     "printedName": "PAPER MOON TOYS",
     "sellerTaxId": "41500017",
-    "totalMinor": 3400
+    "totalMinor": 3800
   }
 }

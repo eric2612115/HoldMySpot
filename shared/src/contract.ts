@@ -385,7 +385,7 @@ export interface Claim {
   /** ETA plus the arrival grace. */
   windowEndsAt: MarketMs;
   status: ClaimStatus;
-  /** One-time code to show in the line photo. Only returned to the queuer. */
+  /** One-time code the phone stamps on the line photo (D-159). Only returned to the queuer. */
   checkInCode: string | null;
   arrival: { at: MarketMs; lngLat: LngLat; accuracyM: number; distanceM: number } | null;
   linePhotoProofId: ProofId | null;
@@ -458,7 +458,7 @@ export interface Job {
   mode: FulfilmentMode;
   status: JobStatus;
   failure: { reason: JobFailureReason; at: MarketMs; detail: string } | null;
-  /** One-time code to show next to the item in the purchase photo. Only returned to the queuer. */
+  /** One-time code the phone stamps on the item photo (D-159). Only returned to the queuer. */
   proofCode: string | null;
   /** Local mode: shown by the requester at handover. Only returned to the requester. */
   handoverCode: string | null;

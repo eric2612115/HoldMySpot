@@ -1,7 +1,7 @@
 {
   "kind": "check_in",
   "id": "checkin-no-code",
-  "description": "A line photo without the check-in code: code_visible fails.",
+  "description": "A line photo that skipped the app stamp, so it has no code: code_visible fails.",
   "shopId": "paper-moon-toys",
   "itemId": "plush-paper-moon",
   "claim": {

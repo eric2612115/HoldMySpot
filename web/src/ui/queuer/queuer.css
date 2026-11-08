@@ -509,6 +509,19 @@ html[data-phone='requester'] .task .earn {
   height: 100%;
   object-fit: cover;
 }
+/* A stamped photo is shown whole, so the queuer can read the stamp before sending it (D-159). */
+.q-photo.is-stamped {
+  flex-direction: column;
+  align-items: stretch;
+}
+.q-photo.is-stamped .q-photo__frame {
+  width: 100%;
+  height: auto;
+}
+.q-photo.is-stamped .q-photo__frame img {
+  height: auto;
+  object-fit: contain;
+}
 .q-photo__body {
   min-width: 0;
   display: grid;

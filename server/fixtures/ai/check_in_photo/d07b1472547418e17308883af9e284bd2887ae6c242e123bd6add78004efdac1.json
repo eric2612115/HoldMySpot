@@ -1,15 +1,15 @@
 {
   "format": 1,
   "task": "check_in_photo",
-  "fixtureKey": "6f345af9d7db0425a8817456a19fe39b55d4829e6ed2de852c2fde2774324320",
+  "fixtureKey": "d07b1472547418e17308883af9e284bd2887ae6c242e123bd6add78004efdac1",
   "provider": "muse",
   "model": "muse-spark-1.3",
-  "recordedAt": "2026-11-07T02:38:49.673Z",
-  "latencyMs": 4987,
+  "recordedAt": "2026-11-08T11:24:09.716Z",
+  "latencyMs": 8207,
   "data": {
     "codeSeen": "H7AW3",
     "lineVisible": false,
-    "peopleAhead": null,
+    "peopleAhead": 0,
     "storefrontText": "PAPER MOON TOYS"
   }
 }

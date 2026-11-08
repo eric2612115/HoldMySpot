@@ -1,7 +1,7 @@
 {
   "kind": "purchase",
   "id": "paper-moon-wrong-code",
-  "description": "The sticky note shows another job's code: code_visible fails.",
+  "description": "The item photo carries another job's stamp: code_visible fails.",
   "shopId": "paper-moon-toys",
   "itemId": "plush-paper-moon",
   "job": {

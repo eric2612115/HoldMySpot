@@ -1,3 +1,4 @@
+import { photoStampText } from '@holdmyspot/shared';
 import QRCode from 'qrcode';
 import { buildReceiptQr } from '../../src/ai/qr.ts';
 import type { ItemPhotoSpec, LinePhotoSpec, PhotoLook, ReceiptSpec, Tweak } from './cases.ts';
@@ -234,12 +235,23 @@ function itemUnit(itemId: string, i: number): string {
       <div class="name">${sugar ? 'Strawberry cloud cake' : 'Strawberry shortcake'}</div></div></div>`;
 }
 
-export function itemHtml(s: ItemPhotoSpec, tweak: Tweak | null = null): string {
+/** What the phone stamps on a photo after it is taken (D-159): same text, corner, size and backing as web/src/ui/queuer/stamp.ts. */
+export interface PhotoStamp {
+  hhmm: string;
+  shopName: string;
+}
+
+function stampHtml(width: number, height: number, code: string | null, stamp: PhotoStamp | null): string {
+  if (!code || !stamp) return '';
+  const font = Math.round(Math.min(width, height) * 0.04);
+  return `<div style="position:absolute;left:${font / 2}px;top:${font / 2}px;padding:${Math.round(font * 0.35)}px ${Math.round(font * 0.6)}px;border-radius:${Math.round(font * 0.3)}px;background:rgba(10,12,22,.92);color:#fff;font:600 ${font}px ui-monospace,Menlo,Consolas,monospace;white-space:nowrap">${esc(photoStampText(code, stamp.hhmm, stamp.shopName))}</div>`;
+}
+
+export function itemHtml(s: ItemPhotoSpec, tweak: Tweak | null = null, stamp: PhotoStamp | null = null): string {
   const { width, height } = SIZES.item;
   const l = s.look;
   const unitsHtml = Array.from({ length: s.units }, (_, i) => itemUnit(s.itemId, i)).join('');
-  const note = `<div class="note" style="transform:rotate(${s.noteRotate}deg)"><div class="code">${esc(s.code)}</div></div>`;
-  const group = s.noteSide === 1 ? `<div class="units ${s.layout}">${unitsHtml}</div>${note}` : `${note}<div class="units ${s.layout}">${unitsHtml}</div>`;
+  const group = `<div class="units ${s.layout}">${unitsHtml}</div>`;
   const scene = `<div class="table"><div class="stage">${group}</div></div>${lightOverlay(l)}`;
   const t = tweakWrap(scene, tweak);
   const css = `
@@ -262,11 +274,8 @@ export function itemHtml(s: ItemPhotoSpec, tweak: Tweak | null = null): string {
     .plush .tag{margin-top:-30px;transform:rotate(-6deg);background:#fffdf7;border:2px solid #d9c9b6;border-radius:6px;padding:4px 10px;
       font-family:'Avenir Next','Helvetica Neue',Arial,sans-serif;font-size:12px;color:#5a3a46;display:flex;flex-direction:column;align-items:center}
     .plush .tag b{font-size:13px;letter-spacing:1px}
-    .bowl{filter:drop-shadow(0 16px 16px rgba(0,0,0,.4))}
-    .note{width:196px;height:172px;background:linear-gradient(170deg,#fff59d,#ffe95c 70%,#f5d93a);box-shadow:0 10px 16px rgba(0,0,0,.32);
-      display:flex;align-items:center;justify-content:center}
-    .code{font-family:'Marker Felt','Chalkboard SE','Comic Sans MS',cursive;font-size:44px;color:#1b2a6e;letter-spacing:2px}`;
-  return page(width, height, `<div class="scene">${t.html}</div>`, `brightness(${l.light}) ${t.filter}`, css);
+    .bowl{filter:drop-shadow(0 16px 16px rgba(0,0,0,.4))}`;
+  return page(width, height, `<div class="scene">${t.html}</div>${stampHtml(width, height, s.code, stamp)}`, `brightness(${l.light}) ${t.filter}`, css);
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +307,7 @@ function person(x: number, y: number, s: number, rnd: () => number): string {
   </g>`;
 }
 
-export function lineHtml(s: LinePhotoSpec, tweak: Tweak | null = null): string {
+export function lineHtml(s: LinePhotoSpec, tweak: Tweak | null = null, stamp: PhotoStamp | null = null): string {
   const { width, height } = SIZES.line;
   const rnd = seeded(s.seed);
   const facade = { cream: ['#efe2c6', '#d9c7a2'], brick: ['#a5533e', '#8a4231'], teal: ['#5c9a96', '#467d7a'] }[s.facade];
@@ -320,14 +329,6 @@ export function lineHtml(s: LinePhotoSpec, tweak: Tweak | null = null): string {
     ? `<rect x="${doorX - 230}" y="230" width="460" height="200" fill="#9ea4aa"/>${Array.from({ length: 18 }, (_, i) => `<line x1="${doorX - 230}" x2="${doorX + 230}" y1="${236 + i * 11}" y2="${236 + i * 11}" stroke="#7d848b" stroke-width="3"/>`).join('')}`
     : `<rect x="${doorX - 230}" y="230" width="460" height="200" fill="#ffe2a8"/><rect x="${doorX - 60}" y="250" width="120" height="180" fill="#f2c779" stroke="#6b4a1f" stroke-width="6"/>
        <rect x="${doorX - 215}" y="250" width="135" height="120" fill="#ffd27f" stroke="#6b4a1f" stroke-width="5"/><rect x="${doorX + 80}" y="250" width="135" height="120" fill="#ffd27f" stroke="#6b4a1f" stroke-width="5"/>`;
-  const card = s.code
-    ? `<g transform="translate(${s.doorSide === 'right' ? 70 : 640} 520) rotate(${s.doorSide === 'right' ? -6 : 5})">
-         <rect x="0" y="0" width="290" height="190" rx="10" fill="#fdfdfb" stroke="#d8d4c8" stroke-width="2"/>
-         <text x="145" y="44" text-anchor="middle" font-family="'Avenir Next','Helvetica Neue',Arial" font-size="20" fill="#555">CHECK-IN CODE</text>
-         <text x="145" y="128" text-anchor="middle" font-family="'Marker Felt','Chalkboard SE','Comic Sans MS'" font-size="70" fill="#14215f" letter-spacing="4">${esc(s.code)}</text>
-         <rect x="-26" y="120" width="70" height="104" rx="30" fill="#e0ac85"/>
-       </g>`
-    : '';
   const svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fc0e8"/><stop offset="1" stop-color="#e6f1f8"/></linearGradient>
     <linearGradient id="walk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9b3a8"/><stop offset="1" stop-color="#d8d2c6"/></linearGradient></defs>
@@ -342,10 +343,9 @@ export function lineHtml(s: LinePhotoSpec, tweak: Tweak | null = null): string {
     ${Array.from({ length: 12 }, (_, i) => `<line x1="${(i * width) / 11}" y1="430" x2="${(i - 5.5) * 260 + width / 2}" y2="${height}" stroke="#a49d90" stroke-width="2"/>`).join('')}
     ${Array.from({ length: 6 }, (_, i) => `<line x1="0" x2="${width}" y1="${440 + i * i * 9}" y2="${440 + i * i * 9}" stroke="#a49d90" stroke-width="2"/>`).join('')}
     ${people.join('')}
-    ${card}
   </svg>`;
   const look: PhotoLook = { background: 'linen', rotate: 0, tiltX: 0, tiltY: 0, x: 0, y: 0, scale: 1, light: s.light, lightFrom: s.doorSide === 'right' ? 'left' : 'right' };
   const scene = `<div style="position:absolute;inset:0">${svg}</div>${lightOverlay(look)}`;
   const t = tweakWrap(scene, tweak);
-  return page(width, height, `<div class="scene">${t.html}</div>`, `brightness(${s.light}) ${t.filter}`);
+  return page(width, height, `<div class="scene">${t.html}</div>${stampHtml(width, height, s.code, stamp)}`, `brightness(${s.light}) ${t.filter}`);
 }

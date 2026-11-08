@@ -1,20 +1,18 @@
 {
   "format": 1,
   "task": "purchase_proof",
-  "fixtureKey": "10af3509956dacb71cab9dccf8ee9b0d3945f21ebc997a201afa92ebde5f7f91",
+  "fixtureKey": "576ca11cafe6f1de2547684164d3da46da1738232ccbae8c96da603b531e6d5e",
   "provider": "muse",
   "model": "muse-spark-1.3",
-  "recordedAt": "2026-11-07T02:40:30.521Z",
-  "latencyMs": 10270,
+  "recordedAt": "2026-11-08T11:25:49.727Z",
+  "latencyMs": 6509,
   "data": {
-    "anomalies": [
-      "Line total $34.00 does not add up to TOTAL $36.00"
-    ],
+    "anomalies": [],
     "currency": "USD",
-    "invoiceNumber": "PM-1112-0384",
-    "issuedAtLocal": "2026-11-12 10:41",
+    "invoiceNumber": "PM-1112-0429",
+    "issuedAtLocal": "2026-11-12 11:47",
     "itemPhoto": {
-      "codeSeen": "C8MR2",
+      "codeSeen": "H4NP7",
       "unitsVisible": 1
     },
     "lines": [
@@ -27,6 +25,6 @@
     ],
     "printedName": "PAPER MOON TOYS",
     "sellerTaxId": "41500017",
-    "totalMinor": 3600
+    "totalMinor": 3400
   }
 }

@@ -1,11 +1,11 @@
 {
   "format": 1,
   "task": "purchase_proof",
-  "fixtureKey": "3c834e21daffde65dc3d745bc271a812d576f7254394f2e64314e52bf0e2c947",
+  "fixtureKey": "d435fae65a6bbc57eec7167a8e3fb894231cb12975daf76f6ffed023cf8cd9bd",
   "provider": "muse",
   "model": "muse-spark-1.3",
-  "recordedAt": "2026-11-07T02:40:41.077Z",
-  "latencyMs": 10222,
+  "recordedAt": "2026-11-08T11:26:17.821Z",
+  "latencyMs": 8243,
   "data": {
     "anomalies": [],
     "currency": "USD",

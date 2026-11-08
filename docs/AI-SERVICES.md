@@ -38,7 +38,7 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 
 `fixtureKey` = SHA-256 of task, prompt version, schema name and the SHA-256 of each image, so a fixture recorded with one provider replays under any provider. Fixtures hold the structured output plus provider, model and time; never keys, never raw prompts with personal data. Fixtures and demo images are committed (judges can replay them); photos of real places from the owner's filming stay outside the repo.
 
-**The recorded answers (D-66).** `server/fixtures/ai` holds Muse Spark's readings of all 21 rendered photos, recorded on 2026-11-07 with `npm run ai:eval -- --record` (owner-approved key, read only as `MODEL_API_KEY`). The demo server in fake mode replays them, so the hero's check-ins and receipts are decided by the rules on a real model reading, offline, stamped `muse` / `muse-spark-1.3` / `replay`. A photo with no recorded answer falls back to the rules-only reader and says `fake`. The test suites read with the rules only (they point `HMS_AI_FIXTURES_DIR` at an empty folder); `server/test/replay.test.ts` plays the hero on the recording and checks the same money. Re-rendering a photo or changing a prompt needs a new recording.
+**The recorded answers (D-66).** `server/fixtures/ai` holds Muse Spark's readings of all 21 rendered photos, recorded on 2026-11-08 with `npm run ai:eval -- --record` (owner-approved key, read only as `MODEL_API_KEY`). The demo server in fake mode replays them, so the hero's check-ins and receipts are decided by the rules on a real model reading, offline, stamped `muse` / `muse-spark-1.3` / `replay`. A photo with no recorded answer falls back to the rules-only reader and says `fake`. The test suites read with the rules only (they point `HMS_AI_FIXTURES_DIR` at an empty folder); `server/test/replay.test.ts` plays the hero on the recording and checks the same money. Re-rendering a photo or changing a prompt needs a new recording.
 
 ## 4. Services
 
@@ -46,15 +46,15 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 
 - **When:** `POST /api/claims/:claimId/check-in` after the geofence passes. Runs asynchronously; `proof.updated` reports the result.
 - **Input:** the line photo, the claim's `checkInCode`, the shop's printed name.
-- **Model reads:** is a queue of people visible, roughly how many are ahead, the code shown on paper or a phone screen, storefront text.
+- **Model reads:** is a queue of people visible, roughly how many are ahead, the code in the stamp the phone app adds to a corner of the photo (D-159), storefront text.
 - **Rules:** `geofence` (hard, already done), `code_visible` (hard), `line_visible` (soft), `duplicate_photo` (hard).
 - **Effect:** passed moves the claim to `checked_in`, starts the fee clock and moves jobs to `queueing`; the people count feeds the fee estimator. Failed: the queuer may retry until the window ends.
 
 ### 4.2 Purchase proof (load-bearing for every capture)
 
-- **When:** `POST /api/jobs/:jobId/proof` with the receipt photo and the item photo (which shows the job's `proofCode` on a sticky note next to the item).
+- **When:** `POST /api/jobs/:jobId/proof` with the receipt photo and the item photo (which carries the job's `proofCode` in the stamp the phone app adds to a corner, D-159).
 - **Deterministic pre-steps:** SHA-256 and a 64-bit difference hash (dHash) of each photo at upload; decode the receipt QR with `jsQR` on pixels from `sharp`. Our fictional toy shops print a store receipt QR in one fixed text layout, `RCPT1|S:<store ID>|N:<receipt number>|D:<date>|T:<total minor units>|C:<currency>|I:<line>...` (server/src/ai/qr.ts); the checks rely on the store ID, receipt number, date and total. Bakeries and ramen shops print no QR and are checked by their printed name.
-- **Model reads** (`purchase_proof` schema): printed shop name, seller ID, invoice number, printed date and time, currency, lines (name, qty, unit, total), total, the code on the sticky note, how many units are visible, and any visible anomalies.
+- **Model reads** (`purchase_proof` schema): printed shop name, seller ID, invoice number, printed date and time, currency, lines (name, qty, unit, total), total, the code in the item photo's stamp, how many units are visible, and any visible anomalies.
 - **Rules** (`ProofCheck`):
 
 | Check | Weight | Pass when |
@@ -181,9 +181,9 @@ Muse Spark (`muse-spark-1.3`, owner approved), live, on the receipts re-rendered
 | Fields read correctly | 161/164 (98.2%) |
 | Bad proofs caught | 10/10 |
 | Genuine proofs wrongly failed | 0/7 |
-| Latency per photo | median 8.1 s, max 12.0 s |
+| Latency per photo | median 8.5 s, max 14.9 s |
 
-The three misses: the people-ahead count on two line photos was more than 20% low (28 for 38, 30 for 46; an estimate only, never a pass condition), and one store ID digit was misread (41580017 for 41500017) on a receipt whose QR already identifies the shop. An earlier live run on the previous renders (same day) got 21/21 verdicts and 160/164 fields.
+The three misses: the people-ahead count on two line photos was more than 20% low (30 for 38, 32 for 46; an estimate only, never a pass condition), and one store ID digit was misread (41580017 for 41500017) on a receipt whose QR already identifies the shop. An earlier live run on the previous renders (same day) got 21/21 verdicts and 160/164 fields.
 
 `npm test` in `server/` runs them with the rules only, plus the hero and (in `server/test/ablation.test.ts`) all 21 photos on the recorded answers (no network). `npm run ai:eval` replays them and its summary says where the answers came from, counted from each case's stamp: without a key, "Answers: 21 replayed from recorded muse/muse-spark-1.3 answers. No model was called in this run." (a photo without a recording would be counted as read by the rules-only reader). `npm run ai:eval -- --live` runs them live against the configured provider (`--provider auto|anthropic|muse|openai|fake`) and prints the pass rate, and `--record` also saves the answers; both spend model credits, so they run only when the owner says so. The money column checks the full capture: the fixture's shop price plus fee, grossed up for processing at cost (D-105).
 

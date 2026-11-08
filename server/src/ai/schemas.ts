@@ -59,7 +59,7 @@ export const PURCHASE_PROOF_SCHEMA: JsonSchema = {
       additionalProperties: false,
       required: ['codeSeen', 'unitsVisible'],
       properties: {
-        codeSeen: nullable({ type: 'string' }, 'Code written on the note next to the item, letters and digits only'),
+        codeSeen: nullable({ type: 'string' }, 'Code in the app stamp in a corner of the item photo, letters and digits only'),
         unitsVisible: nullable({ type: 'integer' }, 'Units of the item visible in the second photo'),
       },
     },
@@ -81,7 +81,7 @@ export const CHECK_IN_SCHEMA: JsonSchema = {
   properties: {
     lineVisible: { type: 'boolean', description: 'True when a line of waiting people is visible' },
     peopleAhead: nullable({ type: 'integer' }, 'Approximate number of people visible in the line'),
-    codeSeen: nullable({ type: 'string' }, 'One-time code shown on a card or screen, letters and digits only'),
+    codeSeen: nullable({ type: 'string' }, 'One-time code in the app stamp in a corner of the photo, letters and digits only'),
     storefrontText: nullable({ type: 'string' }, 'Shop sign or storefront text'),
   },
 };

@@ -60,13 +60,10 @@ export interface ItemPhotoSpec {
   kind: 'item';
   itemId: string;
   units: number;
-  /** Code written on the sticky note. */
+  /** Code the app stamped on the photo (D-159). */
   code: string;
   layout: 'row' | 'stack' | 'pair';
   look: PhotoLook;
-  /** Sticky note position relative to the items: 1 = right, -1 = left. */
-  noteSide: 1 | -1;
-  noteRotate: number;
 }
 
 export interface LinePhotoSpec {
@@ -74,7 +71,7 @@ export interface LinePhotoSpec {
   storefront: string;
   /** People visible in the line ahead of the photographer. */
   people: number;
-  /** Code on the card held up in the photo; null: no card. */
+  /** Code the app stamped on the photo (D-159); null: the photo skipped the stamp step. */
   code: string | null;
   shutter: boolean;
   seed: number;
@@ -202,8 +199,8 @@ function moonReceipt(p: {
   };
 }
 
-function bunnies(units: number, code: string, l: Partial<PhotoLook>, layout: ItemPhotoSpec['layout'] = 'row', noteSide: 1 | -1 = 1, noteRotate = -4, itemId = 'plush-paper-moon'): ItemPhotoSpec {
-  return { kind: 'item', itemId, units, code, layout, look: look(l), noteSide, noteRotate };
+function bunnies(units: number, code: string, l: Partial<PhotoLook>, layout: ItemPhotoSpec['layout'] = 'row', itemId = 'plush-paper-moon'): ItemPhotoSpec {
+  return { kind: 'item', itemId, units, code, layout, look: look(l) };
 }
 
 // ---------------------------------------------------------------------------
@@ -216,14 +213,14 @@ export const HISTORY: HistoryPhoto[] = [
     ownerId: 'job-h-lin',
     purpose: 'item_photo',
     uploadedAt: sf('11:52:00', '2026-11-11'),
-    spec: bunnies(1, 'P5JA3', { background: 'linen', rotate: 2, x: -40, y: 10, scale: 1.05, light: 1.05, lightFrom: 'right' }, 'row', -1, 5),
+    spec: bunnies(1, 'P5JA3', { background: 'linen', rotate: 2, x: -40, y: 10, scale: 1.05, light: 1.05, lightFrom: 'right' }, 'row'),
   },
   {
     id: 'jo-item-1110',
     ownerId: 'job-h-jo',
     purpose: 'item_photo',
     uploadedAt: sf('11:38:00', '2026-11-10'),
-    spec: bunnies(1, 'T7CN4', { background: 'steel', rotate: -6, tiltX: 8, x: 30, y: -20, scale: 0.95, light: 0.95, lightFrom: 'top' }, 'row', 1, 7),
+    spec: bunnies(1, 'T7CN4', { background: 'steel', rotate: -6, tiltX: 8, x: 30, y: -20, scale: 0.95, light: 0.95, lightFrom: 'top' }, 'row'),
   },
   {
     id: 'ava-receipt-1111',
@@ -274,7 +271,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:50:00'),
     uploadedAt: sf('11:42:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0412', time: '11:41:07', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], look: { background: 'wood', rotate: -2.5, tiltX: 7, x: -10, y: 5, scale: 1, light: 1, lightFrom: 'left' } }),
-    item: bunnies(1, 'K7MX4', { background: 'wood', rotate: -3, tiltX: 10, x: 10, y: 15, scale: 1, light: 1.02, lightFrom: 'left' }, 'row', 1, -5),
+    item: bunnies(1, 'K7MX4', { background: 'wood', rotate: -3, tiltX: 10, x: 10, y: 15, scale: 1, light: 1.02, lightFrom: 'left' }, 'row'),
     expect: { status: 'passed', hard: [], soft: [], retailCents: 3400, captureCents: 4600 },
   },
   {
@@ -288,7 +285,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('11:30:00'),
     uploadedAt: sf('11:52:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0431', time: '11:50:52', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], look: { background: 'slate', rotate: 3, tiltX: 4, tiltY: -5, x: 15, y: -10, scale: 0.97, light: 0.95, lightFrom: 'right' } }),
-    item: bunnies(1, 'T3HW8', { background: 'slate', rotate: 5, tiltX: 5, x: -60, y: -10, scale: 1.1, light: 0.95, lightFrom: 'right' }, 'row', 1, 6),
+    item: bunnies(1, 'T3HW8', { background: 'slate', rotate: 5, tiltX: 5, x: -60, y: -10, scale: 1.1, light: 0.95, lightFrom: 'right' }, 'row'),
     expect: { status: 'passed', hard: [], soft: [], retailCents: 3400, captureCents: 4400 },
   },
   {
@@ -302,7 +299,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:52:00'),
     uploadedAt: sf('11:50:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0429', time: '11:47:30', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], qr: { sellerTaxId: '41500085' }, look: { background: 'linen', rotate: 1.5, tiltX: 9, x: 0, y: 0, scale: 1.02, light: 1.06, lightFrom: 'top' } }),
-    item: bunnies(1, 'H4NP7', { background: 'linen', rotate: 8, tiltX: 12, x: 40, y: 20, scale: 0.92, light: 1.08, lightFrom: 'top' }, 'row', -1, 3),
+    item: bunnies(1, 'H4NP7', { background: 'linen', rotate: 8, tiltX: 12, x: 40, y: 20, scale: 0.92, light: 1.08, lightFrom: 'top' }, 'row'),
     expect: { status: 'failed', hard: ['shop_match'], soft: [] },
   },
   {
@@ -316,7 +313,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:50:00'),
     uploadedAt: sf('11:39:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0398', time: '10:31:44', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], look: { background: 'slate', rotate: -7, tiltX: 5, tiltY: 4, x: 70, y: 30, scale: 0.9, light: 1.1, lightFrom: 'left' } }),
-    item: bunnies(1, 'R8EF2', { background: 'marble', rotate: -8, tiltX: 6, x: 50, y: 0, scale: 1.05, light: 1.1, lightFrom: 'left' }, 'row', -1, -7),
+    item: bunnies(1, 'R8EF2', { background: 'marble', rotate: -8, tiltX: 6, x: 50, y: 0, scale: 1.05, light: 1.1, lightFrom: 'left' }, 'row'),
     expect: { status: 'failed', hard: ['time_window'], soft: [] },
   },
   {
@@ -330,7 +327,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:49:00'),
     uploadedAt: sf('11:55:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0436', time: '11:52:10', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], total: 3600, look: { background: 'steel', rotate: 2, tiltX: 8, x: -20, y: 0, scale: 1, light: 0.98, lightFrom: 'right' } }),
-    item: bunnies(1, 'W2CK9', { background: 'marble', rotate: 7, tiltX: 12, x: -80, y: 30, scale: 1.08, light: 1.06, lightFrom: 'left' }, 'row', -1, 9),
+    item: bunnies(1, 'W2CK9', { background: 'marble', rotate: 7, tiltX: 12, x: -80, y: 30, scale: 1.08, light: 1.06, lightFrom: 'left' }, 'row'),
     expect: { status: 'failed', hard: ['totals_add_up'], soft: [] },
   },
   {
@@ -358,7 +355,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:50:00'),
     uploadedAt: sf('12:05:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0452', time: '12:02:18', lines: [{ name: BUNNY_LINE, qty: 1, unit: 3800 }], look: { background: 'linen', rotate: -1, tiltX: 6, tiltY: 5, x: 5, y: 10, scale: 1.03, light: 0.92, lightFrom: 'left' } }),
-    item: bunnies(1, 'F9RM6', { background: 'linen', rotate: 3, tiltX: 8, x: -30, y: -20, scale: 1.08, light: 0.92, lightFrom: 'left' }, 'row', 1, -2),
+    item: bunnies(1, 'F9RM6', { background: 'linen', rotate: 3, tiltX: 8, x: -30, y: -20, scale: 1.08, light: 0.92, lightFrom: 'left' }, 'row'),
     expect: { status: 'needs_review', hard: [], soft: ['within_retail_cap'], retailCents: 3800, captureCents: 4800 },
   },
   {
@@ -387,7 +384,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
       payment: 'Card **** 4821',
       look: look({ background: 'marble', rotate: -3, tiltX: 6, x: 0, y: 0, scale: 1, light: 1.05, lightFrom: 'right' }),
     },
-    item: { kind: 'item', itemId: 'cake-petal-crumb', units: 1, code: 'X4KE7', layout: 'row', look: look({ background: 'marble', rotate: 2, tiltX: 10, x: -20, y: 10, scale: 1, light: 1.05, lightFrom: 'right' }), noteSide: 1, noteRotate: -6 },
+    item: { kind: 'item', itemId: 'cake-petal-crumb', units: 1, code: 'X4KE7', layout: 'row', look: look({ background: 'marble', rotate: 2, tiltX: 10, x: -20, y: 10, scale: 1, light: 1.05, lightFrom: 'right' }) },
     expect: { status: 'passed', hard: [], soft: [], retailCents: 3800, captureCents: 4700 },
   },
   {
@@ -414,7 +411,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
   {
     kind: 'purchase',
     id: 'paper-moon-wrong-code',
-    description: "The sticky note shows another job's code: code_visible fails.",
+    description: "The item photo carries another job's stamp: code_visible fails.",
     ...PM,
     job: shipJob('job-c10', 'J3RA8', 1200),
     queuer: 'Ava',
@@ -422,7 +419,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:52:00'),
     uploadedAt: sf('12:11:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0460', time: '12:08:03', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], look: { background: 'wood', rotate: -6, tiltX: 4, x: -15, y: 20, scale: 0.99, light: 1.12, lightFrom: 'right' } }),
-    item: bunnies(1, 'E2PW5', { background: 'wood', rotate: -10, tiltX: 7, x: 70, y: 25, scale: 0.98, light: 1.12, lightFrom: 'right' }, 'row', -1, 4),
+    item: bunnies(1, 'E2PW5', { background: 'wood', rotate: -10, tiltX: 7, x: 70, y: 25, scale: 0.98, light: 1.12, lightFrom: 'right' }, 'row'),
     expect: { status: 'failed', hard: ['code_visible'], soft: [] },
   },
   {
@@ -436,7 +433,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:50:00'),
     uploadedAt: sf('12:15:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0444', time: '12:12:27', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], qr: { invoiceNumber: 'PM11120414' }, look: { background: 'steel', rotate: 3.5, tiltX: 5, tiltY: -4, x: 0, y: -10, scale: 1.01, light: 1, lightFrom: 'left' } }),
-    item: bunnies(1, 'M5XC6', { background: 'linen', rotate: 9, tiltX: 4, x: -110, y: 40, scale: 1.12, light: 1.06, lightFrom: 'right' }, 'row', 1, -8),
+    item: bunnies(1, 'M5XC6', { background: 'marble', rotate: 9, tiltX: 4, x: -110, y: 40, scale: 1.12, light: 1.06, lightFrom: 'right' }, 'row'),
     expect: { status: 'failed', hard: ['qr_matches_print'], soft: [] },
   },
   {
@@ -465,7 +462,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
       payment: 'Card **** 4821',
       look: look({ background: 'wood', rotate: 6, tiltX: 7, x: -70, y: -25, scale: 0.88, light: 0.96, lightFrom: 'top' }),
     },
-    item: { kind: 'item', itemId: 'plush-little-lantern', units: 1, code: 'A7PN3', layout: 'row', look: look({ background: 'marble', rotate: -5, tiltX: 11, x: 20, y: -30, scale: 1.06, light: 0.96, lightFrom: 'top' }), noteSide: 1, noteRotate: 2 },
+    item: { kind: 'item', itemId: 'plush-little-lantern', units: 1, code: 'A7PN3', layout: 'row', look: look({ background: 'marble', rotate: -5, tiltX: 11, x: 20, y: -30, scale: 1.06, light: 0.96, lightFrom: 'top' }) },
     expect: { status: 'failed', hard: ['qty_within_limit'], soft: [] },
   },
   {
@@ -494,7 +491,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
       payment: 'Debit card **** 0617',
       look: look({ background: 'steel', rotate: -2, tiltX: 6, x: 10, y: 0, scale: 1, light: 1.04, lightFrom: 'right' }),
     },
-    item: { kind: 'item', itemId: 'plush-little-lantern', units: 2, code: 'A9HT6', layout: 'pair', look: look({ background: 'steel', rotate: 6, tiltX: 9, x: 0, y: 10, scale: 1.05, light: 1.04, lightFrom: 'right' }), noteSide: -1, noteRotate: 5 },
+    item: { kind: 'item', itemId: 'plush-little-lantern', units: 2, code: 'A9HT6', layout: 'pair', look: look({ background: 'steel', rotate: 6, tiltX: 9, x: 0, y: 10, scale: 1.05, light: 1.04, lightFrom: 'right' }) },
     expect: { status: 'passed', hard: [], soft: [], retailCents: 5200, captureCents: 6400 },
   },
   {
@@ -526,7 +523,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
       payment: 'Card **** 4821',
       look: look({ background: 'wood', rotate: 4, tiltX: 8, x: -10, y: 10, scale: 0.99, light: 0.97, lightFrom: 'left' }),
     },
-    item: { kind: 'item', itemId: 'ramen-steam-lantern', units: 2, code: 'Y5NC3', layout: 'pair', look: look({ background: 'wood', rotate: -4, tiltX: 6, x: 30, y: 0, scale: 1, light: 0.97, lightFrom: 'left' }), noteSide: 1, noteRotate: -3 },
+    item: { kind: 'item', itemId: 'ramen-steam-lantern', units: 2, code: 'Y5NC3', layout: 'pair', look: look({ background: 'wood', rotate: -4, tiltX: 6, x: 30, y: 0, scale: 1, light: 0.97, lightFrom: 'left' }) },
     expect: { status: 'needs_review', hard: [], soft: ['item_match'], retailCents: 3800, captureCents: 4800 },
   },
   {
@@ -555,7 +552,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
       payment: 'Card **** 4821',
       look: look({ background: 'linen', rotate: -2, tiltX: 5, x: 10, y: 5, scale: 1, light: 1.02, lightFrom: 'left' }),
     },
-    item: { kind: 'item', itemId: 'cake-sugar-cloud', units: 1, code: 'P3WN7', layout: 'row', look: look({ background: 'linen', rotate: 3, tiltX: 9, x: -15, y: 10, scale: 1, light: 1.02, lightFrom: 'left' }), noteSide: 1, noteRotate: -5 },
+    item: { kind: 'item', itemId: 'cake-sugar-cloud', units: 1, code: 'P3WN7', layout: 'row', look: look({ background: 'linen', rotate: 3, tiltX: 9, x: -15, y: 10, scale: 1, light: 1.02, lightFrom: 'left' }) },
     expect: { status: 'passed', hard: [], soft: [], retailCents: 3800, captureCents: 4700 },
   },
   {
@@ -569,7 +566,7 @@ export const PURCHASE_CASES: PurchaseCase[] = [
     checkedInAt: sf('10:55:00'),
     uploadedAt: sf('12:31:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0471', time: '12:28:49', lines: [{ name: BUNNY_LINE, qty: 1, unit: BUNNY }], look: { background: 'slate', rotate: -1.5, tiltX: 5, tiltY: 6, x: -5, y: -5, scale: 1.02, light: 1.03, lightFrom: 'right' } }),
-    item: bunnies(1, 'E6WK8', { background: 'slate', rotate: 1, tiltX: 13, x: 10, y: 5, scale: 0.94, light: 1.03, lightFrom: 'right' }, 'row', -1, -6),
+    item: bunnies(1, 'E6WK8', { background: 'slate', rotate: 1, tiltX: 13, x: 10, y: 5, scale: 0.94, light: 1.03, lightFrom: 'right' }, 'row'),
     generatorMetadata: true,
     expect: { status: 'needs_review', hard: [], soft: ['generator_metadata'], retailCents: 3400, captureCents: 4600 },
   },
@@ -609,7 +606,7 @@ export const CHECK_IN_CASES: CheckInCase[] = [
   {
     kind: 'check_in',
     id: 'checkin-no-code',
-    description: 'A line photo without the check-in code: code_visible fails.',
+    description: 'A line photo that skipped the app stamp, so it has no code: code_visible fails.',
     ...PM_CHECKIN,
     claim: { id: 'claim-c18', code: 'H9TE4' },
     queuer: 'Jo',

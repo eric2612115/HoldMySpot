@@ -119,8 +119,20 @@ export function verdictStatus(checks: readonly ProofCheck[]): VerdictStatus {
 }
 
 /**
+ * The stamp the phone draws in a corner of a line photo and an item photo after it is taken, for example
+ * `K7MX4 · 10:50 · Paper Moon Toys` (D-159). The photo rules do not change: the model reads the code from
+ * the image and `code_visible` compares it, so a photo that skipped this step has no code and fails.
+ */
+export function photoStampText(code: string, hhmm: string, shopName: string): string {
+  return `${code} · ${hhmm} · ${shopName}`;
+}
+
+/** PNG text keyword on a rendered photo that already carries its stamp, so the phone does not draw a second one over it. */
+export const PHOTO_STAMP_PNG_KEY = 'HoldMySpot-Stamp';
+
+/**
  * Alphabet of one-time codes (check-in, proof): no characters that are easy
- * to confuse when handwritten or read from a photo. Same alphabet and folding
+ * to confuse when read from a photo. Same alphabet and folding
  * as server/src/ai/codes.ts.
  */
 export const ONE_TIME_CODE_ALPHABET = '23456789ACEFHJKMNPRTWXY';
@@ -268,7 +280,7 @@ export function evaluatePurchase(reading: PurchaseReading, ctx: PurchaseContext)
   const seen = normalizeCode(reading.itemPhoto.codeSeen);
   const codeOk = seen !== '' && seen === normalizeCode(job.proofCode);
   checks.push(
-    check('code_visible', 'hard', codeOk, codeOk ? 'The job code is visible next to the item.' : 'The job code was not found next to the item.'),
+    check('code_visible', 'hard', codeOk, codeOk ? 'The job code is on the item photo\'s stamp.' : 'The job code was not found on the item photo.'),
   );
 
   // shop_match (hard)

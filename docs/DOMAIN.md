@@ -34,8 +34,8 @@ Field lists are in `shared/src/contract.ts`. The points that matter:
 
 - **BidTask**: `qty` is at most the item's per-person limit. `retailCapCents` and `maxFeeCents` are per unit, `shippingBudgetCents` is per bid (0 for local errands). `limitCents = qty * (retailCap + maxFee) + shippingBudget + processing reserve` is the hold amount and the requester's own limit (`bidLimitCents`, section 7). `destination` is `{ mode: 'local', cityId }` or `{ mode: 'ship', country: 'US', region, city, postalCode }`. `pricedAt` is the time priority and resets when the max fee changes. `paypalOrderId` and `paypalAuthorizationId` are on the bid and on its hold.
 - **AskTask**: `capacity` is at most the item's per-person limit (the queuer is one person in the line). `feeCents` is the fixed fee, or the opening fee when `clock` is set. `origin: 'claim'` means the queuer took one bid directly (`targetBidId`) at that bid's max fee.
-- **Claim**: one per ask, created with it. `windowEndsAt = etaAt + arrivalGraceMinutes`. `checkInCode` is a one-time code the queuer shows in the line photo.
-- **Match and Job**: one job per match. A job has its own `proofCode` (shown next to the item in the purchase photo), its `caps` (the most it may capture for retail, fee and shipping), and in local mode a `handoverCode` the requester shows at the handover.
+- **Claim**: one per ask, created with it. `windowEndsAt = etaAt + arrivalGraceMinutes`. `checkInCode` is a one-time code the phone stamps on the line photo (D-159).
+- **Match and Job**: one job per match. A job has its own `proofCode` (stamped by the phone on the item photo, D-159), its `caps` (the most it may capture for retail, fee and shipping), and in local mode a `handoverCode` the requester shows at the handover.
 - **Hold**: superset of the web prototype's `Hold`. Tracks `authorizationId` (current) and `originalAuthorizationId`, honor period and expiry, `renewals`, `renewalRequired`.
 - **LedgerEntry**: superset of the web prototype's `Activity`. Append-only, unique `idempotencyKey`, `status` pending/succeeded/failed.
 

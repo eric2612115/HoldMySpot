@@ -677,11 +677,11 @@
         "muse/muse-spark-1.3"
       ],
       "recordedOn": [
-        "2026-11-07"
+        "2026-11-08"
       ],
-      "medianMs": 8045,
-      "medianSeconds": 8,
-      "maxMs": 11724
+      "medianMs": 8277,
+      "medianSeconds": 8.3,
+      "maxMs": 14716
     }
   },
   "ablation": {

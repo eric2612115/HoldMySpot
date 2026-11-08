@@ -1,0 +1,15 @@
+{
+  "format": 1,
+  "task": "check_in_photo",
+  "fixtureKey": "0b2b803d146e0717f8e2ba59828e1cbc746fdc3d50c0f1008f73ed05aba21f24",
+  "provider": "muse",
+  "model": "muse-spark-1.3",
+  "recordedAt": "2026-11-08T11:24:20.431Z",
+  "latencyMs": 10620,
+  "data": {
+    "codeSeen": "F2KX9",
+    "lineVisible": true,
+    "peopleAhead": 32,
+    "storefrontText": "PAPER MOON TOYS"
+  }
+}

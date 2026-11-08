@@ -23,6 +23,7 @@
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { PHOTO_STAMP_PNG_KEY, findShop } from '@holdmyspot/shared';
 import { chromium } from 'playwright-core';
 import type { Browser, Page } from 'playwright-core';
 import { SERVER_ROOT } from '../src/ai/config.ts';
@@ -33,9 +34,12 @@ import type { PurchaseExtraction, CheckInExtraction } from '../src/ai/schemas.ts
 import { ATTACK_CASES, CHECK_IN_CASES, HISTORY, PURCHASE_CASES } from './ai-fixtures/cases.ts';
 import type { AttackCase, ItemPhotoSpec, LinePhotoSpec, PhotoSpec, ReceiptSpec, Tweak } from './ai-fixtures/cases.ts';
 import { SIZES, itemHtml, lineHtml, receiptHtml } from './ai-fixtures/html.ts';
+import type { PhotoStamp } from './ai-fixtures/html.ts';
 
 const OUT = process.env.HMS_AI_PROOF_FIXTURES_DIR ?? join(SERVER_ROOT, 'fixtures', 'proofs');
 /** Cases whose photos the hero demo uploads in one run. */
+/** Every earlier upload is from Paper Moon Toys. */
+const HISTORY_SHOP = 'paper-moon-toys';
 const HERO_CASES = ['paper-moon-mia-genuine', 'paper-moon-priya-genuine', 'paper-moon-rex-fake', 'checkin-paper-moon-wei', 'checkin-paper-moon-rex'];
 
 async function launch(): Promise<Browser> {
@@ -57,10 +61,16 @@ async function shoot(page: Page, html: string, size: { width: number; height: nu
   return encodePng(decodePng(shot));
 }
 
-async function render(page: Page, spec: PhotoSpec, tweak: Tweak | null = null): Promise<Uint8Array> {
+/** The phone's stamp for a photo taken at `iso` at this shop (D-159). */
+function stampOf(shopId: string, iso: string): PhotoStamp {
+  return { hhmm: iso.slice(11, 16), shopName: findShop(shopId)!.name };
+}
+
+async function render(page: Page, spec: PhotoSpec, tweak: Tweak | null = null, stamp: PhotoStamp | null = null): Promise<Uint8Array> {
   if (spec.kind === 'receipt') return shoot(page, await receiptHtml(spec, tweak), SIZES.receipt);
-  if (spec.kind === 'item') return shoot(page, itemHtml(spec, tweak), SIZES.item);
-  return shoot(page, lineHtml(spec, tweak), SIZES.line);
+  const png = await shoot(page, spec.kind === 'item' ? itemHtml(spec, tweak, stamp) : lineHtml(spec, tweak, stamp), spec.kind === 'item' ? SIZES.item : SIZES.line);
+  // The phone recognises a stamped photo by this tag and leaves it as it is (web/src/ui/queuer/stamp.ts).
+  return spec.code && stamp ? insertPngChunks(png, [pngTextChunk(PHOTO_STAMP_PNG_KEY, spec.code)]) : png;
 }
 
 function purchaseTruth(r: ReceiptSpec, code: string, units: number): PurchaseExtraction {
@@ -156,7 +166,7 @@ async function main(): Promise<void> {
   fresh(historyDir);
   const historyPng = new Map<string, Uint8Array>();
   for (const h of HISTORY) {
-    const png = await render(page, h.spec);
+    const png = await render(page, h.spec, null, stampOf(HISTORY_SHOP, h.uploadedAt));
     historyPng.set(h.id, png);
     writeFileSync(join(historyDir, `${h.id}.png`), png);
     shots.push({ label: `_history/${h.id}`, hash: hashOf(png), recycledOf: null });
@@ -166,11 +176,11 @@ async function main(): Promise<void> {
     json(HISTORY.map((h) => ({ id: h.id, file: `${h.id}.png`, ownerId: h.ownerId, purpose: h.purpose, uploadedAt: h.uploadedAt }))),
   );
 
-  const recycled = async (from: string, code: string, tweak: Tweak): Promise<{ png: Uint8Array; units: number }> => {
+  const recycled = async (from: string, code: string, tweak: Tweak, stamp: PhotoStamp): Promise<{ png: Uint8Array; units: number }> => {
     const h = HISTORY.find((x) => x.id === from);
     if (!h) throw new Error(`No history photo ${from}.`);
     const spec = { ...h.spec, code } as ItemPhotoSpec | LinePhotoSpec;
-    const png = await render(page, spec, tweak);
+    const png = await render(page, spec, tweak, stamp);
     const d = hammingDistance(hashOf(png), hashOf(historyPng.get(from) ?? new Uint8Array()));
     if (d > DUPLICATE_DISTANCE) problems.push(`${from} re-used: ${d} bits from its source (must be at most ${DUPLICATE_DISTANCE}).`);
     return { png, units: spec.kind === 'item' ? spec.units : 0 };
@@ -188,13 +198,13 @@ async function main(): Promise<void> {
     let code: string;
     let units: number;
     if ('recycledFrom' in c.item) {
-      const r = await recycled(c.item.recycledFrom, c.item.code, c.item.tweak);
+      const r = await recycled(c.item.recycledFrom, c.item.code, c.item.tweak, stampOf(c.shopId, c.uploadedAt));
       item = r.png;
       code = c.item.code;
       units = r.units;
       shots.push({ label: `${c.id}/item`, hash: hashOf(item), recycledOf: c.item.recycledFrom });
     } else {
-      item = await render(page, c.item);
+      item = await render(page, c.item, null, stampOf(c.shopId, c.uploadedAt));
       code = c.item.code;
       units = c.item.units;
       shots.push({ label: `${c.id}/item`, hash: hashOf(item), recycledOf: null });
@@ -218,11 +228,11 @@ async function main(): Promise<void> {
     let truth: CheckInExtraction;
     if ('recycledFrom' in c.photo) {
       const src = HISTORY.find((h) => h.id === (c.photo as { recycledFrom: string }).recycledFrom)?.spec as LinePhotoSpec;
-      line = (await recycled(c.photo.recycledFrom, c.photo.code, c.photo.tweak)).png;
+      line = (await recycled(c.photo.recycledFrom, c.photo.code, c.photo.tweak, stampOf(c.shopId, c.at))).png;
       truth = lineTruth({ ...src, code: c.photo.code });
       shots.push({ label: `${c.id}/line`, hash: hashOf(line), recycledOf: c.photo.recycledFrom });
     } else {
-      line = await render(page, c.photo);
+      line = await render(page, c.photo, null, stampOf(c.shopId, c.at));
       truth = lineTruth(c.photo);
       shots.push({ label: `${c.id}/line`, hash: hashOf(line), recycledOf: null });
     }

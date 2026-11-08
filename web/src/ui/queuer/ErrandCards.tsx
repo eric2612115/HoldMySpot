@@ -5,7 +5,7 @@ import { distanceText, reachOf, travelText } from '../../domain/earning';
 import type { TaskPoint } from '../../domain/types';
 import type { MapScene } from '../../map/mapScene';
 import { usePosition } from '../../state/position';
-import { params } from '../../state/services';
+import { clock, params } from '../../state/services';
 import { useModeBanner } from '../MoneyPanel';
 import { useNow } from '../hooks';
 import { PriceStairs } from '../PriceStairs';
@@ -28,6 +28,7 @@ import {
   type Errand,
 } from './logic';
 import { PhotoField } from './PhotoField';
+import type { StampInfo } from './stamp';
 import { LINE_READINGS, RECEIPT_READINGS, SimulatedReading, useSimulatedReadings } from './SimulatedReading';
 import { queuerActions, useQueuer } from './store';
 
@@ -58,6 +59,13 @@ function JobLine({ job, point }: { job: Job; point: TaskPoint }) {
       </span>
     </div>
   );
+}
+
+/** The stamp for a photo taken now at this shop; null when the code is not known (the photo then fails its check). */
+function stampOf(code: string | null | undefined, point: TaskPoint): StampInfo | null {
+  if (!code) return null;
+  const hhmm = new Intl.DateTimeFormat('en-GB', { timeZone: point.shop.timezone, hour: '2-digit', minute: '2-digit' }).format(clock.now());
+  return { code, hhmm, shopName: point.shop.name };
 }
 
 function Code({ code, children }: { code: string | null; children: ReactNode }) {
@@ -119,11 +127,11 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
         </button>
       )}
 
-      <Code code={claim.checkInCode}>Write this one-time code on paper and hold it up in your photo of the line. It proves the photo is from this visit.</Code>
+      <Code code={claim.checkInCode}>This one-time code ties your photo to this visit. Just photograph the line: the app adds the code, the time and the shop to the photo, and it only counts if the check passes.</Code>
 
       {failed && <AiCheckCard view={lineCheckView(failed, claim)} kind="line" />}
 
-      <PhotoField name="line" label={failed ? 'A new photo of the line' : 'Photo of the line'} hint="The line and the shop front, with your code showing." file={photo} onFile={setPhoto} disabled={checking} />
+      <PhotoField name="line" label={failed ? 'A new photo of the line' : 'Photo of the line'} hint="The line and the shop front. The app stamps your code on it." file={photo} onFile={setPhoto} disabled={checking} stamp={stampOf(claim.checkInCode, point)} />
       {simulated && <SimulatedReading name="line" options={LINE_READINGS} value={reading} onChange={setReading} disabled={checking} />}
       <button
         type="button"
@@ -231,7 +239,7 @@ export function InLineCard({ errand, point }: CardProps) {
       <JobLine job={job} point={point} />
       <FeeClockCard errand={errand} point={point} />
       <Code code={job.proofCode}>
-        At the counter, pay the shop price (up to {formatUsd(job.caps.retailCents, { exact: true })} is paid back at cost). Then photograph the {point.itemShort} with this code next to it, and the receipt.
+        At the counter, pay the shop price (up to {formatUsd(job.caps.retailCents, { exact: true })} is paid back at cost). Then photograph the {point.itemShort} and the receipt. The app stamps this code on the {point.itemShort}'s photo; you write nothing.
       </Code>
       {!soldOut ? (
         <div className="q-actions">
@@ -278,7 +286,7 @@ export function ProofCard({ errand, point }: CardProps) {
         Show what you bought. {simulated ? 'The rules check' : 'The AI reads'} the store, the time, the items and the totals; fixed rules decide. PayPal charges nothing until it passes.
       </p>
       <PhotoField name="receipt" label="The receipt" hint="Flat, the whole receipt, QR included." file={receipt} onFile={setReceipt} disabled={sending} />
-      <PhotoField name="item" label={`The ${point.itemShort}`} hint={`With your code ${job.proofCode ?? ''} next to it.`} file={item} onFile={setItem} disabled={sending} />
+      <PhotoField name="item" label={`The ${point.itemShort}`} hint="Just the item. The app stamps your code on it." file={item} onFile={setItem} disabled={sending} stamp={stampOf(job.proofCode, point)} />
       {simulated && <SimulatedReading name="receipt" options={RECEIPT_READINGS} value={reading} onChange={setReading} disabled={sending} />}
       <button type="button" className="take-button" disabled={!receipt || !item || sending} onClick={() => receipt && item && void queuerActions.proof(job, receipt, item, simulated ? reading : null)}>
         {sending ? 'Sending…' : 'Send for checking'}

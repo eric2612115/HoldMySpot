@@ -177,7 +177,7 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const venmoCapture = checkEdited((t) => t.replace('captured \\$10.00 of it with', 'captured \\$10.01 of it with'));
     assert.equal(venmoCapture.code, 1, venmoCapture.out);
     assert.match(venmoCapture.out, /G4: the capture of the Venmo-funded hold as 10\.01, 41C59314FX8286919, 0\.84, 46\.00; the source says 10\.00/);
-    const gone = checkEdited((t) => t.replace(/readings of all 21 demo photos, recorded live on 2026-11-07/, 'readings of the demo photos'));
+    const gone = checkEdited((t) => t.replace(/readings of all 21 demo photos, recorded live on \d{4}-\d{2}-\d{2}/, 'readings of the demo photos'));
     assert.equal(gone.code, 1, gone.out);
     assert.match(gone.out, /no longer states live run date and photos/);
   });

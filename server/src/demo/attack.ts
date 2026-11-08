@@ -7,7 +7,7 @@
  * drawn with. None of these pairs (nor ATTACK_HANDOVER's) meet in the scripted day, where Rex
  * takes only Priya's request and Wei only Mia's.
  *
- * The wrong-code case needs no pin of its own: its sticky note shows another job's code (E2PW5),
+ * The wrong-code case needs no pin of its own: its item photo carries another job's stamp (E2PW5),
  * and Rex takes Priya's request, whose code the hero script already pins for his fake receipt.
  *
  * Data only (no imports), so the attack script can read it before anything else is loaded.
