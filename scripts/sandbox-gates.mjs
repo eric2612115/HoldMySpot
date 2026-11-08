@@ -18,6 +18,10 @@
 //   node scripts/sandbox-gates.mjs record G4 pass --note "..." [--order <id>]
 //                                                Record a gate checked by hand (Venmo, Pay Later); --order adds PayPal's
 //                                                own answer for that order (GET calls only) to the evidence.
+//   node scripts/sandbox-gates.mjs venmo --order <id> [--amount <cents>]
+//                                                G4 part 2: capture part of a Venmo-funded hold approved in the web app,
+//                                                with final_capture=true so PayPal releases the rest; read it back with
+//                                                GET calls and record G4 (D-157).
 //
 // Add --fake to run against the in-process fake PayPal (no network, no credentials); its page goes to a
 // temporary file unless --out is given, never to docs/.
@@ -53,7 +57,7 @@ const GATES = [
   ['G1', 'Capture below the held amount with final_capture=true; nothing left to capture', 'approve order B (or --auto-approve)'],
   ['G2', 'Partial capture (final_capture=false), then a final capture; a third is refused', 'approve order A (or --auto-approve)'],
   ['G3', 'Void after a partial capture', 'approve order C (or --auto-approve)'],
-  ['G4', 'Venmo AUTHORIZE with testBuyerCountry US', 'manual: approve a Venmo hold in the web app, then `record G4 <result> --order <PayPal order id>`'],
+  ['G4', 'Venmo AUTHORIZE with testBuyerCountry US', 'manual: approve a Venmo hold in the web app, then `venmo --order <PayPal order id>` (captures part of it, final)'],
   ['G5', 'Pay Later with intent AUTHORIZE (bonus)', 'manual: approve a Pay Later hold in the web app, then `record G5 <result> --order <PayPal order id>`'],
   ['G6', 'Payout by email to the payout receiver sandbox account', 'only if UNCLAIMED: accept it on sandbox.paypal.com as that account'],
   ['G7', 'Refund; then a buyer-opened dispute settled with adjudicate', 'open a dispute as the buyer (or `disputes --open-as-buyer`), then run `disputes`'],
@@ -65,7 +69,7 @@ const GATE_IDS = GATES.map((g) => g[0]);
 
 const USAGE = `HoldMySpot PayPal sandbox gates
 
-  node scripts/sandbox-gates.mjs [plan|run|reauthorize|disputes|status|lifecycle|record] [options]
+  node scripts/sandbox-gates.mjs [plan|run|reauthorize|disputes|status|lifecycle|probe|venmo|record] [options]
 
 Options:
   --fake               Use the in-process fake PayPal (no network, no credentials).
@@ -80,6 +84,9 @@ Options:
                        one payout (its own page section and fixtures folder <run>-lifecycle-local).
   --order <id>         record: read this PayPal order and its authorizations back (GET calls only), add PayPal's
                        answer to the gate's evidence and save it, sanitized, as fixtures.
+                       venmo: the Venmo-button order whose hold to capture (it must be AUTHORIZE, payment_source
+                       venmo, its authorization CREATED and nothing captured yet).
+  --amount <cents>     venmo: how much to capture, in cents (default 1000, $10.00), with final_capture=true.
   --auto-approve       run: approve every order in a headless browser as the sandbox buyer (stops at any challenge).
   --headed             With --auto-approve or --open-as-buyer: show the browser window.
   --shots <dir>        Where the buyer browser saves screenshots of a challenge (default: a temporary folder).
@@ -93,7 +100,7 @@ Options:
   --open-as-buyer      disputes: first open an "item not received" dispute on the gate's capture as the buyer.
   --settle <id>        disputes: which dispute to settle.
   --outcome <seller|buyer>  disputes: adjudicate outcome (default seller).
-  --note <text>        record: what was seen.
+  --note <text>        record: what was seen. venmo: where the hold came from (added to the gate's evidence).
   --port <n>           lifecycle: the port of the server it starts (default 8798).
   --keep               lifecycle: keep the temporary database, uploads and server log.
   --verbose            Print one line per PayPal call (with debug ids).
@@ -137,7 +144,7 @@ function secretsDirFrom(args) {
 }
 
 function emptyState() {
-  return { version: 1, app: null, gates: {}, orders: {}, datedHolds: [], payout: null, disputeTarget: null, lifecycle: null, localLifecycle: null, runs: [] };
+  return { version: 1, app: null, gates: {}, orders: {}, datedHolds: [], payout: null, disputeTarget: null, lifecycle: null, localLifecycle: null, venmoCapture: null, runs: [] };
 }
 
 function loadState(file) {
@@ -189,11 +196,17 @@ function ownerActions(state) {
   }
   for (const id of ['G4', 'G5']) {
     const g = state.gates[id];
-    if (!g || g.status === 'manual' || g.status === 'not_run') out.push(`${id}: approve a ${id === 'G4' ? 'Venmo' : 'Pay Later'} hold in the web app's sandbox mode, then \`node scripts/sandbox-gates.mjs record ${id} pass --order <PayPal order id> --note "..."\` (or fail).`);
+    if (!g || g.status === 'manual' || g.status === 'not_run') {
+      out.push(
+        id === 'G4'
+          ? "G4: approve a Venmo hold in the web app's sandbox mode, then `node scripts/sandbox-gates.mjs venmo --order <PayPal order id>` (captures part of it with final_capture=true and records G4)."
+          : 'G5: approve a Pay Later hold in the web app\'s sandbox mode, then `node scripts/sandbox-gates.mjs record G5 pass --order <PayPal order id> --note "..."` (or fail).',
+      );
+    }
   }
-  // G4 passes when a capture works too (PAYPAL-MAPPING.md section 7): a Venmo-funded hold that an errand captures.
+  // G4 passes when a capture works too (PAYPAL-MAPPING.md section 7): `venmo` captures part of the Venmo-funded hold.
   if (state.gates.G4?.status === 'partial') {
-    out.push("G4: capture a Venmo-funded hold: in the web app's sandbox mode approve Mia's plush request with the Venmo button, finish it with `npm run errand`, then `node scripts/sandbox-gates.mjs record G4 pass --order <its PayPal order id> --note \"...\"`.");
+    out.push('G4: capture the Venmo-funded hold while it is CREATED: `node scripts/sandbox-gates.mjs venmo --order <its PayPal order id>` (final_capture=true, PayPal releases the rest).');
   }
   return out;
 }
@@ -292,7 +305,14 @@ function renderDoc(state, meta) {
   lines.push('');
   lines.push('## Venmo and Pay Later (G4, G5)');
   lines.push('');
-  lines.push('These need PayPal\'s JS SDK v6 in a browser, so they run from the web app, not from this script:');
+  const vc = state.venmoCapture;
+  if (vc) {
+    lines.push(
+      `G4, ${fmtBoth(vc.at)}, run ${vc.runId}: ${vc.ok ? 'passed' : 'FAILED'}. Venmo-button order ${vc.orderId} (intent ${vc.intent}, payment_source ${vc.paymentSource}), authorization ${vc.authorizationId} ${usd(vc.heldCents)}: capture ${vc.captureId ?? '-'} of ${usd(vc.amountCents)} with final_capture=true ${vc.captureStatus ?? '-'}, PayPal's fee ${vc.feeCents === null || vc.feeCents === undefined ? 'none' : usd(vc.feeCents)} (the schedule's ${usd(vc.scheduleCents)}); authorization then ${vc.authorizationStatus ?? '-'}, ${usd(vc.releasedCents ?? 0)} released. Read back with GET calls only.`,
+    );
+    lines.push('');
+  }
+  lines.push('The approvals need PayPal\'s JS SDK v6 in a browser, so they run from the web app; `venmo --order <id>` then captures part of a Venmo-funded hold and records G4:');
   lines.push('');
   lines.push("- Load `https://www.sandbox.paypal.com/web-sdk/v6/core`, then `paypal.createInstance({ clientId, components: ['paypal-payments', 'venmo-payments'], pageType: 'checkout', testBuyerCountry: 'US' })`.");
   lines.push("- `findEligibleMethods({ currencyCode: 'USD' })`, then `isEligible('venmo')` and `isEligible('paylater')`. Show a button only when it is eligible.");
@@ -1222,6 +1242,90 @@ async function orderEvidence(port, orderId) {
   return { lines, order: o };
 }
 
+/**
+ * `venmo --order <id> [--amount <cents>]` (G4 part 2, D-157): captures part of a Venmo-funded hold that the web app
+ * approved through PayPal's Venmo button, with final_capture=true so PayPal releases the rest, then reads the
+ * authorization, the capture and the order back with GET calls only. Nothing is captured unless PayPal itself says
+ * the order is an AUTHORIZE order paid with Venmo, its authorization is CREATED and nothing was captured on it.
+ * G4 passes when the capture is COMPLETED for the amount asked and final, and the authorization reads CAPTURED;
+ * PayPal's fee on the capture is compared with the schedule PayPal-funded captures follow (evidence, not a condition).
+ */
+async function venmoGate(ctx, args, runId) {
+  const { port, state } = ctx;
+  if (!args.order) {
+    console.log('  Name the Venmo-button order: --order <PayPal order id> (approve one in the web app first).');
+    return;
+  }
+  const amountCents = Number(args.amount ?? 1_000);
+  if (!Number.isInteger(amountCents) || amountCents < 1) throw new Error('--amount takes whole cents, for example 1000 for $10.00.');
+  const order = await port.getOrder(args.order);
+  const auth0 = order.authorizations[0] ?? null;
+  const before = auth0 ? await port.getAuthorization(auth0.authorizationId) : null;
+  const refuse = (why) => {
+    console.log(`  Not captured: ${why}.`);
+    return null;
+  };
+  const problem =
+    order.intent !== 'AUTHORIZE'
+      ? `order ${order.orderId} has intent ${order.intent ?? '-'}, not AUTHORIZE`
+      : order.fundingSource !== 'venmo'
+        ? `PayPal records payment_source ${order.fundingSource ?? 'none'} on order ${order.orderId}, not venmo`
+        : !before
+          ? `order ${order.orderId} has no authorization`
+          : before.status !== 'CREATED'
+            ? `authorization ${before.authorizationId} is ${before.status}; only a CREATED hold can be captured`
+            : order.captures.length > 0
+              ? `order ${order.orderId} already has ${order.captures.length} capture(s)`
+              : amountCents > before.amountCents
+                ? `${usd(amountCents)} is more than the ${usd(before.amountCents)} hold`
+                : null;
+  if (problem) return refuse(problem);
+
+  console.log(`  Order ${order.orderId}: intent ${order.intent}, payment_source ${order.fundingSource}; authorization ${before.authorizationId} ${before.status} ${usd(before.amountCents)}.`);
+  console.log(`  Capturing ${usd(amountCents)} with final_capture=true (PayPal releases the other ${usd(before.amountCents - amountCents)}).`);
+  const record = { at: Date.now(), runId, ok: false, orderId: order.orderId, intent: order.intent, paymentSource: order.fundingSource, authorizationId: before.authorizationId, heldCents: before.amountCents, amountCents, scheduleCents: pp.captureFeeCents(amountCents) };
+  state.venmoCapture = record;
+  const c = await port.captureAuthorization(before.authorizationId, captureInput({ runId, label: 'G4' }, 'cap1', amountCents, true, 'V'));
+  record.captureId = c.captureId;
+  // PayPal's own record afterwards, GET calls only.
+  const cap = await port.getCapture(c.captureId);
+  const after = await port.getAuthorization(before.authorizationId);
+  const orderAfter = await port.getOrder(order.orderId);
+  Object.assign(record, {
+    captureStatus: cap.status,
+    final: cap.finalCapture,
+    feeCents: cap.paypalFeeCents,
+    authorizationStatus: after.status,
+    releasedCents: after.status === 'CAPTURED' ? before.amountCents - cap.amountCents : 0,
+    capturesOnOrder: orderAfter.captures.length,
+  });
+  record.ok =
+    c.status === 'COMPLETED' &&
+    cap.status === 'COMPLETED' &&
+    cap.amountCents === amountCents &&
+    cap.finalCapture === true &&
+    after.status === 'CAPTURED' &&
+    orderAfter.captures.length === 1 &&
+    orderAfter.fundingSource === 'venmo';
+  const fee = cap.paypalFeeCents === null ? 'no fee reported' : `PayPal's fee ${usd(cap.paypalFeeCents)}${cap.paypalFeeCents === record.scheduleCents ? `, the same 3.49% + $0.49 schedule as the PayPal-funded captures` : `, the schedule says ${usd(record.scheduleCents)}`}`;
+  console.log(`  Capture ${cap.captureId} ${usd(cap.amountCents)} ${cap.status}${cap.finalCapture ? ' final' : ''}, ${fee}; authorization ${after.status}; captures on the order ${orderAfter.captures.length}.`);
+  setGate(
+    state,
+    'G4',
+    record.ok ? 'pass' : 'fail',
+    (record.ok
+      ? `A Venmo-funded hold captured: ${usd(amountCents)} of ${usd(before.amountCents)} with final_capture=true, the authorization is CAPTURED and PayPal released the other ${usd(record.releasedCents)}`
+      : 'The Venmo-funded capture did not read back as planned (see evidence)') + (args.note ? `; ${args.note}` : ''),
+    [
+      `order ${order.orderId} intent ${order.intent}, payment_source ${order.fundingSource}`,
+      `authorization ${before.authorizationId} ${usd(before.amountCents)}: ${before.status}, then ${after.status}`,
+      `capture ${cap.captureId} ${usd(cap.amountCents)} ${cap.status}${cap.finalCapture ? ' final' : ''}, ${fee}`,
+      `read back ${fmtBoth(Date.now())} with GET calls only`,
+    ],
+  );
+  return record;
+}
+
 async function cmdStatus(ctx) {
   const { port, state } = ctx;
   if (state.payout?.batchId) {
@@ -1282,6 +1386,7 @@ async function main() {
         'by-hand': { type: 'boolean' },
         local: { type: 'boolean' },
         order: { type: 'string' },
+        amount: { type: 'string' },
         help: { type: 'boolean', short: 'h' },
       },
     });
@@ -1295,7 +1400,7 @@ async function main() {
     console.log(USAGE);
     return 0;
   }
-  if (!['plan', 'run', 'reauthorize', 'disputes', 'status', 'lifecycle', 'probe', 'record'].includes(command)) {
+  if (!['plan', 'run', 'reauthorize', 'disputes', 'status', 'lifecycle', 'probe', 'venmo', 'record'].includes(command)) {
     console.error(`Unknown command ${command}.\n`);
     console.log(USAGE);
     return 1;
@@ -1357,12 +1462,12 @@ async function main() {
   // `lifecycle --local` keeps its own fixtures folder and its own line in the runs table.
   const label = command === 'lifecycle' && args.local ? 'lifecycle --local' : command;
   const record =
-    ['run', 'lifecycle', 'probe', 'disputes', 'reauthorize', 'status'].includes(command) && !args['no-record'] && !args.fake
+    ['run', 'lifecycle', 'probe', 'disputes', 'reauthorize', 'status', 'venmo'].includes(command) && !args['no-record'] && !args.fake
       ? command === 'run'
         ? runId
         : `${runId}-${command}${label === 'lifecycle --local' ? '-local' : ''}`
       : null;
-  if ((command === 'lifecycle' || command === 'probe') && args.fake) {
+  if ((command === 'lifecycle' || command === 'probe' || command === 'venmo') && args.fake) {
     console.error(`${command} runs on the real sandbox only (the offline tests cover fake mode).`);
     return 1;
   }
@@ -1384,6 +1489,7 @@ async function main() {
     else if (command === 'status') await cmdStatus(ctx);
     else if (command === 'lifecycle') await cmdLifecycle(ctx, args);
     else if (command === 'probe') await cmdProbe(ctx, args, runId);
+    else if (command === 'venmo') await venmoGate(ctx, args, runId);
   } catch (e) {
     console.error(`\nStopped: ${errText(e)}`);
     state.runs.push({ runId, at: now, mode: conn.mode, command: label, note: `stopped: ${errText(e)}` });

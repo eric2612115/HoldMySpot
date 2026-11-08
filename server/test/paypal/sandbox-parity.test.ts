@@ -156,13 +156,39 @@ describe('the real sandbox, as recorded on 11-07', () => {
     assert.deepEqual([paypalFees, cents(capture.amount.value) - cents(batch.items[0]!.payout_item.amount.value) - paypalFees], [handover.processingCents, 120], "PayPal's fees equal the $2.43 processing line; HoldMySpot keeps 10% of the $12 fee");
   });
 
-  it('recorded the Venmo-button hold as Venmo-funded: an AUTHORIZE order whose payment_source is venmo, its authorization CREATED and nothing captured (gate G4, partial)', () => {
+  it('read the Venmo-button hold back before its capture: an AUTHORIZE order whose payment_source is venmo, its authorization CREATED and nothing captured (record-g4, 11-08)', () => {
     const run = '20261108-1358-record-g4';
     const order = recorded(`${run}/001-orders.get-200.json`).body as { id: string; intent: string; payment_source: Record<string, unknown>; purchase_units: { payments: { captures?: unknown[] } }[] };
     assert.deepEqual([order.id, order.intent, Object.keys(order.payment_source)], ['03979024TL691052W', 'AUTHORIZE', ['venmo']]);
     assert.equal(order.purchase_units[0]!.payments.captures?.length ?? 0, 0);
     const auth = recorded(`${run}/002-authorizations.get-200.json`).body as { id: string; status: string; amount: { value: string } };
     assert.deepEqual([auth.id, auth.status, auth.amount.value], ['7RB884471X718305E', 'CREATED', '56.00']);
+  });
+
+  it('captured $10.00 of the Venmo-funded hold with final_capture: COMPLETED at the PayPal-funded fee schedule, the authorization CAPTURED and the rest released (gate G4, venmo 20261108-1415, D-157)', () => {
+    const run = '20261108-1415-venmo';
+    const cents = (v: string) => Math.round(Number(v) * 100);
+    // Before: PayPal's own record says the order is paid with Venmo, and nothing was captured on it.
+    const order = recorded(`${run}/001-orders.get-200.json`).body as { id: string; intent: string; payment_source: Record<string, unknown>; purchase_units: { payments: { captures?: unknown[] } }[] };
+    assert.deepEqual([order.id, order.intent, Object.keys(order.payment_source), order.purchase_units[0]!.payments.captures?.length ?? 0], ['03979024TL691052W', 'AUTHORIZE', ['venmo'], 0]);
+    type Auth = { id: string; status: string; amount: { value: string } };
+    const before = recorded(`${run}/002-authorizations.get-200.json`).body as Auth;
+    const after = recorded(`${run}/005-authorizations.get-200.json`).body as Auth;
+    assert.deepEqual([before.id, before.status, before.amount.value, after.id, after.status], ['7RB884471X718305E', 'CREATED', '56.00', '7RB884471X718305E', 'CAPTURED']);
+    // The capture, as PayPal answered the POST and as a later GET reads it: final, COMPLETED, the gate's own invoice id.
+    type Capture = { id: string; status: string; final_capture: boolean; invoice_id: string; amount: { value: string }; seller_receivable_breakdown: { paypal_fee: { value: string }; net_amount: { value: string } } };
+    const posted = recorded(`${run}/003-authorizations.capture-201.json`);
+    const capture = recorded(`${run}/004-captures.get-200.json`).body as Capture;
+    assert.equal(posted.method, 'POST');
+    assert.equal((posted.body as Capture).id, capture.id);
+    assert.deepEqual([capture.id, capture.status, capture.final_capture, capture.amount.value], ['41C59314FX8286919', 'COMPLETED', true, '10.00']);
+    assert.match(capture.invoice_id, /^HMS-GATE-\d{8}-\d{4}-G4-V$/);
+    // PayPal's fee on a Venmo-funded capture is the schedule PayPal-funded captures pay (3.49% + $0.49).
+    const fee = cents(capture.seller_receivable_breakdown.paypal_fee.value);
+    assert.deepEqual([fee, cents(capture.seller_receivable_breakdown.net_amount.value)], [84, 916]);
+    assert.equal(fee, paypalCaptureFeeCents(1_000));
+    assert.equal(fee, captureFeeCents(1_000), "the emulator's fee");
+    assert.equal(cents(before.amount.value) - cents(capture.amount.value), 4_600, 'released by the final capture');
   });
 
   it('read every capture of a closed authorization as final_capture=true, although the first was sent false', () => {

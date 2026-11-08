@@ -74,7 +74,10 @@ interface Numbers {
   sandbox: {
     serverRun: Run & { matchesWorkedExample: boolean };
     localRun: Run & { matchesLocalExample: boolean };
-    venmo: { authorization: string; paypal: { paymentSource: string; authorization: { id: string; status: string } } };
+    venmo: {
+      authorization: string;
+      paypal: { paymentSource: string; authorization: { id: string; before: string; after: string; amountCents: number }; capture: { id: string; status: string; amountCents: number; final: boolean; paypalFeeCents: number }; releasedCents: number };
+    };
     gates: { pass: string[]; partial: string[]; localRun: { checks: number; matches: number } };
   };
   aiEval: { cases: number; verdicts: number; modelCalls: number };
@@ -117,9 +120,11 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     );
     assert.equal(l.matchesLocalExample, true);
     assert.deepEqual([n.sandbox.gates.localRun.matches, n.sandbox.gates.localRun.checks], [11, 11]);
-    // Gate G4 is partial: PayPal records the Venmo-button hold as Venmo-funded, and no such hold has been captured.
-    assert.deepEqual([n.sandbox.gates.partial, n.sandbox.gates.pass.includes('G4')], [['G4'], false]);
-    assert.deepEqual([n.sandbox.venmo.paypal.paymentSource, n.sandbox.venmo.paypal.authorization.id, n.sandbox.venmo.paypal.authorization.status], ['venmo', n.sandbox.venmo.authorization, 'CREATED']);
+    // Gate G4 passed (D-157): the Venmo-button hold, Venmo-funded by PayPal's own record, captured in part with final_capture.
+    assert.deepEqual([n.sandbox.gates.partial, n.sandbox.gates.pass.includes('G4')], [[], true]);
+    const v = n.sandbox.venmo.paypal;
+    assert.deepEqual([v.paymentSource, v.authorization.id, v.authorization.before, v.authorization.after], ['venmo', n.sandbox.venmo.authorization, 'CREATED', 'CAPTURED']);
+    assert.deepEqual([v.capture.id, v.capture.status, v.capture.final, v.capture.amountCents, v.capture.paypalFeeCents, v.releasedCents], ['41C59314FX8286919', 'COMPLETED', true, 1000, 84, 4600]);
     assert.equal(n.aiEval.modelCalls, 0, 'the AI numbers come from replayed recordings');
     assert.equal(n.tests.failed, 0);
     assert.equal(n.attack.violations, 0);
@@ -165,11 +170,13 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const gate = checkEdited((t) => t.replace('(G1, G2), void', '(G1, G2, G10), void'));
     assert.equal(gate.code, 1, gate.out);
     assert.match(gate.out, /README lists G10 as passed/);
-    // G4 is partial on the gates page: README may not count it as passed, nor leave it out of its Partial part.
-    const venmoPassed = checkEdited((t) => t.replace('and the app\'s scopes (G11). **Partial:** Venmo (G4):', 'the app\'s scopes (G11) and Venmo (G4). **Partial:**'));
-    assert.equal(venmoPassed.code, 1, venmoPassed.out);
-    assert.match(venmoPassed.out, /README lists G4 as passed/);
-    assert.match(venmoPassed.out, /records G4 as partial; README's gates line does not list it/);
+    // G4 passed on the gates page: README may not list it as waiting, and the capture it states is PayPal's.
+    const venmoWaiting = checkEdited((t) => t.replace('wait for 2026-11-10 (G10).', 'wait for 2026-11-10 (G10, G4).'));
+    assert.equal(venmoWaiting.code, 1, venmoWaiting.out);
+    assert.match(venmoWaiting.out, /README lists G4 as waiting/);
+    const venmoCapture = checkEdited((t) => t.replace('captured \\$10.00 of it with', 'captured \\$10.01 of it with'));
+    assert.equal(venmoCapture.code, 1, venmoCapture.out);
+    assert.match(venmoCapture.out, /G4: the capture of the Venmo-funded hold as 10\.01, 41C59314FX8286919, 0\.84, 46\.00; the source says 10\.00/);
     const gone = checkEdited((t) => t.replace(/readings of all 21 demo photos, recorded live on 2026-11-07/, 'readings of the demo photos'));
     assert.equal(gone.code, 1, gone.out);
     assert.match(gone.out, /no longer states live run date and photos/);

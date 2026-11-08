@@ -13,7 +13,7 @@
     "serverRun": "server/test/paypal/fixtures/recorded/20261107-2047-lifecycle",
     "localRun": "server/test/paypal/fixtures/recorded/20261108-1357-lifecycle-local",
     "firstRun": "server/test/paypal/fixtures/recorded/20261107-1642-lifecycle",
-    "venmoReadback": "server/test/paypal/fixtures/recorded/20261108-1358-record-g4",
+    "venmoCapture": "server/test/paypal/fixtures/recorded/20261108-1415-venmo",
     "readback": "docs/evidence/sandbox-readback-20261107.txt",
     "webRun": "docs/evidence/web-run-20261107.txt",
     "venmo": "docs/evidence/venmo-hold-20261107.txt",
@@ -22,23 +22,23 @@
   },
   "tests": {
     "steps": 6,
-    "tests": 693,
-    "passed": 693,
+    "tests": 699,
+    "passed": 699,
     "failed": 0,
     "skipped": 0,
     "byPackage": {
       "shared": 103,
-      "server": 438,
+      "server": 444,
       "web": 132,
       "ops": 20
     },
-    "seconds": 77.1,
+    "seconds": 76.9,
     "aboutSeconds": 80,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "2b84dde",
+    "commit": "95e190f",
     "recordedOn": "2026-11-08",
     "properties": {
       "tests": 19,
@@ -484,35 +484,45 @@
       "holdStatus": "held",
       "takenAt": "2026-11-07 08:36 UTC",
       "paypal": {
-        "fixtures": "server/test/paypal/fixtures/recorded/20261108-1358-record-g4",
+        "fixtures": "server/test/paypal/fixtures/recorded/20261108-1415-venmo",
+        "run": "20261108-1415",
         "order": "03979024TL691052W",
         "intent": "AUTHORIZE",
         "paymentSource": "venmo",
+        "capturedBefore": 0,
         "authorization": {
           "id": "7RB884471X718305E",
-          "status": "CREATED",
-          "amountCents": 5600
+          "amountCents": 5600,
+          "before": "CREATED",
+          "after": "CAPTURED"
         },
-        "captures": 0
+        "capture": {
+          "id": "41C59314FX8286919",
+          "status": "COMPLETED",
+          "amountCents": 1000,
+          "final": true,
+          "paypalFeeCents": 84,
+          "at": "2026-11-08T06:15:40Z"
+        },
+        "releasedCents": 4600
       }
     },
     "gates": {
       "page": "docs/SANDBOX-GATES.md",
-      "lastUpdate": "2026-11-08 13:58 Taipei",
+      "lastUpdate": "2026-11-08 14:15 Taipei",
       "pass": [
         "G0",
         "G1",
         "G2",
         "G3",
+        "G4",
         "G6",
         "G7",
         "G8",
         "G9",
         "G11"
       ],
-      "partial": [
-        "G4"
-      ],
+      "partial": [],
       "waiting": [
         "G10"
       ],
@@ -1068,9 +1078,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-08",
-    "attackSeconds": 11.3,
+    "attackSeconds": 11,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 5.9,
+    "aiEvalSeconds": 5.7,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1083,75 +1093,75 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-08 06:08",
-      "commit": "2b84dde",
+      "at": "2026-11-08 06:20",
+      "commit": "95e190f",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d1d4e15059d1",
-        "server": "6e4e99431eb6",
+        "server": "0c94ca884d5b",
         "web": "7872fc7c7250",
         "ops": "294dd17095a7",
-        "scripts": "e51fb1dd8d0f"
+        "scripts": "e3831f06a9c0"
       }
     },
     {
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-08 06:07",
-      "commit": "2b84dde",
+      "at": "2026-11-08 06:19",
+      "commit": "95e190f",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d1d4e15059d1",
-        "server": "6e4e99431eb6",
+        "server": "0c94ca884d5b",
         "web": "7872fc7c7250",
         "ops": "294dd17095a7",
-        "scripts": "e51fb1dd8d0f"
+        "scripts": "e3831f06a9c0"
       }
     },
     {
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-08 06:07",
-      "commit": "2b84dde",
+      "at": "2026-11-08 06:19",
+      "commit": "95e190f",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d1d4e15059d1",
-        "server": "6e4e99431eb6",
+        "server": "0c94ca884d5b",
         "web": "7872fc7c7250",
         "ops": "294dd17095a7",
-        "scripts": "e51fb1dd8d0f"
+        "scripts": "e3831f06a9c0"
       }
     },
     {
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-08 06:08",
-      "commit": "2b84dde",
+      "at": "2026-11-08 06:19",
+      "commit": "95e190f",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d1d4e15059d1",
-        "server": "6e4e99431eb6",
+        "server": "0c94ca884d5b",
         "web": "7872fc7c7250",
         "ops": "294dd17095a7",
-        "scripts": "e51fb1dd8d0f"
+        "scripts": "e3831f06a9c0"
       }
     },
     {
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-08 06:07",
-      "commit": "2b84dde",
+      "at": "2026-11-08 06:19",
+      "commit": "95e190f",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d1d4e15059d1",
-        "server": "6e4e99431eb6",
+        "server": "0c94ca884d5b",
         "web": "7872fc7c7250",
         "ops": "294dd17095a7",
-        "scripts": "e51fb1dd8d0f"
+        "scripts": "e3831f06a9c0"
       }
     }
   ]

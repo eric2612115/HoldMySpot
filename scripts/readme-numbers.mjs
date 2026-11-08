@@ -16,7 +16,7 @@
 // docs/evidence/smoke.json (written by --record around npm run demo -- --smoke), docs/evidence/ablation.json
 // (npm run ablation), docs/SANDBOX-GATES.md and PayPal's recorded answers in
 // server/test/paypal/fixtures/recorded/ (written by scripts/sandbox-gates.mjs: both lifecycle runs, the shipped
-// hero errand and the local pickup errand, and PayPal's read-back of the Venmo-button hold for gate G4), the logs
+// hero errand and the local pickup errand, and gate G4's capture of the Venmo-button hold), the logs
 // of the 11-07 sandbox runs in docs/evidence/ (PayPal's GET-only read-back of both hero errands, the web app walk,
 // the Venmo check), the recorded model answers in server/fixtures/ai/, and the worked examples computed by the
 // shared money rules (shared/src/money.ts).
@@ -63,7 +63,7 @@ const SRC = {
   serverRun: 'server/test/paypal/fixtures/recorded/20261107-2047-lifecycle',
   localRun: 'server/test/paypal/fixtures/recorded/20261108-1357-lifecycle-local',
   firstRun: 'server/test/paypal/fixtures/recorded/20261107-1642-lifecycle',
-  venmoReadback: 'server/test/paypal/fixtures/recorded/20261108-1358-record-g4',
+  venmoCapture: 'server/test/paypal/fixtures/recorded/20261108-1415-venmo',
   readback: 'docs/evidence/sandbox-readback-20261107.txt',
   webRun: 'docs/evidence/web-run-20261107.txt',
   venmo: 'docs/evidence/venmo-hold-20261107.txt',
@@ -347,20 +347,29 @@ function deriveVenmo(text) {
   return { authorization: rec.authorization, order: rec.order, amountCents: rec.amount, button: rec.funding, holdStatus: rec.holdStatus, takenAt: /^# The web app's Venmo check on the real PayPal sandbox, (\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC)/m.exec(text)?.[1] ?? null };
 }
 
-/** PayPal's own answer for the Venmo-button hold (`record G4 ... --order`, GET calls only): payment source and status. */
-function deriveVenmoReadback(dir) {
+/**
+ * Gate G4 (`venmo --order`, D-157): PayPal's answers before and after the capture of the Venmo-button hold. The
+ * order's payment source, the authorization before (CREATED) and after (CAPTURED), and the capture as PayPal reads it.
+ */
+function deriveVenmoCapture(dir) {
   const fx = readFixtures(dir);
   const order = fx.find((f) => f.op === 'orders.get')?.body;
-  const auth = fx.find((f) => f.op === 'authorizations.get')?.body;
-  if (!order || !auth) throw new Stale(`${dir} has no order or authorization answer.`);
-  const captures = order.purchase_units?.[0]?.payments?.captures ?? [];
+  const auths = fx.filter((f) => f.op === 'authorizations.get').map((f) => f.body);
+  const capture = fx.filter((f) => f.op === 'captures.get').map((f) => f.body).at(-1);
+  if (!order || auths.length < 2 || !capture) throw new Stale(`${dir} has no order, no authorization before and after, or no capture answer.`);
+  const [before, after] = [auths[0], auths.at(-1)];
+  const held = toCents(before.amount.value);
+  const captured = toCents(capture.amount.value);
   return {
     fixtures: dir,
+    run: path.basename(dir).replace(/-[a-z-]+$/, ''),
     order: order.id,
     intent: order.intent,
     paymentSource: Object.keys(order.payment_source ?? {})[0] ?? null,
-    authorization: { id: auth.id, status: auth.status, amountCents: toCents(auth.amount.value) },
-    captures: captures.length,
+    capturedBefore: (order.purchase_units?.[0]?.payments?.captures ?? []).length,
+    authorization: { id: before.id, amountCents: held, before: before.status, after: after.status },
+    capture: { id: capture.id, status: capture.status, amountCents: captured, final: capture.final_capture, paypalFeeCents: toCents(capture.seller_receivable_breakdown.paypal_fee.value), at: capture.create_time },
+    releasedCents: after.status === 'CAPTURED' ? held - captured : 0,
   };
 }
 
@@ -557,7 +566,7 @@ async function derive() {
   const readback = deriveReadback(readText(SRC.readback));
   const walk = deriveWalk(readText(SRC.webRun));
   const venmo = deriveVenmo(readText(SRC.venmo));
-  const venmoPayPal = deriveVenmoReadback(SRC.venmoReadback);
+  const venmoPayPal = deriveVenmoCapture(SRC.venmoCapture);
   const gates = deriveGates(readText(SRC.gates), serverRun, localRun);
   const answers = deriveAnswers(SRC.aiAnswers);
   const aiEval = deriveAiEval(readJson(SRC.aiEval, 'run npm run numbers -- --record'), answers);
@@ -615,9 +624,23 @@ async function derive() {
     if (!gates.localRun.ids.includes(id)) throw new Stale(`${SRC.gates}'s local errand section does not name ${id} from ${SRC.localRun}.`);
   }
 
-  // Gate G4: PayPal's own answer for the Venmo-button hold must be the hold the web app's check made.
+  // Gate G4: the hold the gate captured must be the one the web app's check approved through the Venmo button, paid
+  // with Venmo by PayPal's own record; one final capture, the authorization closed, and PayPal's fee on the schedule
+  // every PayPal-funded capture paid (README says so).
   const sameVenmo = venmoPayPal.order === venmo.order && venmoPayPal.authorization.id === venmo.authorization && venmoPayPal.authorization.amountCents === venmo.amountCents;
-  if (!sameVenmo) throw new Stale(`${SRC.venmoReadback} (PayPal) and ${SRC.venmo} (the web app's check) name different holds.`);
+  if (!sameVenmo) throw new Stale(`${SRC.venmoCapture} (PayPal) and ${SRC.venmo} (the web app's check) name different holds.`);
+  const m = await import(pathToFileURL(rel(SRC.rules)).href);
+  const venmoOk =
+    venmoPayPal.intent === 'AUTHORIZE' &&
+    venmoPayPal.paymentSource === 'venmo' &&
+    venmoPayPal.capturedBefore === 0 &&
+    venmoPayPal.authorization.before === 'CREATED' &&
+    venmoPayPal.authorization.after === 'CAPTURED' &&
+    venmoPayPal.capture.status === 'COMPLETED' &&
+    venmoPayPal.capture.final === true &&
+    venmoPayPal.capture.paypalFeeCents === m.paypalCaptureFeeCents(venmoPayPal.capture.amountCents);
+  if (!venmoOk) throw new Stale(`${SRC.venmoCapture} is not a Venmo-funded hold captured once, finally, at the schedule's fee.`);
+  if (!gates.pass.includes('G4')) throw new Stale(`${SRC.gates} does not record G4 as passed although ${SRC.venmoCapture} holds its capture.`);
 
   // Two reads of the server run from PayPal (the gate script's fixtures, the later GET-only read-back) must agree.
   const again = readback.runs[serverRun.run];
@@ -908,11 +931,12 @@ function proseChecks(n) {
       required: true,
     },
     { name: 'the Venmo-button hold', re: new RegExp(`approved a ${$}${amt} hold through PayPal's Venmo button \\(authorization \`(\\w+)\``, 'g'), want: [d(n.sandbox.venmo.amountCents), n.sandbox.venmo.authorization], required: true },
-    // Gate G4: PayPal's own answer for that hold (the record G4 --order fixtures)
+    // Gate G4: PayPal's own record of that hold and the gate's capture of it (the venmo fixtures)
+    { name: 'G4: the payment source PayPal records', re: /PayPal's own order records `payment_source` `(\w+)`/g, want: [n.sandbox.venmo.paypal.paymentSource], required: true },
     {
-      name: "G4: PayPal's answer for the Venmo-button hold",
-      re: /PayPal's own order records `payment_source` `(\w+)` with the authorization `(\w+)`/g,
-      want: [n.sandbox.venmo.paypal.paymentSource, n.sandbox.venmo.paypal.authorization.status],
+      name: 'G4: the capture of the Venmo-funded hold',
+      re: new RegExp(`captured ${$}${amt} of it with \`final_capture\` \\(capture \`(\\w+)\`, PayPal's fee ${$}${amt}, the same 3\\.49% \\+ ${$}0\\.49 as PayPal-funded captures\\), so PayPal released the other ${$}${amt}`, 'g'),
+      want: [d(n.sandbox.venmo.paypal.capture.amountCents), n.sandbox.venmo.paypal.capture.id, d(n.sandbox.venmo.paypal.capture.paypalFeeCents), d(n.sandbox.venmo.paypal.releasedCents)],
       required: true,
     },
     // The local pickup errand on the sandbox (fixtures of lifecycle --local; the gates page's checks)
@@ -964,6 +988,7 @@ function anchors(n) {
     ['web app run tracking', `\`${web.tracking.number}\``],
     ...web.payouts.map((p) => [`web app run ${p.purpose} payout batch`, `\`${p.batch}\``]),
     ['Venmo-button hold', `\`${n.sandbox.venmo.authorization}\``],
+    ['Venmo-funded capture (G4)', `\`${n.sandbox.venmo.paypal.capture.id}\``],
     ['server run id', `\`${run.run}\``],
     ['server run order', `\`${run.order}\``],
     ['server run authorization', `\`${run.authorization.id}\``],
