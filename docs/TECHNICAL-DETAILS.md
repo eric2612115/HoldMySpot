@@ -254,7 +254,7 @@ Every row is written by `npm run numbers` (`scripts/readme-numbers.mjs`) from th
 <!-- numbers:evidence:start -->
 | Claim | Result | Run it | Log or fixture |
 |---|---|---|---|
-| The tests pass with no keys, calling neither PayPal nor a model | 731 tests in 6 steps: 731 passed, 0 failed (shared 103, server 463, web 138, ops 27); on macOS (arm64), Node 24.22.2, npm 11.19.1, 2026-11-08 | `npm test` | [tests.json](evidence/tests.json) |
+| The tests pass with no keys, calling neither PayPal nor a model | 752 tests in 6 steps: 752 passed, 0 failed (shared 103, server 484, web 138, ops 27); on macOS (arm64), Node 24.22.2, npm 11.19.1, 2026-11-08 | `npm test` | [tests.json](evidence/tests.json) |
 | The money and market rules hold on generated cases (P1 to P8) | 19 property tests, 31,680 generated cases in every `npm test` (fixed seed; each test's name gives its runs): 29,500 cases of the shared rules, 2,000 rescheduler mornings on the ops console's replay model, and 180 generated market days on the server with the PayPal emulator (P5 plays each of its 60 days twice, with and without PayPal failures). The 120 days of P1-P4 P6 P7 reached 220 passed check-ins, 214 matches (37 below the opening fee), 32 completed jobs, 25 receipts failing a hard check, 21 PayPal failures injected, 118 server restarts and 6 reassignments | `npm test` | [tests.json](evidence/tests.json) |
 | PayPal's sandbox charged what the rules say | Run `20261107-2047`: held \$63.70, captured \$48.69 + \$9.57, released \$5.44, paid out \$10.80 + \$42.75; PayPal's fees \$2.19 + \$0.82 + 2 x \$0.25 = \$3.51, the processing line; HoldMySpot kept \$1.20; 10 of 10 read-back checks match; the same amounts as the worked example in `shared/src/money.ts` | `npm run gates -- lifecycle` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md#full-job-through-the-server-sandbox), [PayPal's answers](../server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/) |
 | The web app run on PayPal's sandbox read back the same | PayPal on 2026-11-07 13:33 UTC: authorization `88232929HR885933A` \$63.70 CAPTURED; captures \$48.69 + \$9.57 COMPLETED (PayPal's fees \$2.19 + \$0.82); released \$5.44; payouts \$10.80 + \$42.75 SUCCESS; tracking SHIPPED; HoldMySpot kept \$1.20. The walk's own checks of the server's ledger: 9/9, the same ids and amounts | `web/scripts/sandbox-walk.mjs` (your sandbox keys, a second sandbox buyer) | [web-run-20261107.txt](evidence/web-run-20261107.txt), [sandbox-readback-20261107.txt](evidence/sandbox-readback-20261107.txt) |
@@ -443,7 +443,7 @@ Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run dem
 
 <!-- numbers:tests:start -->
 ```sh
-npm test              # shared, server, web and ops: type checks and 731 tests, ends with "All green: 6 steps"
+npm test              # shared, server, web and ops: type checks and 752 tests, ends with "All green: 6 steps"
 npm test -- --quick   # the same without the generated server days and the attack, for a short check
 npm test -- --build   # also the web and ops production builds
 ```

@@ -33,7 +33,7 @@
 | Sandbox gates | pass: G0, G1, G2, G3, G4, G6, G7, G8, G9, G11; waiting: G10; not run: G5 | [gates](docs/SANDBOX-GATES.md) |
 | AI reads, rules decide (21 demo photos) | 21/21 verdicts, 21/21 exact failed-check sets, 8/8 money, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |
 | `npm run attack`, no keys | 23 attempts: 18 refused with \$0.00 moved; rows 7 and 22 sent to a person, \$0.00 until they decide; row 1 moved exactly the genuine receipt's amount; row 12 paid shipping as declared, up to the budget; row 23 is the known limit | [attack.json](docs/evidence/attack.json) |
-| `npm test`, no keys | 731 tests, 0 failed; 19 property tests, 31,680 generated cases | [tests.json](docs/evidence/tests.json) |
+| `npm test`, no keys | 752 tests, 0 failed; 19 property tests, 31,680 generated cases | [tests.json](docs/evidence/tests.json) |
 <!-- numbers:front-proof:end -->
 
 These numbers are generated from the logs, and `npm test` fails if this page disagrees with them.
