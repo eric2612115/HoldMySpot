@@ -101,7 +101,7 @@ export function testSettings(overrides: Partial<SandboxSettings> = {}): SandboxS
     merchantEmail: 'merchant@business.example.com',
     merchantId: 'MERCHANT123ABC',
     buyerEmail: 'buyer@personal.example.com',
-    twPayoutEmail: 'queuer-payouts@personal.example.com',
+    payoutReceiverEmail: 'queuer-payouts@personal.example.com',
     webhookId: null,
     ...overrides,
   };

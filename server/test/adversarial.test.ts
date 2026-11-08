@@ -497,3 +497,95 @@ describe('adversarial: a declined charge never completes the work', () => {
     }
   });
 });
+
+describe('adversarial: a request opens only on money PayPal says it holds (D-150)', () => {
+  const request = (s: TestServer) =>
+    s.app.exec(async () => {
+      const created = await createBid(s.app, persona(s.app, 'mia'), {
+        shopId: SHOP.id,
+        itemId: ITEM,
+        qty: 1,
+        retailCapCents: 2800,
+        maxFeeCents: 1200,
+        shippingBudgetCents: 3500,
+        destination: NY_SHIP,
+        deadlineAt: s.app.now() + 2 * DAY,
+        funding: 'paypal',
+        agent: null,
+      });
+      await s.app.fakePayPal.approveOrder(created.checkout.orderId, 'paypal', 'approve');
+      return created;
+    });
+  const authorize = (s: TestServer, created: Awaited<ReturnType<typeof request>>) =>
+    s.app.exec(() => authorizeBid(s.app, { userId: 'mia', ops: false }, created.bid.id, created.checkout.orderId)).catch((e: unknown) => e);
+
+  it('keeps a PENDING authorization out of the book, then opens the request once PayPal holds it', async () => {
+    const s = await testServer({ env: { HMS_FAKE_FAIL: 'authorize:pending' } });
+    try {
+      // A queuer is already offering at Mia's fee: a request that opened on a PENDING authorization would match at once.
+      await postAsk(s.app, 'wei', { capacity: 1, feeCents: 1100, etaInMin: 10 });
+      const created = await request(s);
+      assert.equal(code(await authorize(s, created)), 'PAYPAL_UNAVAILABLE');
+      const entry = s.app.store.ledger.first("bid_id = ? AND kind = 'held'", created.bid.id)!;
+      assert.equal(entry.status, 'pending', 'not money yet');
+      assert.ok(entry.paypal?.authorizationId);
+      assert.equal(s.app.store.bids.must(created.bid.id).status, 'awaiting_approval');
+      assert.equal(s.app.store.holds.must(created.bid.holdId!).status, 'pending_approval');
+      assert.equal(s.app.store.jobs.where('bid_id = ?', created.bid.id).length, 0, 'no queuer is sent to pay at the counter');
+
+      // The sweep reads the same authorization again (no second authorize call) while PayPal still reviews it.
+      await s.app.exec(() => recoverPending(s.app));
+      assert.equal(s.app.store.ledger.must(entry.id).status, 'pending');
+      assert.equal(s.app.store.bids.must(created.bid.id).status, 'awaiting_approval');
+
+      assert.ok(s.app.fakePayPal.settlePendingAuthorization(entry.paypal!.authorizationId!, 'CREATED'));
+      await s.app.exec(() => recoverPending(s.app));
+      await s.app.idle();
+      assert.equal(s.app.store.ledger.must(entry.id).status, 'succeeded');
+      assert.equal(s.app.store.holds.must(created.bid.holdId!).status, 'held');
+      assert.notEqual(s.app.store.bids.must(created.bid.id).status, 'awaiting_approval');
+      assert.equal(s.app.store.jobs.where('bid_id = ?', created.bid.id).length, 1, 'now it matches');
+    } finally {
+      await s.done();
+    }
+  });
+
+  it('fails the request when PayPal answers DENIED, and when a PENDING one is denied later', async () => {
+    const s = await testServer({ env: { HMS_FAKE_FAIL: 'authorize:denied,authorize:pending' } });
+    try {
+      const denied = await request(s);
+      assert.equal(code(await authorize(s, denied)), 'PAYPAL_DECLINED');
+      assert.deepEqual([s.app.store.bids.must(denied.bid.id).status, s.app.store.holds.must(denied.bid.holdId!).status], ['failed', 'failed']);
+      assert.equal(s.app.store.ledger.first("bid_id = ? AND kind = 'held'", denied.bid.id)!.status, 'failed');
+
+      const later = await request(s);
+      assert.equal(code(await authorize(s, later)), 'PAYPAL_UNAVAILABLE');
+      const entry = s.app.store.ledger.first("bid_id = ? AND kind = 'held'", later.bid.id)!;
+      s.app.fakePayPal.settlePendingAuthorization(entry.paypal!.authorizationId!, 'DENIED');
+      await s.app.exec(() => recoverPending(s.app));
+      assert.equal(s.app.store.ledger.must(entry.id).status, 'failed');
+      assert.deepEqual([s.app.store.bids.must(later.bid.id).status, s.app.store.holds.must(later.bid.holdId!).status], ['failed', 'failed']);
+      assert.equal(s.app.store.ledger.where("kind = 'captured'").length, 0);
+    } finally {
+      await s.done();
+    }
+  });
+
+  it('voids an authorization for another amount than the hold and never opens the request on it', async () => {
+    const s = await testServer();
+    try {
+      const fake = s.app.fakePayPal as unknown as Record<string, (...args: unknown[]) => Promise<{ amountCents: number }>>;
+      const real = fake.authorizeOrder!.bind(s.app.fakePayPal);
+      fake.authorizeOrder = async (...args: unknown[]) => ({ ...(await real(...args)), amountCents: 100 });
+      const created = await request(s);
+      assert.equal(code(await authorize(s, created)), 'PAYPAL_DECLINED');
+      await s.app.idle();
+      assert.deepEqual([s.app.store.bids.must(created.bid.id).status, s.app.store.holds.must(created.bid.holdId!).status], ['failed', 'failed']);
+      const auth = s.app.store.ledger.first("bid_id = ? AND kind = 'held'", created.bid.id)!;
+      assert.equal(auth.status, 'failed');
+      assert.equal(s.app.fakePayPal.inspectAuthorization(auth.paypal!.authorizationId!)?.status, 'VOIDED', 'PayPal releases it at once');
+    } finally {
+      await s.done();
+    }
+  });
+});

@@ -49,6 +49,7 @@ const WRONG: Record<ProofCheckCode, string> = {
   totals_add_up: 'the lines do not add up to the total',
   qr_matches_print: 'the print was edited (the QR disagrees)',
   within_retail_cap: 'the price is above the cap',
+  listed_price: 'the price is above the listed shop price',
   duplicate_photo: 'a recycled photo',
   generator_metadata: 'image-generator metadata in the file',
 };

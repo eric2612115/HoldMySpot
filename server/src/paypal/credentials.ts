@@ -72,7 +72,7 @@ export function loadSandboxEnvFile(opts: { dir?: string; fileName?: string } = {
     merchantEmail: get('PAYPAL_MERCHANT_EMAIL'),
     merchantId: get('PAYPAL_MERCHANT_ID'),
     buyerEmail: get('PAYPAL_BUYER_EMAIL'),
-    twPayoutEmail: get('PAYPAL_PAYOUT_EMAIL'),
+    payoutReceiverEmail: get('PAYPAL_PAYOUT_EMAIL'),
     webhookId: get('PAYPAL_WEBHOOK_ID') || null,
   } as SandboxSettings;
   Object.defineProperty(settings, 'clientSecret', { value: get('PAYPAL_CLIENT_SECRET'), enumerable: false, writable: false });

@@ -73,7 +73,11 @@ export interface CheckInContext {
 
 export interface PurchaseContext {
   shop: Pick<Shop, 'name' | 'timezone' | 'hours' | 'receipt'>;
-  item: Pick<Item, 'receiptAliases' | 'perPersonLimit'>;
+  /**
+   * `retail` and `retailCents` are the item's listed shop price (the price the app shows the requester); when
+   * neither is given, the item has no listed price and only the requester's cap applies (D-151).
+   */
+  item: Pick<Item, 'receiptAliases' | 'perPersonLimit'> & Partial<Pick<Item, 'retail' | 'retailCents'>>;
   job: { qty: number; proofCode: string; retailCapCents: Cents; twdPerUsd: number | null };
   /** When the queuer's claim checked in. */
   checkedInAt: MarketMs | null;
@@ -98,6 +102,7 @@ const CHECK_LABELS: Record<ProofCheckCode, string> = {
   totals_add_up: 'totals',
   qr_matches_print: 'QR versus print',
   within_retail_cap: 'retail cap',
+  listed_price: 'listed price',
   duplicate_photo: 'recycled photo',
   generator_metadata: 'image metadata',
 };
@@ -406,6 +411,30 @@ export function evaluatePurchase(reading: PurchaseReading, ctx: PurchaseContext)
           : capOk
             ? 'Retail is within the cap.'
             : 'Retail is above the cap; only the cap can be charged.',
+    ),
+  );
+
+  // listed_price (soft, D-151). The receipt QR is plain text, so a receipt reprinted at a higher price can agree
+  // with itself; a price above the item's listed shop price goes to a person even when it is within the requester's
+  // cap. Compared in the receipt's own currency when the listing has one, so a locked exchange rate cannot move it.
+  // Above the cap, or with no amount, within_retail_cap already sends the receipt to a person.
+  const listedLocal = item.retail && currency === item.retail.currency ? job.qty * item.retail.minor : null;
+  const listedUsd = typeof item.retailCents === 'number' ? job.qty * item.retailCents : null;
+  const listedText = listedUsd !== null ? `$${(listedUsd / 100).toFixed(2)}` : null;
+  const aboveListed =
+    capOk && (listedLocal !== null ? itemMinor !== null && itemMinor > listedLocal : listedUsd !== null && retailCents !== null && retailCents > listedUsd);
+  checks.push(
+    check(
+      'listed_price',
+      'soft',
+      !aboveListed,
+      aboveListed
+        ? `The price is above the listed shop price${listedText ? ` (${listedText})` : ''}; a person checks it before anything is charged.`
+        : listedLocal === null && listedUsd === null
+          ? 'The item has no listed price; only the cap applies.'
+          : capOk
+            ? 'The price is at or under the listed shop price.'
+            : 'See the cap check.',
     ),
   );
 

@@ -669,7 +669,7 @@ export const ATTACK_CASES: AttackCase[] = [
     id: 'reprint-at-cap',
     folder: '_reprint-at-cap',
     description:
-      "Known limit: Wei's real receipt for Mia's plush ($34.00), reprinted at her $36.00 cap with a receipt QR regenerated to match. Every check passes, and the capture uses the reprinted price, never more than the cap.",
+      "Wei's real receipt for Mia's plush ($34.00), reprinted at her $36.00 cap with a receipt QR regenerated to match. It agrees with itself and stays under the cap, but the price is above the plush's listed $34.00, so it goes to a person (listed_price, D-151) and nothing is captured unless they pass it.",
     ...PM,
     job: shipJob('job-mia', 'K7MX4', 1200),
     queuer: 'Wei',
@@ -678,6 +678,6 @@ export const ATTACK_CASES: AttackCase[] = [
     uploadedAt: sf('11:42:00'),
     receipt: moonReceipt({ invoice: 'PM-1112-0412', time: '11:41:07', lines: [{ name: BUNNY_LINE, qty: 1, unit: 3600 }], look: { background: 'wood', rotate: -2.5, tiltX: 7, x: -10, y: 5, scale: 1, light: 1, lightFrom: 'left' } }),
     item: { sameAs: 'paper-moon-mia-genuine', code: 'K7MX4', units: 1 },
-    expect: { status: 'passed', hard: [], soft: [], retailCents: 3600, captureCents: 4800 },
+    expect: { status: 'needs_review', hard: [], soft: ['listed_price'], retailCents: 3600, captureCents: 4800 },
   },
 ];

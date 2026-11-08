@@ -21,7 +21,7 @@ const DESCRIPTIONS: Partial<Record<OpsDatasetName, string>> = {
   jobs: 'One job per match: the queuer, the requester, the stage and what the queuer earns (fee minus the 10% platform fee).',
   holds: 'PayPal holds behind the requests: held, captured, released and still held, in US dollars.',
   ledger: 'Every money event: held, captured, released, paid out, renewed, refunded; its amount, status (succeeded, pending, failed), whose money, the PayPal object and its id, and one plain sentence. events is 1 per row (sum it to count events).',
-  payouts: 'PayPal Payouts to queuers: the queue fee after the platform fee, and shop price plus shipping at cost.',
+  payouts: 'PayPal Payouts to queuers: the queue fee after the platform fee, and the shop price plus the declared shipping.',
 };
 
 /** What the grid's cell renderers draw for a field (src/market/widgets/cells.ts); Studio carries it, never reads it. */

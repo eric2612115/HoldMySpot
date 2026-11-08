@@ -281,7 +281,7 @@ export interface ShippingCapture extends Processing {
   clamped: boolean;
 }
 
-/** Capture after tracking: shipping and prepaid duty at cost, up to the job's shipping cap, plus its own PayPal fee at cost. */
+/** Capture after tracking: shipping and prepaid duty as the queuer declares them, up to the job's shipping cap, plus its own PayPal fee at cost. */
 export function shippingCapture(caps: Pick<JobCaps, 'shippingCents'>, shippingCostCents: Cents, dutyPaidCents: Cents): ShippingCapture {
   assertWholeCents(shippingCostCents, 'The shipping cost', { allowZero: true });
   assertWholeCents(dutyPaidCents, 'The duty paid', { allowZero: true });
@@ -365,7 +365,7 @@ export interface PayoutPart {
  * - ship mode, receipt capture: the fee minus the platform fee (the labour is done).
  * - ship mode, shipping capture: retail plus shipping (the item is on its way).
  * - local mode, handover capture: everything at once.
- * Retail and shipping are pass-through at cost; the platform fee applies to the fee only.
+ * Retail (from the receipt) and shipping (as declared) pass through with no markup; the platform fee applies to the fee only.
  * Processing is never paid out: it stays to pay PayPal's capture and Payouts fees.
  */
 export function payoutsForCapture(

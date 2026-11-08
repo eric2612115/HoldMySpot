@@ -11,7 +11,7 @@ import { chipValue } from './stage';
 export const STATE_WORDS: Record<LedgerKind, { label: string; plain: string }> = {
   held: { label: 'Held', plain: 'PayPal holds it on your account. Not charged yet.' },
   renewed: { label: 'Renewed', plain: 'A hold PayPal renewed after 3 days, same amount.' },
-  captured: { label: 'Captured', plain: 'Charged: the receipt price and fee, or shipping, plus processing at cost. It lands in HoldMySpot’s PayPal balance.' },
+  captured: { label: 'Captured', plain: 'Charged: the receipt price and fee, or the shipping the queuer declared (up to your budget), plus processing at cost. It lands in HoldMySpot’s PayPal balance.' },
   released: { label: 'Released', plain: 'Back to you: the part of a hold you did not need.' },
   paid_out: { label: 'Paid out', plain: 'Sent from HoldMySpot’s PayPal balance to the queuer by PayPal Payouts.' },
   refunded: { label: 'Refunded', plain: 'Returned to you after a capture.' },

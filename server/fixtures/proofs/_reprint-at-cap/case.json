@@ -1,7 +1,7 @@
 {
   "kind": "purchase",
   "id": "reprint-at-cap",
-  "description": "Known limit: Wei's real receipt for Mia's plush ($34.00), reprinted at her $36.00 cap with a receipt QR regenerated to match. Every check passes, and the capture uses the reprinted price, never more than the cap.",
+  "description": "Wei's real receipt for Mia's plush ($34.00), reprinted at her $36.00 cap with a receipt QR regenerated to match. It agrees with itself and stays under the cap, but the price is above the plush's listed $34.00, so it goes to a person (listed_price, D-151) and nothing is captured unless they pass it.",
   "shopId": "paper-moon-toys",
   "itemId": "plush-paper-moon",
   "job": {
@@ -18,9 +18,11 @@
   "checkedInAt": "2026-11-12T10:50:00-08:00",
   "uploadedAt": "2026-11-12T11:42:00-08:00",
   "expect": {
-    "status": "passed",
+    "status": "needs_review",
     "hard": [],
-    "soft": [],
+    "soft": [
+      "listed_price"
+    ],
     "retailCents": 3600,
     "captureCents": 4800
   },

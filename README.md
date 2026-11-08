@@ -4,42 +4,27 @@
 
 | <img src="proto-shots/v3/final/03-paypal-window.png" width="190" alt="PayPal's own sandbox window asking the buyer to approve $63.70"> | <img src="proto-shots/v3/final/08-matched.png" width="190" alt="The order book: Wei's offer, stepped down to $12, matched Mia's request, which PayPal holds for $63.70"> | <img src="proto-shots/v3/final/10-receipt-check.png" width="190" alt="Receipt check passed, read live by Muse Spark and checked by the rules; PayPal captured $48.69"> | <img src="proto-shots/v3/final/16-money-ledger.png" width="190" alt="The money panel: held $63.70, captured $48.69 and $9.57, released $5.44, paid out $10.80 and $42.75"> |
 |:---:|:---:|:---:|:---:|
-| **1. Hold.** Mia approves \$63.70 in PayPal's own window. Nothing is charged yet. | **2. Match.** Wei's fee steps down until it meets her \$12. | **3. Proof.** AI and rules pass his receipt; PayPal captures \$48.69. | **4. Settle.** The shipping Wei reports is captured, up to Mia's budget; \$5.44 is released, and Payouts pays Wei. |
+| **1. Hold.** Mia approves \$63.70 in PayPal's own window. Nothing is charged yet. | **2. Match.** Wei's fee steps down until it meets her \$12. | **3. Proof.** AI and rules pass his receipt; PayPal captures \$48.69. | **4. Settle.** The shipping Wei declares is captured, up to Mia's budget; \$5.44 is released, and Payouts pays Wei. |
 
-**Shot on the real PayPal sandbox**, one errand through the web app on 2026-11-07 with a live AI model: authorization `88232929HR885933A`, captures `54N68839TA957213Y` and `4U786596DF2537313`, payout batches `88H3RUEBP9L4W` and `32VC3V9YGQ78C`. Read back from PayPal, every amount and every PayPal fee matched the server's ledger to the cent ([log](docs/evidence/sandbox-readback-20261107.txt)). [Every id](#proof-on-the-real-paypal-sandbox) | [Evidence](#evidence) | [Run it with no keys](#quick-start-with-zero-keys)
+**The problem.** Some things are sold only in person, in long lines: a bakery's limited cake, a one-per-customer plush drop, a famous bowl of ramen. Someone who cannot be there (out of town, or at work) can pay a stranger to queue, and that fails on trust both ways: the requester fears paying for nothing, and the queuer fears spending his own money at the counter and never being paid back. Paid line-sitting is already a business: a New York line-sitting company charges \$25 to \$37.50 an hour ([Fortune, 2025](https://www.fortune.com/2025/05/18/gen-x-entrepreneur-line-sitting-business-nyc-diddy-trial-sample-sale)), and TaskRabbit lists [waiting in line](https://www.taskrabbit.com/services/shopping-delivery/waiting-in-line) as a service.
 
-Some things are sold only in person, in long lines: a viral bakery's cake, a one-per-customer plush drop, a famous bowl of ramen. Paying a stranger to queue for you fails on trust: the requester fears paying for nothing, and the queuer fears spending his own cash at the counter and never being paid back. HoldMySpot is a live market for queue errands:
+**Who it is for.** Requesters anywhere in the US who want one item from an in-person-only sale, and queuers near the shop with an hour to spare, paid by PayPal Payouts with no merchant onboarding.
 
-- **Request.** A requester anywhere in the US asks for an item at a shop and sets the most they will pay someone to queue for it. The request is a PayPal authorization hold for their whole limit, and it lights up the shop on a 3D map.
-- **Offer.** Queuers nearby see the fee, the walk, the wait and what it pays per hour, and offer to go. A queuer's fee can step down on a clock to a floor he chose, so a queuer already in line still finds work: requests that offered less fill as the clock reaches them. The fee steps down only after a passed check-in: the position his phone reports is within 80 m of the shop, and an AI-read line photo shows the visit's one-time code (a phone that reports a false position is a [known limit](#known-limits)).
-- **Proof.** He buys the item and uploads the receipt. AI reads it and rules check it. A receipt that fails the checks moves \$0.
-- **Capture.** Only then does PayPal capture the shop price read from the receipt (up to the requester's cap) plus the matched fee, then, once tracking is on the order, the shipping the queuer reports, up to the requester's shipping budget; each capture adds PayPal's fee at cost. The rest of the hold is released.
-- **Payout.** The captures land in HoldMySpot's PayPal balance, and PayPal Payouts pays the queuer from it.
+**How it works.** A requester's request is a PayPal authorization for her whole limit. Queuers nearby offer a fee that can step down on a clock, but only after a passed check-in at the shop (an AI-read line photo with the visit's code). The queuer buys the item and uploads the receipt; AI reads it, the rules check it, and only then does PayPal capture the shop price read from the receipt plus the fee. The rest of the hold is released, and Payouts pays the queuer. The same hold-then-capture pattern works for a shipped item ([the 30-second story](#the-30-second-story)) and for a local pickup with one capture at the handover ([a local errand](#a-local-errand-one-capture-at-the-handover)).
 
-**Why PayPal**
+**Proof.** The hero errand ran on the real PayPal sandbox through the web app with a live AI model, and PayPal's own records matched the server's ledger to the cent ([every id and the read-back log](#proof-on-the-real-paypal-sandbox)). `npm run attack` tries 23 ways to cheat it ([the table](#try-to-break-it)), and [claims.md](claims.md) maps every claim here to its test or log.
 
-- **Strangers, real money.** Before the queuer spends his own money at the counter, PayPal holds the requester's limit in an authorization and charges nothing yet. PayPal honors a capture for 3 days and keeps the authorization for up to 29; after the honor period HoldMySpot reauthorizes an untouched hold ([Authorize a payment and capture funds later](https://developer.paypal.com/docs/checkout/standard/customize/authorization/); on the sandbox this waits for 2026-11-10, G10). A capture can still be declined, which leaves the queuer unpaid ([Known limits](#known-limits)).
-- **Charge only after the receipt is checked.** Partial captures charge the receipt, then the shipping, the last one with `final_capture`; PayPal releases the rest of the hold. A failed proof captures nothing.
-- **Paying casual queuers.** Payouts pays a queuer by email, so a queuer needs a PayPal account, not merchant onboarding.
+**Run it** with Node 24, no keys and no accounts: `npm run setup && npm run demo`, then [what to click first](#quick-start-with-zero-keys).
 
-**For judges.** Built for the PayPal AI Hackathon (Devpost).
-
-| Topic | Where |
+| For judges | Where |
 |---|---|
-| Setup | [Quick start with zero keys](#quick-start-with-zero-keys): Node 24, then `npm run setup` and `npm run demo`; no keys, no accounts. On your own PayPal sandbox app: [Real PayPal sandbox](#real-paypal-sandbox-with-your-own-app). |
 | PayPal | [How HoldMySpot uses PayPal](#how-holdmyspot-uses-paypal): each PayPal API and SDK feature, what it does here, its sandbox proof and its code. |
-| AI | [How HoldMySpot uses AI](#how-holdmyspot-uses-ai): each model and service, what it does, and what code decides instead. |
-| Sponsors | [AG Studio](#ag-studio-ag-grid-the-market-dashboard): the market dashboard, with a custom agent on the Studio Agent Framework that hands work to Studio's own agents. [Bryntum Scheduler](#bryntum-scheduler-the-queuer-board): the queuer board, whose rescheduler moves jobs inside each requester's PayPal hold. |
-| Other tools | [Other tools](#other-tools) |
-| Proof | [Real PayPal sandbox ids](#proof-on-the-real-paypal-sandbox), [try to break it](#try-to-break-it) (`npm run attack`), [evidence](#evidence) ([claims.md](claims.md), [prior-art.md](prior-art.md)), [tests](#tests), [known limits](#known-limits) |
-| Licence | [MIT](LICENSE) |
+| AI | [How HoldMySpot uses AI](#how-holdmyspot-uses-ai): what the model reads, and what code decides instead. |
+| Sponsors | [AG Studio](#ag-studio-ag-grid-the-market-dashboard) (the market dashboard and its agent) and [Bryntum Scheduler](#bryntum-scheduler-the-queuer-board) (the queuer board and its rescheduler); [where to click](#sponsor-technology-ag-studio-and-bryntum). |
+| Evidence | [Sandbox proof](#proof-on-the-real-paypal-sandbox), [try to break it](#try-to-break-it), [evidence](#evidence) ([claims.md](claims.md), [prior-art.md](prior-art.md)), [tests](#tests), [known limits](#known-limits) |
+| More | [Architecture](#architecture), [AI coding agents](AGENTS.md), [troubleshooting](#troubleshooting), [other tools](#other-tools), [MIT licence](LICENSE) |
 
-**Sponsor judges**, after `npm run demo` ([Quick start](#quick-start-with-zero-keys)). Both links open the ops console's in-browser replay of the demo day (with other ports, the launcher prints both links with its own ops port):
-
-- **AG Studio:** http://127.0.0.1:5197/?backend=mock&at=12:05#/market, then **Widest gap** in the market desk panel on the right. Without a model the desk is its offline planner (the panel says so): it reads the market with our `read_market` tool and calls Studio's own `remove_widget`, `add_widget` and `configure_widget`; the panel lists each step and a spotlight widget appears. With a live model on the server (`npm run demo -- --ai live` and a key), open http://127.0.0.1:5197/#/market and ask anything: the desk hands charts to Studio's own Widget agent. Custom widgets, theming and layout tools: [AG Studio](#ag-studio-ag-grid-the-market-dashboard).
-- **Bryntum Scheduler:** http://127.0.0.1:5197/?backend=mock&at=11:21, then read the two **Rescheduler** cards (hover an option to see it on the board) and click **Approve: Move to Ava at \$8.00** on Jo's, or instead drag Leo's job from Jo's row onto Ava's. Either way the move is checked with the shared matching rules and the job runs at Ava's \$8.00, inside Leo's PayPal hold. More: [Bryntum](#bryntum-scheduler-the-queuer-board).
-
-**Also:** [30-second story](#the-30-second-story) | [Architecture](#architecture) | [For AI coding agents](#for-ai-coding-agents) | [Troubleshooting](#troubleshooting)
+**What is different.** Other PayPal AI Hackathon entries also hold a payment and capture it on proof ([prior-art.md](prior-art.md)). HoldMySpot prices only the queuer's time, in an order book whose fee steps down only after a passed check-in at the shop, and pays the item back at the price on a receipt that AI read and the rules checked.
 
 ## The 30-second story
 
@@ -55,10 +40,14 @@ The demo day is a plush drop in San Francisco's Japantown on 2026-11-12 (market 
 8. **14:00.** Wei ships the parcel. The tracking number goes onto Mia's PayPal order, a final capture of **\$9.57** (the \$8.75 shipping Wei reports, under her \$12 budget, and PayPal's \$0.82 fee on it) releases the remaining **\$5.44**, and Payouts sends Wei **\$42.75** (the shop price and the shipping he reported).
 
 <!-- numbers:hero-totals:start -->
-Mia: held \$63.70, charged \$58.26 (\$34.00 shop price, \$12.00 fee, \$8.75 shipping, \$3.51 processing), \$5.44 released. Wei: received \$53.55 (\$42.75 back for the plush and the postage he paid, \$10.80 for his time). PayPal: \$3.51 (\$2.19 and \$0.82 on the two captures, \$0.25 on each payout), exactly the processing line. HoldMySpot: \$1.20, 10% of the queue fee. The fake receipt: \$0.
+Mia: held \$63.70, charged \$58.26 (\$34.00 shop price, \$12.00 fee, \$8.75 shipping, \$3.51 processing), \$5.44 released. Wei: received \$53.55 (\$42.75 back for the plush and the postage he declared, \$10.80 for his time). PayPal: \$3.51 (\$2.19 and \$0.82 on the two captures, \$0.25 on each payout), exactly the processing line. HoldMySpot: \$1.20, 10% of the queue fee. The fake receipt: \$0.
 <!-- numbers:hero-totals:end -->
 
-Mia pays the shop price printed on the receipt, with no markup from HoldMySpot; the fee pays Wei for his time. Every purchase is for one named requester, within the shop's per-person limit.
+Mia pays the shop price printed on the receipt, with no markup from HoldMySpot; the fee pays Wei for his time. Every purchase is for one named requester, within the shop's per-person limit. Mia's \$24.26 on top of the plush is the cost of getting it across the country: \$12.00 for Wei's time (HoldMySpot keeps \$1.20 of it), \$8.75 of shipping and \$3.51 of PayPal's processing.
+
+### A local errand: one capture at the handover
+
+The same hold works without shipping. In the zero-key demo's `local-errand` script, Jun in New York asks for a shortcake at Petal & Crumb Bakery (\$38.00, sold in person only). The PayPal order is a `PICKUP_FROM_PERSON` order (sandbox gate G9) and PayPal holds **\$51.54**. Dana, nearby, takes it at a \$9 fee, checks in, buys it and brings it to Jun. Nothing is captured at the receipt: when Jun gives Dana his handover code, PayPal makes **one capture of \$49.47** (\$38.00 shop price, \$9.00 fee, \$2.47 processing), releases \$2.07, and Payouts sends Dana **\$46.10**; HoldMySpot keeps \$0.90. A wrong code captures nothing, and ten wrong codes lock it ([Try to break it](#try-to-break-it), row 18). Run it with `curl -s -X POST http://127.0.0.1:8796/api/demo/start -H 'content-type: application/json' -d '{"scriptId":"local-errand"}'` on a running `npm run demo` (it resets that market); `server/test/processing.test.ts` checks every amount. In San Francisco, `?as=sam` opens the phone as a local requester for the cake and ramen errands.
 
 ### The same errand, call by call
 
@@ -94,7 +83,7 @@ sequenceDiagram
 
 ## Paid line-sitting, made fair
 
-Paying someone to stand in line is already an ordinary paid service in the US. A New York line-sitting company, in business for over a decade, charges \$25 to \$37.50 an hour ([Fortune, 2025](https://www.fortune.com/2025/05/18/gen-x-entrepreneur-line-sitting-business-nyc-diddy-trial-sample-sale)), and TaskRabbit lists [waiting in line](https://www.taskrabbit.com/services/shopping-delivery/waiting-in-line) as a service. HoldMySpot keeps what makes it fair and adds what it lacks:
+Paying someone to stand in line is already an ordinary paid service in the US (the sources are at the top). HoldMySpot keeps what makes it fair and adds what it lacks:
 
 - **The requester pays the receipt's price.** The checked receipt sets the price, up to the requester's cap, and HoldMySpot adds no markup to it.
 - **One item for one named requester**, within the shop's own limits. Nobody holds stock.
@@ -102,9 +91,11 @@ Paying someone to stand in line is already an ordinary paid service in the US. A
 - **Money moves only after the receipt is checked.** PayPal holds the most it could cost and captures the receipt's price, up to the cap.
 - **It is not for** event tickets, medical or government queues, or perishable food bought to sell on. The demo catalog has none of these; this is a policy, not a rule the code enforces.
 
-The same pattern of holding the most a job could cost, then capturing only after a check, fits any one-item errand whose final price is unknown upfront. That runs from a bakery box or a bowl of ramen to a $500 launch-day console (a receipt with other lines goes to a person). This demo shows one of them end to end.
+The same pattern of holding the most a job could cost, then capturing only after a check, fits any one-item errand whose final price is unknown upfront. That runs from a bakery box or a bowl of ramen to a \$500 launch-day console (a receipt with other lines goes to a person). The demo shows two end to end: a shipped plush and a local shortcake. For PayPal it is a reusable pattern built only on Orders v2 `AUTHORIZE`, partial captures and Payouts: hold the most a job could cost, capture what a check passes, and pay the worker.
 
 ## Proof on the real PayPal sandbox
+
+**Shot on the real PayPal sandbox**, one errand through the web app on 2026-11-07 with a live AI model: authorization `88232929HR885933A`, captures `54N68839TA957213Y` and `4U786596DF2537313`, payout batches `88H3RUEBP9L4W` and `32VC3V9YGQ78C`. Read back from PayPal, every amount and every PayPal fee matched the server's ledger to the cent ([log](docs/evidence/sandbox-readback-20261107.txt)).
 
 The hero errand ran twice on PayPal's sandbox on 2026-11-07: through the web app on two phones (the screenshots at the top) and through the server's HTTP API alone. After each run, its authorization, order, captures and payout batches were read back from PayPal: every amount, status and PayPal fee matched the server's ledger to the cent. PayPal's answers are kept: the server run's as fixtures that a test pins, and both runs' in a GET-only read-back log ([docs/evidence/sandbox-readback-20261107.txt](docs/evidence/sandbox-readback-20261107.txt)); the web app run's own checks of the server's ledger are in [docs/evidence/web-run-20261107.txt](docs/evidence/web-run-20261107.txt).
 
@@ -199,7 +190,7 @@ One command, no keys, under a minute ([runs.json](docs/evidence/runs.json) keeps
 npm run attack
 ```
 
-It starts its own zero-key server (simulated PayPal, the recorded AI answers, an empty secrets folder), tries to cheat it in the ways below, prints one table and stops the server. Each fake receipt is a rendered demo photo from `server/fixtures/proofs` on a fresh demo market: Rex takes a request, checks in with his line photo and sends the fake. The money tricks run on a market where Wei does Mia's errand honestly, and the handover-code guess on one where he does Sam's local errand. One more market runs the two [known limits](#known-limits), so the table shows what they move: Rex runs a fee clock from home, and Wei sends Mia's real receipt reprinted at her cap (a rendered reprint whose QR was regenerated to match, `server/fixtures/proofs/_reprint-at-cap`; no model reading is recorded for it, so the rules-only reader reads its truth sidecar). Rows 18 to 20 skip HoldMySpot and go straight to the PayPal emulator, which gives the answers PayPal's sandbox gave ([what PayPal answered at the edges](#proof-on-the-real-paypal-sandbox)).
+It starts its own zero-key server (simulated PayPal, the recorded AI answers, an empty secrets folder), tries to cheat it in the ways below, prints one table and stops the server. Each fake receipt is a rendered demo photo from `server/fixtures/proofs` on a fresh demo market: Rex takes a request, checks in with his line photo and sends the fake. The money tricks run on a market where Wei does Mia's errand honestly, and the handover-code guess on one where he does Sam's local errand. One more market runs the [known limit](#known-limits) so the table shows what it moves (Rex runs a fee clock from home), and Wei sends Mia's real receipt reprinted at her cap (a rendered reprint whose QR was regenerated to match, `server/fixtures/proofs/_reprint-at-cap`; no model reading is recorded for it, so the rules-only reader reads its truth sidecar). Rows 19 to 21 skip HoldMySpot and go straight to the PayPal emulator, which gives the answers PayPal's sandbox gave ([what PayPal answered at the edges](#proof-on-the-real-paypal-sandbox)).
 
 <!-- attack-table:start -->
 ```text
@@ -220,20 +211,21 @@ It starts its own zero-key server (simulated PayPal, the recorded AI answers, an
 14  Add tracking again to capture after the final one            state machine     INVALID_TRANSITION                             $0.00
 15  Send the receipt again for a second fee payout               state machine     INVALID_TRANSITION                             $0.00
 16  Approve a hold after the item sold out                       state machine     SOLD_OUT                                       $0.00
-17  Guess the 4-digit handover code for two hours, then right    rules             locked after 10 wrong codes                    $0.00
-18  Capture $73.26 of a $63.70 hold, straight at PayPal          PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED                    $0.00
-19  Capture again after the final capture, straight at PayPal    PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED                 $0.00
-20  Send the same payout batch again, straight at PayPal         PayPal emulator   USER_BUSINESS_ERROR                            $0.00
-21  Reprint the $34.00 receipt at the $36.00 cap, QR to match    not stopped       passed: shop price read as $36.00              $50.76 charged, $10.80 paid out (known limit)
-22  Check in from home, the phone reporting the shop's position  not stopped       checked in; fee fell to $11.00 and filled      $0.00 (known limit)
+17  Report the plush sold out alone, to void every hold on it    rules             only his own job ended; book open              $0.00
+18  Guess the 4-digit handover code for two hours, then right    rules             locked after 10 wrong codes                    $0.00
+19  Capture $73.26 of a $63.70 hold, straight at PayPal          PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED                    $0.00
+20  Capture again after the final capture, straight at PayPal    PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED                 $0.00
+21  Send the same payout batch again, straight at PayPal         PayPal emulator   USER_BUSINESS_ERROR                            $0.00
+22  Reprint the $34.00 receipt at the $36.00 cap, QR to match    sent to a person  listed_price (to a person)                     $0.00
+23  Check in from home, the phone reporting the shop's position  not stopped       checked in; fee fell to $11.00 and filled      $0.00 (known limit)
 ```
 <!-- attack-table:end -->
 
-**Stopped by** follows from each answer, not from a label next to the attempt: a receipt's failed checks, labelled as the [ablation](docs/ABLATION.md) labels them (`server/src/ai/basis.ts`), or the refusal code (`LAYER_OF_CODE` in `server/src/demo/attack.ts`). *rules*: code alone decided (a photo hash, the receipt QR's store ID read from its pixels, the position the phone reports, the money caps in `shared/src/money.ts`, the lock on handover codes: 5 wrong in an hour, 10 in all). *AI + rules*: a rule rejected what the model read (a printed time, a total, a code); the model never decides. *sent to a person*: a soft check failed, so the receipt waits for review and nothing moves unless a person passes it. *state machine*: the request, the job or the call's idempotency key allows nothing more at that point. *PayPal emulator*: the in-process copy of PayPal's sandbox answers. *not stopped*: a known limit.
+**Stopped by** follows from each answer, not from a label next to the attempt: a receipt's failed checks, labelled as the [ablation](docs/ABLATION.md) labels them (`server/src/ai/basis.ts`), or the refusal code (`LAYER_OF_CODE` in `server/src/demo/attack.ts`). *rules*: code alone decided (a photo hash, the receipt QR's store ID read from its pixels, the position the phone reports, the money caps in `shared/src/money.ts`, the lock on handover codes: 5 wrong in an hour, 10 in all). *AI + rules*: a rule rejected what the model read (a printed time, a total, a code); the model never decides. *sent to a person*: a soft check failed, so the receipt waits for review and nothing moves unless a person passes it. *state machine*: the request, the job or the call's idempotency key allows nothing more at that point. *PayPal emulator*: the in-process copy of PayPal's sandbox answers. *not stopped*: a known limit. Row 17's report is accepted, and the rule that one report ends only the reporter's own job (D-152) is what stops it, so it reads *rules*.
 
-What moves: row 1 moves exactly what the shared money rules say for a genuine receipt. Row 12 pays shipping as the queuer reports it, capped at the requester's budget: an over-claim up to the budget is paid, because no postage receipt is read. Rows 21 and 22 are the known limits: a receipt reprinted at the requester's cap with a QR to match passes every check and charges the reprinted price, never more than the cap, and a phone that reports the shop's position from home passes the check-in, so the fee clock runs and its falling fee fills a request. Every other row moves \$0.00.
+What moves: row 1 moves exactly what the shared money rules say for a genuine receipt. Row 12 pays shipping as the queuer reports it, capped at the requester's budget: an over-claim up to the budget is paid, because no postage receipt is read. Row 22, a receipt reprinted at the requester's cap with a QR to match, agrees with itself, but its price is above the plush's listed \$34.00, so it waits for a person (D-151); had it passed, it would have charged \$50.76 instead of \$48.69. Row 23 is the known limit: a phone that reports the shop's position from home passes the check-in, so the fee clock runs and its falling fee fills a request (no money moves until a receipt passes). Every other row moves \$0.00.
 
-It exits 1 if any attempt moves anything but what the shared money rules say, or an attempt that must be refused is not. `npm test` runs it in CI mode (`server/test/attack.test.ts`): it checks every row, the layer each answer gives and this table against a fresh run, then runs the money part against a server that pays the queuer \$1.20 too much, where it must exit 1. To watch it in the ops console, attack the running demo instead: `npm run attack -- --reuse` (with the same port flags as `npm run demo`; it resets that market before each part, and the last part stays). `--json <file>` writes the report, `--verbose` prints every answer in full. Decisions D-137 to D-139 and D-147 to D-149.
+It exits 1 if any attempt moves anything but what the shared money rules say, or an attempt that must be refused is not. `npm test` runs it in CI mode (`server/test/attack.test.ts`): it checks every row, the layer each answer gives and this table against a fresh run, then runs the money part against a server that pays the queuer \$1.20 too much, where it must exit 1. To watch it in the ops console, attack the running demo instead: `npm run attack -- --reuse` (with the same port flags as `npm run demo`; it resets that market before each part, and the last part stays). `--json <file>` writes the report, `--verbose` prints every answer in full. Decisions D-137 to D-139, D-147 to D-149, D-151 and D-152.
 
 ## Evidence
 
@@ -242,14 +234,14 @@ Every row is written by `npm run numbers` (`scripts/readme-numbers.mjs`) from th
 <!-- numbers:evidence:start -->
 | Claim | Result | Run it | Log or fixture |
 |---|---|---|---|
-| The tests pass with no keys, calling neither PayPal nor a model | 679 tests in 6 steps: 679 passed, 0 failed (shared 102, server 426, web 131, ops 20); on macOS (arm64), Node 24.22.2, npm 11.19.1, 2026-11-08 | `npm test` | [tests.json](docs/evidence/tests.json) |
-| The money and market rules hold on generated cases (P1 to P8) | 18 property tests, 31,180 generated cases in every `npm test` (fixed seed; each test's name gives its runs): 29,000 cases of the shared rules, 2,000 rescheduler mornings on the ops console's replay model, and 180 generated market days on the server with the PayPal emulator (P5 plays each of its 60 days twice, with and without PayPal failures). The 120 days of P1-P4 P6 P7 reached 216 passed check-ins, 203 matches (34 below the opening fee), 41 completed jobs, 24 receipts failing a hard check, 26 PayPal failures injected, 118 server restarts and 6 reassignments | `npm test` | [tests.json](docs/evidence/tests.json) |
+| The tests pass with no keys, calling neither PayPal nor a model | 684 tests in 6 steps: 684 passed, 0 failed (shared 103, server 429, web 132, ops 20); on macOS (arm64), Node 24.22.2, npm 11.19.1, 2026-11-08 | `npm test` | [tests.json](docs/evidence/tests.json) |
+| The money and market rules hold on generated cases (P1 to P8) | 19 property tests, 31,680 generated cases in every `npm test` (fixed seed; each test's name gives its runs): 29,500 cases of the shared rules, 2,000 rescheduler mornings on the ops console's replay model, and 180 generated market days on the server with the PayPal emulator (P5 plays each of its 60 days twice, with and without PayPal failures). The 120 days of P1-P4 P6 P7 reached 220 passed check-ins, 214 matches (37 below the opening fee), 32 completed jobs, 25 receipts failing a hard check, 21 PayPal failures injected, 118 server restarts and 6 reassignments | `npm test` | [tests.json](docs/evidence/tests.json) |
 | PayPal's sandbox charged what the rules say | Run `20261107-2047`: held \$63.70, captured \$48.69 + \$9.57, released \$5.44, paid out \$10.80 + \$42.75; PayPal's fees \$2.19 + \$0.82 + 2 x \$0.25 = \$3.51, the processing line; HoldMySpot kept \$1.20; 10 of 10 read-back checks match; the same amounts as the worked example in `shared/src/money.ts` | `npm run gates -- lifecycle` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), [PayPal's answers](server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/) |
 | The web app run on PayPal's sandbox read back the same | PayPal on 2026-11-07 13:33 UTC: authorization `88232929HR885933A` \$63.70 CAPTURED; captures \$48.69 + \$9.57 COMPLETED (PayPal's fees \$2.19 + \$0.82); released \$5.44; payouts \$10.80 + \$42.75 SUCCESS; tracking SHIPPED; HoldMySpot kept \$1.20. The walk's own checks of the server's ledger: 9/9, the same ids and amounts | `web/scripts/sandbox-walk.mjs` (your sandbox keys, a second sandbox buyer) | [web-run-20261107.txt](docs/evidence/web-run-20261107.txt), [sandbox-readback-20261107.txt](docs/evidence/sandbox-readback-20261107.txt) |
 | Sandbox gates | pass: G0, G1, G2, G3, G6, G7, G8, G9, G11; waiting: G10; not run: G4, G5 | `npm run gates -- status` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md) |
 | The model reads, the rules decide (21 demo photos, recorded muse/muse-spark-1.3 answers) | 0 model calls: 21/21 verdicts, 21/21 exact failed-check sets, 8/8 money, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine proofs failed | `npm run ai:eval` | [ai-eval.json](docs/evidence/ai-eval.json) |
 | Which layer stops which fake | Fakes stopped: Rules + AI 10/10; the rules on the true reading (each photo's truth.json, not a reader) 10/10; the model without the job, not asked for a verdict, 3/10; code alone 4/10, a rule on the model's reading for the other 6; genuine proofs passed 7/7 in each | `npm run ablation` | [ABLATION.md](docs/ABLATION.md), [ablation.json](docs/evidence/ablation.json) |
-| What the cheating attempts move | 22 attempts: 17 refused with \$0.00 moved (rules 5, AI + rules 3, state machine 6, PayPal emulator 3); row 7 sent to a person, \$0.00 until they decide; row 1 moved exactly the genuine receipt's amount; row 12 paid shipping as claimed, up to the budget; rows 21 and 22 got through, the known limits (a receipt reprinted at the cap, a spoofed position); no hold captured more than it held and no job paid out more than it charged in 9 markets (2 holds a capture was tried on, 11 jobs) | `npm run attack` | [attack.json](docs/evidence/attack.json) |
+| What the cheating attempts move | 23 attempts: 18 refused with \$0.00 moved (rules 6, AI + rules 3, state machine 6, PayPal emulator 3); rows 7 and 22 sent to a person, \$0.00 until they decide; row 1 moved exactly the genuine receipt's amount; row 12 paid shipping as claimed, up to the budget; row 23 got through, the known limit (a spoofed position); no hold captured more than it held and no job paid out more than it charged in 9 markets (1 hold a capture was tried on, 12 jobs) | `npm run attack` | [attack.json](docs/evidence/attack.json) |
 | A fresh start answers with no keys | server, web, ops answered, ready in 1.3 s. PayPal: simulated PayPal (fake mode): no network, no keys, same rules as the sandbox. AI: recorded answers of a real model for the demo photos (replay; no network), rules for any other photo | `npm run demo -- --smoke` | [smoke.json](docs/evidence/smoke.json) |
 <!-- numbers:evidence:end -->
 
@@ -281,13 +273,14 @@ Notes:
 
 ## How HoldMySpot uses PayPal
 
+- **A request opens only on money PayPal holds.** The server reads the status and amount of every authorization PayPal returns: `CREATED` for exactly the hold's amount opens the request; `PENDING` (PayPal reviewing the payment) keeps it waiting, with no queuer matched, until a status read says otherwise; `DENIED` or another amount ends it, and a wrong amount is voided at once (D-150, `server/test/adversarial.test.ts`).
 - One Orders v2 order with intent `AUTHORIZE` per request. The hold is the requester's own limit: quantity x (shop price cap + max fee) + shipping budget + the most processing the request can cost.
-- Processing and payouts at cost: each capture adds what PayPal charges to take it (3.49% + \$0.49) plus \$0.25 for each payout it funds, grossed up to the cent, and the server reads PayPal's own fee back from every capture and payout. HoldMySpot keeps 10% of the queue fee and never loses money on a completed job ([docs/DECISIONS.md](docs/DECISIONS.md) D-105).
+- Processing and payouts at cost: a service line for moving the money, on every payment whichever button pays (the app offers no other way to pay). Each capture adds what PayPal charges HoldMySpot to take it (3.49% + \$0.49) plus \$0.25 for each payout it funds, grossed up to the cent, and the server reads PayPal's own fee back from every capture and payout. So neither the queuer's pay nor HoldMySpot's 10% of the queue fee absorbs PayPal's fees, and HoldMySpot never loses money on a completed job ([docs/DECISIONS.md](docs/DECISIONS.md) D-105).
 - Partial captures with `final_capture`: the receipt (the shop price read from it, up to the cap, + the fee), then the shipping the queuer reports, up to the shipping budget, after tracking is added to the order. The final capture releases the rest. Captures never exceed the hold, although PayPal accepts up to 115%.
 - Void when a request can capture nothing more (sold out, expired, cancelled, or done without a final capture). Reauthorize untouched holds from day 4 (on the sandbox, from 2026-11-10).
 - PayPal Payouts to the queuer, only after a `COMPLETED` capture. Refunds from the ops side.
 - PayPal's own JS SDK v6 buttons (PayPal, and Venmo when eligible) in sandbox mode.
-- Every money call carries a `PayPal-Request-Id` from the ledger, so a resent capture, void or refund returns PayPal's first answer instead of acting twice; payouts are the exception (PayPal refuses a batch sent again, so a payout whose answer was lost waits for reconciliation by hand). Every PayPal object carries an `HMS-` invoice id.
+- Every money call carries a `PayPal-Request-Id` from the ledger, so a resent capture, void or refund returns PayPal's first answer instead of acting twice; payouts are the exception (PayPal refuses a batch sent again, so a payout whose answer was lost waits for reconciliation by hand). Orders and captures carry an `HMS-` invoice id; a payout batch's `sender_batch_id` is its ledger key.
 - Run against the real PayPal sandbox on 2026-11-07: the hero errand through the web app and through the server's API alone, each read back from PayPal and matched to the cent, plus PayPal's answers to edge cases ([Proof](#proof-on-the-real-paypal-sandbox)). The zero-key demo runs the same REST client against an offline emulator that copies those answers.
 
 **Who holds the money.** HoldMySpot is the merchant on every order and pays queuers with Payouts, because a queuer is a person running one errand, not a seller. So the money does pass through HoldMySpot: PayPal holds the requester's money in the authorization, each capture lands in HoldMySpot's PayPal balance, and Payouts sends the queuer's share on: the fee minutes after the receipt capture, the shop price and shipping of a shipped item once tracking is added, a local errand's payout minutes after the handover. PayPal's multiparty or marketplace onboarding, which would pay queuers directly as PayPal sellers in the same payment, is the production path and is not built ([Known limits](#known-limits)).
@@ -322,12 +315,12 @@ More: [docs/PAYPAL-MAPPING.md](docs/PAYPAL-MAPPING.md) (every call, order and pa
 
 ## How HoldMySpot uses AI
 
-Models read and explain; code decides. The model reads the prices; code checks them (the lines add up to the total, the receipt QR's total matches the print, the price is at or under the requester's cap) and computes every capture from them. A provider error never passes a proof (it goes to ops review), and every AI result is stamped on screen with provider, model and mode.
+Models read and explain; code decides. The model reads the prices; code checks them (the lines add up to the total, the receipt QR's total matches the print, the price is at or under the requester's cap, and a price above the item's listed shop price goes to a person) and computes every capture from them. A provider error never passes a proof (it goes to ops review), and every AI result is stamped on screen with provider, model and mode.
 
 | Job | When | What the model does | What decides | Code |
 |---|---|---|---|---|
 | Line photo check | Check-in | Reads whether a line is visible, how many people are ahead, the one-time code on paper, the storefront text | Geofence on the position the phone reports (80 m), code matches, photo not recycled (hard); line visible (soft). The storefront text is read but not checked. | `server/src/ai/proof.ts`, `shared/src/proofs.ts` |
-| Receipt and item photo check | After buying | Reads the shop name, store ID, receipt number, printed time, lines and total, the job code on a sticky note next to the item, and the units visible | 7 hard checks (code, shop, receipt QR against the print, time window, totals, recycled photo, quantity) and 3 soft ones (item lines, shop price cap, image-generator metadata). Hard failure: \$0 moves. Soft failure: ops review. Code computes the capture from the price the model read, up to the cap. The receipt QR is plain text, not signed by the shop ([Known limits](#known-limits)). | `server/src/ai/proof.ts`, `server/src/ai/qr.ts`, `server/src/ai/phash.ts`, `shared/src/proofs.ts` |
+| Receipt and item photo check | After buying | Reads the shop name, store ID, receipt number, printed time, lines and total, the job code on a sticky note next to the item, and the units visible | 7 hard checks (code, shop, receipt QR against the print, time window, totals, recycled photo, quantity) and 4 soft ones (item lines, shop price cap, the item's listed price, image-generator metadata). Hard failure: \$0 moves. Soft failure: ops review. Code computes the capture from the price the model read, up to the cap. The receipt QR is a plain-text format made up for the demo shops, not signed by the shop ([Known limits](#known-limits)). | `server/src/ai/proof.ts`, `server/src/ai/qr.ts`, `server/src/ai/phash.ts`, `shared/src/proofs.ts` |
 | Fee and wait estimate | Request and offer forms, map | Counts people in the latest line photo and writes the one-line reason | The formula (wait minutes x 24 cents, rounded) | `server/src/ai/estimates.ts`, `shared/src/estimates.ts` |
 | Shipping estimate | Request form (shipped items) | Writes the explanation | A rate table and the item's weight | `server/src/ai/estimates.ts`, `shared/src/estimates.ts` |
 | Bidding agent (API only) | A request created with an agent goal | Proposes raise, keep, reduce or cancel | The server enforces a ceiling inside the hold: a raise that PayPal does not hold is refused (`OVER_LIMIT`, `server/test/agent.test.ts`), and the agent never touches PayPal. No screen uses it yet; without a key it follows a formula. | `server/src/ai/agent.ts`, `server/src/app/agent.ts` |
@@ -368,7 +361,10 @@ More: [docs/AI-SERVICES.md](docs/AI-SERVICES.md).
 
 ## Sponsor technology: AG Studio and Bryntum
 
-Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run demo`. Neither needs a key, and both install from the public npm registry. Each runs on the live server and on the console's in-browser replay (`?backend=mock`).
+Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run demo`. Neither needs a key, and both install from the public npm registry. Each runs on the live server and on the console's in-browser replay (`?backend=mock`). Where to click (with other ports, the launcher prints both links with its own ops port):
+
+- **AG Studio:** http://127.0.0.1:5197/?backend=mock&at=12:05#/market, then **Widest gap** in the market desk panel on the right. Without a model the desk is its offline planner (the panel says so): it reads the market with our `read_market` tool and calls Studio's own `remove_widget`, `add_widget` and `configure_widget`; the panel lists each step and a spotlight widget appears. With a live model on the server (`npm run demo -- --ai live` and a key), open http://127.0.0.1:5197/#/market and ask anything: the desk hands charts to Studio's own Widget agent.
+- **Bryntum Scheduler:** http://127.0.0.1:5197/?backend=mock&at=11:21, then read the two **Rescheduler** cards (hover an option to see it on the board) and click **Approve: Move to Ava at \$8.00** on Jo's, or instead drag Leo's job from Jo's row onto Ava's. Either way the move is checked with the shared matching rules and the job runs at Ava's \$8.00, inside Leo's PayPal hold.
 
 ### AG Studio (AG Grid): the market dashboard
 
@@ -425,7 +421,7 @@ Both live in the ops console (`ops/`), http://127.0.0.1:5197/ after `npm run dem
 
 <!-- numbers:tests:start -->
 ```sh
-npm test              # shared, server, web and ops: type checks and 679 tests, ends with "All green: 6 steps"
+npm test              # shared, server, web and ops: type checks and 684 tests, ends with "All green: 6 steps"
 npm test -- --quick   # the same without the generated server days and the attack, for a short check
 npm test -- --build   # also the web and ops production builds
 ```
@@ -490,57 +486,16 @@ Root commands: `setup`, `demo` (alias `start`), `dev:sandbox`, `keys`, `doctor`,
 
 ## For AI coding agents
 
-Everything runs without keys or prompts. Follow these in order from the repo root; [AGENTS.md](AGENTS.md) has the same steps and the rules for changing the code.
-
-```sh
-node --version                       # v24 or newer
-npm run setup                        # exit 0, ends "Installed in N s."
-npm run -s doctor -- --json          # pure JSON; exit 0 and "ok": true when the zero-key demo can start
-npm test                             # exit 0, ends "All green: 6 steps in N s."; several minutes, allow 10 or more (-- --quick skips the slowest)
-npm run ai:eval                      # exit 0, in seconds; its table reports verdict accuracy 21/21 (100.0%)
-npm run attack                       # exit 0, in a minute or two; ends "Every attempt moved exactly what the shared money rules say."
-
-npm run demo -- --smoke              # starts all three, checks each, stops; exit 0, "Smoke check passed"
-npm run numbers -- --check           # exit 0: README's numbers agree with docs/evidence/ (claims.md maps each claim to its proof)
-```
-
-Run `doctor` before the demo starts: it reports ports in use, including the demo's own. To drive the demo over the API, start it in the background and wait for the server:
-
-```sh
-mkdir -p .run && npm run demo > .run/demo.out 2>&1 &
-until curl -sf http://127.0.0.1:8796/api/health; do sleep 1; done
-# {"ok":true,"mode":"fake","contractVersion":"1.0.0","uptimeMs":...}
-
-curl -s -X POST http://127.0.0.1:8796/api/demo/start -H 'content-type: application/json' -d '{"scriptId":"hero","speed":600}'
-until curl -s http://127.0.0.1:8796/api/demo/state | grep -q '"finished"'; do sleep 1; done   # about 10 s at 600x
-
-for who in mia wei; do curl -s -H "X-HMS-User: $who" 'http://127.0.0.1:8796/api/ledger?mine=1' \
-  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).entries.map(e=>e.kind+' '+e.amount.cents+' '+e.status).join(', ')))"; done
-# released 544 succeeded, captured 957 succeeded, captured 4869 succeeded, held 6370 succeeded
-# paid_out 4275 succeeded, paid_out 1080 succeeded
-# (captures include processing and payouts at cost: PayPal's fees, $3.51 in all, docs/DECISIONS.md D-105)
-
-# Sponsor screens (needs Playwright's Chromium: npx playwright@1.56.1 install chromium)
-(cd ops && OUT_DIR=../.run/ops-shots npm run shots && npm run licence:check)
-# three "saved .../.run/ops-shots/ops-0N-....png" lines, then
-# Drawn by AG Studio: 3 grid(s), 3 chart(s); market desk agent answered
-
-npm run demo -- --stop               # stops only what the launcher started
-```
-
-- **Ports:** server 8796, web 5190, ops 5197. `--port-offset N` adds N to all three; `--server-port`, `--web-port` and `--ops-port` set one each (pass the same flags to `--stop`, `doctor`, `errand` and `paypal:check`, use the server port in the URLs, and export `BASE_URL=http://127.0.0.1:<ops port>` for the two sponsor checks). An instance on another server port keeps its own SQLite file. `doctor` repeats your port flags in its advice and reports `"demoRunning": true` when this repo's launcher holds the ports.
-- **More checks:** `GET /api/config` (mode and reason, AI provider, clock), `GET /api/demo/state`, `GET /api/ops/records` (every record). `POST /api/demo/reset` with `{"scriptId":"hero"}` goes back to 10:30. [docs/API.md](docs/API.md) lists every endpoint.
-- **Driving the phone app in a browser:** wait for the page's `load` and a map label (for example `[aria-label^="Mochi Bunny plush:"]`), not `networkidle`: the event stream and the map tiles never go idle. On macOS launch Chromium with `--use-angle=metal --enable-gpu --ignore-gpu-blocklist` (the repo's own scripts do); without them the 3D map renders in software and a screenshot can take many seconds.
-- **Logs and process ids:** `.run/logs/` and `.run/dev-<port>.json`. `npm run demo -- --dry-run` prints what would start, without starting it.
-- **Keys:** PayPal and AG keys from this repo's `.secrets/` (written by `npm run keys`) or the folder `HMS_SECRETS_DIR` names, or from variables you set; AI keys also from the dotenv files `HMS_AI_KEY_FILES` lists (in the environment or the git-ignored `server/.env.local`). Nothing else outside the repo is read, and doctor warns when `HMS_SECRETS_DIR` points outside it. `npm run ai:eval` without `--live` and `npm run attack` ignore every key. `npm run keys -- --from-env` reads the variables in `npm run keys -- --help`; values are never printed. Never commit `.secrets/`.
-- **What is not built or not proven yet:** [Known limits](#known-limits).
+Everything runs without keys or prompts. [AGENTS.md](AGENTS.md) lists the checks in order with the output each one ends with (`npm run setup`, `doctor`, `npm test`, `ai:eval`, `attack`, `demo -- --smoke`, `numbers -- --check`), how to drive the scripted day over the API and read the ledger, the ports and port flags, and the rules for changing the code.
 
 ## Known limits
 
-- **A receipt that agrees with itself passes.** The receipt QR is plain text (store ID, receipt number, date, total), not signed by the shop, so it is not authenticated, and no check compares the price with what the shop really charged. A queuer who really bought the item can reprint the receipt at any price up to the requester's cap, with a QR to match, and every check passes: the requester then pays the reprinted price, never more than the cap (`npm run attack` row 21; the P3 known-limit property in `shared/src/money.property.test.ts`). A price above the cap goes to a person.
+- **A receipt that agrees with itself, at or under the listed price, passes.** The receipt QR is plain text (store ID, receipt number, date, total) in a format made up for the demo shops (`server/src/ai/qr.ts`), not signed by the shop, so it is not authenticated; for a real shop the QR checks apply only where it prints a machine-readable receipt. No check knows what the shop really charged. A price above the item's listed shop price goes to a person (attack row 22), and so does a price above the requester's cap, but a queuer who paid less (a sale or a discount) can reprint the receipt at up to the listed price with a QR to match, and an item with no listed price could be reprinted up to the cap; every check then passes and the requester pays the reprinted price (the P3 known-limit property in `shared/src/money.property.test.ts`). Every item in the demo catalog has a listed price.
 - **Shipping is charged as the queuer reports it.** The shipping capture is the cost the queuer enters, capped at the requester's shipping budget; the label photo is optional and is not read, so an over-claim up to the budget is paid (attack row 12).
-- **A check-in trusts the position the phone reports.** The demo's walks are synthetic and no GPS signal is checked: a phone that reports the shop's position from home, with the visit's code held up in a photo of any line, passes the check-in and starts the fee clock (attack row 22). The storefront text in the line photo is read but not checked.
+- **A check-in trusts the position the phone reports.** The demo's walks are synthetic and no GPS signal is checked: a phone that reports the shop's position from home, with the visit's code held up in a photo of any line, passes the check-in and starts the fee clock (attack row 23). The storefront text in the line photo is read but not checked. A sell-out report from such a check-in ends only that queuer's own job; the item's book closes only when a second checked-in queuer reports it too (attack row 17, D-152).
 - **A capture can be declined after the queuer has paid.** PayPal honors a capture for 3 days and may decline one later or when the money is not there. Then the job fails (`payment_failed`) after the queuer has paid at the counter, and nothing reimburses him; the replay's Noor and Rin case at 11:21 shows it.
+- **No sign-in; a hosted demo is one shared market.** Personas are chosen by the `X-HMS-User` header (demo only), and the demo routes (reset, start, clock) are open to anyone who can reach the server, so on a shared hosted instance one visitor can reset the market or move the clock for everyone. The ops console's in-browser replay (`?backend=mock`) runs in each visitor's own browser; for the full demo, run one server per person (D-153).
+- **Sandbox payouts all go to one receiver.** In sandbox mode every queuer's payout goes to the one sandbox account saved as `PAYPAL_PAYOUT_EMAIL`; collecting each queuer's own PayPal email or Venmo handle is not built.
 - **A payout whose answer was lost waits for a person.** PayPal refuses a payout batch sent again, so the server never resends it; the payout stays `pending` until ops reconciles it by hand (`server/test/adversarial.test.ts`).
 - **Jobs that never finish keep the hold until day 29.** After 10 wrong handover codes in all (5 an hour) the code is locked and a person has to confirm the handover; that support step is not built. A job whose queuer checked in but never buys, or a local errand never handed over, has no deadline: the requester's hold stays until PayPal's authorization lapses on day 29 (the generated server days check that the server records that lapse).
 - **PayPal's fees are passed through at a fixed schedule.** The processing line uses the rate the sandbox charged on 2026-11-07 (3.49% + \$0.49 per capture, \$0.25 per payout); the server compares it with PayPal's reported fee, but a difference (another rate, an international buyer) is only shown to ops and settled by hand. A refund after a capture loses the capture fee PayPal keeps, and a queuer who never ships keeps the fee payout. Both sandbox runs of the hero errand ([Proof](#proof-on-the-real-paypal-sandbox)) were charged exactly this schedule: \$2.19 and \$0.82 on the captures, \$0.25 per payout.

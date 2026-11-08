@@ -37,7 +37,7 @@ export const DUTY_RATE_BPS: Readonly<Record<string, number>> = {
 /** The shipping and duty budget is the estimate times 1.3, rounded up to whole dollars. */
 export const SHIPPING_MARGIN_PERCENT = 130;
 
-export const SHIPPING_NOTES = ['Estimate, charged at cost up to your budget.', 'Ships within the US, so no import duty applies.'] as const;
+export const SHIPPING_NOTES = ['Estimate. You are charged the shipping the queuer declares, up to your budget.', 'Ships within the US, so no import duty applies.'] as const;
 
 const roundTo = (cents: number, step: number): number => Math.round(cents / step) * step;
 
@@ -110,11 +110,11 @@ export function bidDisclosures(
   const pct = `${rules.platformFeeBps / 100}%`;
   const first =
     b.mode === 'ship'
-      ? `PayPal holds up to ${limit}. You pay the receipt price, the matched fee, the actual shipping and processing at cost, never more than this. The rest is released.`
+      ? `PayPal holds up to ${limit}. You pay the receipt price, the matched fee, the shipping the queuer declares (up to your budget) and processing at cost, never more than this. The rest is released.`
       : `PayPal holds up to ${limit}. You pay the receipt price, the matched fee and processing at cost, never more than this. The rest is released.`;
   return [
     first,
-    `HoldMySpot keeps ${pct} of the queue fee. Shop price${b.mode === 'ship' ? ', shipping' : ''} and processing are passed through at cost.`,
+    `HoldMySpot keeps ${pct} of the queue fee. The shop price from the receipt${b.mode === 'ship' ? ', the shipping the queuer declares' : ''} and processing are passed through with no markup.`,
     `${PROCESSING_LABEL}: up to ${reserve}, what taking your payment and paying the queuer costs (${processingScheduleText()}). HoldMySpot makes nothing on it.`,
   ];
 }

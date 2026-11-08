@@ -33,6 +33,11 @@ export interface BookState {
   /** Market time of the last fee-clock matching pass. */
   lastClockRunAt: number | null;
   soldOutAt: number | null;
+  /**
+   * Checked-in queuers who reported the item sold out while the book was still open (D-152). One report ends only
+   * the reporter's own job; the book closes at SOLD_OUT_REPORTS distinct reporters. Absent in older saved states.
+   */
+  soldOutReports?: string[];
 }
 
 export interface UserDoc {

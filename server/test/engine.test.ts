@@ -284,7 +284,7 @@ describe('failures re-offer quantity', () => {
     }
   });
 
-  it('sold out: unbought jobs fail, open requests close and their holds are voided', async () => {
+  it('sold out (D-152): one report ends only the reporter\'s job; a second checked-in queuer\'s report fails unbought jobs, closes open requests and voids their holds', async () => {
     const s = await testServer();
     try {
       const mia = await placeBid(s.app, 'mia', { qty: 1, maxFeeCents: 1200 });
@@ -298,16 +298,32 @@ describe('failures re-offer quantity', () => {
       const wei = await postAsk(s.app, 'wei', { capacity: 1, feeCents: 1100, etaInMin: 10 });
       await checkInAt(s.app, 'wei', wei.claim.id, SHOP.lngLat);
       const job = s.app.store.jobs.where('ask_id = ?', wei.ask.id)[0]!;
-      const out = await s.app.exec(() => reportSoldOut(s.app, persona(s.app, 'wei'), job.id, null));
-      assert.equal(out.book.status, 'sold_out');
+      const first = await s.app.exec(() => reportSoldOut(s.app, persona(s.app, 'wei'), job.id, null));
+      // One person's word closes nothing else: Wei's own job ends and Mia's request goes back on the book, still held.
+      assert.equal(first.book.status, 'open');
       assert.equal(s.app.store.jobs.must(job.id).failure?.reason, 'sold_out');
+      assert.equal(s.app.store.asks.must(wei.ask.id).status, 'closed');
+      const back = s.app.store.bids.must(mia.bid.id);
+      assert.deepEqual([back.status, back.remainingQty, back.closeReason], ['open', 1, null]);
+      assert.equal(s.app.store.holds.must(back.holdId!).status, 'held');
+      assert.equal(s.app.store.holds.must(s.app.store.bids.must(jun.bid.id).holdId!).status, 'held');
+      // A second queuer takes Mia's request, checks in and confirms: now the book is sold out.
+      const lin = await postAsk(s.app, 'lin', { capacity: 1, feeCents: 1100, etaInMin: 10 });
+      await checkInAt(s.app, 'lin', lin.claim.id, SHOP.lngLat);
+      const linJob = s.app.store.jobs.where('ask_id = ?', lin.ask.id)[0]!;
+      // The same queuer reporting again (refused once his claim ended, or counted once) never closes the book alone.
+      await s.app.exec(() => reportSoldOut(s.app, persona(s.app, 'wei'), job.id, null)).catch(() => null);
+      assert.equal(s.app.store.books.get(ITEM)?.status, 'open');
+      const out = await s.app.exec(() => reportSoldOut(s.app, persona(s.app, 'lin'), linJob.id, null));
+      assert.equal(out.book.status, 'sold_out');
+      assert.equal(s.app.store.jobs.must(linJob.id).failure?.reason, 'sold_out');
       for (const id of [mia.bid.id, jun.bid.id]) {
         const b = s.app.store.bids.must(id);
         assert.equal(b.status, 'expired', id);
         assert.equal(b.closeReason, 'sold_out');
         assert.equal(s.app.store.holds.must(b.holdId!).status, 'released');
       }
-      assert.equal(code(await postAsk(s.app, 'lin').catch((e) => e)), 'SOLD_OUT');
+      assert.equal(code(await postAsk(s.app, 'rex').catch((e) => e)), 'SOLD_OUT');
       // No new request either (D-116): the quote and the bid are refused, so no hold opens on a book
       // that can never fill, and an approval that lands after the sell-out authorizes nothing.
       const quote = await s.app.exec(() => quoteBid(s.app, persona(s.app, 'sam'), { shopId: SHOP.id, itemId: ITEM, qty: 1, destination: NY_SHIP })).catch((e) => e);

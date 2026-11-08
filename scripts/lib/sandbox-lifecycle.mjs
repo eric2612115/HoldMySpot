@@ -260,7 +260,7 @@ export async function runLifecycle({
   const { HERO, PAYPAL_PRICING, jobSettlement, paypalCaptureFeeCents, platformFeeCents, zonedLocalToEpoch } = shared;
   const sf = (hhmm) => zonedLocalToEpoch(`2026-11-12 ${hhmm}`, 'America/Los_Angeles');
   const NY = { mode: 'ship', country: 'US', region: 'NY', city: 'New York', postalCode: '10012' };
-  if (!settings.twPayoutEmail && !payoutEmail) throw new Error('No payout receiver: set PAYPAL_PAYOUT_EMAIL in sandbox.env (npm run keys) or pass --payout-to <label>.');
+  if (!settings.payoutReceiverEmail && !payoutEmail) throw new Error('No payout receiver: set PAYPAL_PAYOUT_EMAIL in sandbox.env (npm run keys) or pass --payout-to <label>.');
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hms-lifecycle-'));
   const steps = [];
@@ -269,7 +269,7 @@ export async function runLifecycle({
     log(`  ${name}${detail ? `: ${detail}` : ''}`);
   };
   // The server reads PAYPAL_PAYOUT_EMAIL from sandbox.env or its environment; a --payout-to receiver goes in the environment.
-  const server = await startServer({ port: serverPort, tmp, secretsDir, payoutEmail: payoutEmail ?? settings.twPayoutEmail ?? null, log: (l) => log(`  ${l}`) });
+  const server = await startServer({ port: serverPort, tmp, secretsDir, payoutEmail: payoutEmail ?? settings.payoutReceiverEmail ?? null, log: (l) => log(`  ${l}`) });
   const { api } = server;
   const clock = (hhmm) => api('POST', '/api/demo/clock', { body: { jumpTo: sf(hhmm), paused: true } });
   let buyer = null;

@@ -19,9 +19,11 @@ export function chipValue(v: {
   latest: 'held' | 'renewed' | 'captured' | 'released' | 'paid_out' | 'refunded' | null;
 }): string {
   const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
-  if (v.persona && v.phone === 'queuer') return v.paidOut > 0 ? `Paid ${usd(v.paidOut)}` : 'No payout yet';
+  if (v.phone === 'queuer') return v.paidOut > 0 ? `Paid ${usd(v.paidOut)}` : 'No payout yet';
   if (v.held > 0) return `${usd(v.held)} held`;
-  if (v.persona) return v.charged > 0 ? `Charged ${usd(v.charged)}` : v.latest === 'released' ? 'Released' : 'Nothing held';
-  const words: Record<string, string> = { held: 'Held', renewed: 'Renewed', captured: 'Captured', released: 'Released', paid_out: 'Paid out', refunded: 'Refunded' };
+  if (v.charged > 0) return `Charged ${usd(v.charged)}`;
+  if (v.persona) return v.latest === 'released' ? 'Released' : 'Nothing held';
+  // The in-browser market's own words, but a requester's phone never says "Paid out" (that is the queuer's money).
+  const words: Record<string, string> = { held: 'Held', renewed: 'Renewed', captured: 'Captured', released: 'Released', paid_out: 'Captured', refunded: 'Refunded' };
   return v.latest ? (words[v.latest] ?? 'Nothing held') : 'Nothing held';
 }

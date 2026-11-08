@@ -768,7 +768,7 @@ function capture(
       p.purpose === 'fee'
         ? `Queue fee ${usd(job.caps.feeCents)} minus the 10% platform fee`
         : p.purpose === 'reimbursement'
-          ? 'Shop price and shipping at cost'
+          ? 'Shop price and declared shipping'
           : 'Shop price and queue fee minus the 10% platform fee';
     const payout: Payout = {
       id: payoutId,
@@ -862,7 +862,7 @@ export function shipJob(w: World, jobId: string, at: MarketMs, labelCents: Cents
     feeCents: job.caps.feeCents,
     shippingCents: sc.shippingCents,
   });
-  capture(w, job, at, 'shipping', sc.amountCents, `shipping and duty ${usd(sc.shippingCents)} plus processing ${usd(sc.processingCents)}, at cost`, parts, sc.processingCents);
+  capture(w, job, at, 'shipping', sc.amountCents, `shipping and duty ${usd(sc.shippingCents)} as declared, plus processing ${usd(sc.processingCents)} at cost`, parts, sc.processingCents);
 }
 
 export function feeNow(ask: AskTask, at: MarketMs): Cents {

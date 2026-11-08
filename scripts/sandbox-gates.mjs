@@ -322,10 +322,10 @@ function recorder(runId) {
 
 /** Uses a sandbox-buyers.json account as the payout receiver when sandbox.env names none (--payout-to). */
 async function payoutReceiverFrom(args, settings) {
-  if (settings.twPayoutEmail || !args['payout-to']) return null;
+  if (settings.payoutReceiverEmail || !args['payout-to']) return null;
   const { loadPayoutReceiver } = await import('./lib/sandbox-buyer.mjs');
   const receiver = loadPayoutReceiver(secretsDirFrom(args), args['payout-to']);
-  Object.defineProperty(settings, 'twPayoutEmail', { value: receiver.email, enumerable: false, configurable: true });
+  Object.defineProperty(settings, 'payoutReceiverEmail', { value: receiver.email, enumerable: false, configurable: true });
   return receiver.label;
 }
 
@@ -336,7 +336,7 @@ async function connect(args, runId, record) {
     let t = Date.now();
     const clock = { now: () => t, advance: (ms) => void (t += ms) };
     const port = pp.createFakePayPal({ now: clock.now, log });
-    const settings = { clientId: pp.FAKE_CLIENT_ID, merchantEmail: 'merchant@holdmyspot.test', buyerEmail: 'buyer@holdmyspot.test', twPayoutEmail: 'queuer-payouts@holdmyspot.test' };
+    const settings = { clientId: pp.FAKE_CLIENT_ID, merchantEmail: 'merchant@holdmyspot.test', buyerEmail: 'buyer@holdmyspot.test', payoutReceiverEmail: 'queuer-payouts@holdmyspot.test' };
     return { port, settings, mode: 'fake', stateFile: null, clock };
   }
   const dir = secretsDirFrom(args);
@@ -560,7 +560,7 @@ const STEPS = { A: stepsA, B: stepsB, C: stepsC, D1: stepsD, D2: stepsD };
 
 async function payoutGate(ctx, runId) {
   const { port, state, settings } = ctx;
-  if (!settings.twPayoutEmail) {
+  if (!settings.payoutReceiverEmail) {
     setGate(state, 'G6', 'waiting', 'No payout receiver: set PAYPAL_PAYOUT_EMAIL (npm run keys) or pass --payout-to <label from sandbox-buyers.json>');
     return;
   }
@@ -569,7 +569,7 @@ async function payoutGate(ctx, runId) {
       senderBatchId: `HMS-GATE-${runId}-G6`,
       emailSubject: 'HoldMySpot sandbox gate payout',
       emailMessage: 'A $1.00 test payout from the HoldMySpot sandbox gates.',
-      items: [{ receiverEmail: settings.twPayoutEmail, amountCents: 100, note: 'HoldMySpot sandbox gate G6', senderItemId: `G6-${runId}` }],
+      items: [{ receiverEmail: settings.payoutReceiverEmail, amountCents: 100, note: 'HoldMySpot sandbox gate G6', senderItemId: `G6-${runId}` }],
     });
     let item = created.items[0];
     for (let i = 0; i < 18 && (!item || ['PENDING', 'NEW', 'ONHOLD'].includes(item.status)); i += 1) {
@@ -1059,7 +1059,7 @@ async function cmdProbe(ctx, args, runId) {
         senderBatchId: state.payout.senderBatchId,
         emailSubject: 'HoldMySpot sandbox gate payout',
         emailMessage: 'A repeat of the G6 batch id; PayPal should refuse it.',
-        items: [{ receiverEmail: ctx.settings.twPayoutEmail, amountCents: 100, note: 'HoldMySpot sandbox gate G6 repeat', senderItemId: `G6-${runId}-again` }],
+        items: [{ receiverEmail: ctx.settings.payoutReceiverEmail, amountCents: 100, note: 'HoldMySpot sandbox gate G6 repeat', senderItemId: `G6-${runId}-again` }],
       });
       return again.batchId === state.payout.batchId ? `the first batch ${again.batchId} (no second payout)` : `A NEW BATCH ${again.batchId}`;
     });
@@ -1121,7 +1121,7 @@ async function cmdLifecycle(ctx, args) {
   const secretsDir = secretsDirFrom(args);
   let payoutEmail = null;
   let payoutLabel = null;
-  if (!ctx.settings.twPayoutEmail && args['payout-to']) {
+  if (!ctx.settings.payoutReceiverEmail && args['payout-to']) {
     const { loadPayoutReceiver } = await import('./lib/sandbox-buyer.mjs');
     const r = loadPayoutReceiver(secretsDir, args['payout-to']);
     payoutEmail = r.email;

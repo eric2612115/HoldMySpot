@@ -75,12 +75,17 @@ describe('processing and payouts at cost (D-105)', () => {
       assert.equal(rejected.job.failure?.reason, 'proof_rejected');
       assert.deepEqual(jobSettlement(rejected.job.amounts), { chargedCents: 0, processingCents: 0, paidOutCents: 0, paypalFeesCents: 0, platformCents: 0, processingVarianceCents: 0 });
 
-      // The re-offered request and a second one wait; Lin checks in and reports the plush sold out.
+      // The re-offered request and a second one wait; Lin checks in and reports the plush sold out, and Ava confirms.
       const other = await placeBid(s.app, 'jun', { qty: 1, maxFeeCents: 1000 });
       const lin = await postAsk(s.app, 'lin', { capacity: 2, feeCents: 1000, etaInMin: 10 });
       await checkInAt(s.app, 'lin', lin.claim.id, SHOP.lngLat);
       const linJob = s.app.store.jobs.where("ask_id = ? AND status = 'queueing'", lin.ask.id)[0]!;
       await s.app.exec(() => reportSoldOut(s.app, persona(s.app, 'lin'), linJob.id, null));
+      // One report ends only Lin's jobs (D-152); Ava takes both requests, checks in and confirms the sell-out.
+      const ava = await postAsk(s.app, 'ava', { capacity: 2, feeCents: 1000, etaInMin: 20 });
+      await checkInAt(s.app, 'ava', ava.claim.id, SHOP.lngLat);
+      const avaJob = s.app.store.jobs.where("ask_id = ? AND status = 'queueing'", ava.ask.id)[0]!;
+      await s.app.exec(() => reportSoldOut(s.app, persona(s.app, 'ava'), avaJob.id, null));
       for (const bidId of [rejected.bid.id, other.bid.id]) {
         const hold = s.app.store.holds.must(s.app.store.bids.must(bidId).holdId!);
         assert.equal(hold.status, 'released');

@@ -20,29 +20,29 @@
   },
   "tests": {
     "steps": 6,
-    "tests": 679,
-    "passed": 679,
+    "tests": 684,
+    "passed": 684,
     "failed": 0,
     "skipped": 0,
     "byPackage": {
-      "shared": 102,
-      "server": 426,
-      "web": 131,
+      "shared": 103,
+      "server": 429,
+      "web": 132,
       "ops": 20
     },
-    "seconds": 77,
+    "seconds": 82.1,
     "aboutSeconds": 80,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "9b85330",
+    "commit": "f2413fb",
     "recordedOn": "2026-11-08",
     "properties": {
-      "tests": 18,
-      "runs": 31180,
+      "tests": 19,
+      "runs": 31680,
       "runsByPackage": {
-        "shared": 29000,
+        "shared": 29500,
         "server": 180,
         "ops": 2000
       },
@@ -84,7 +84,12 @@
         },
         {
           "pkg": "shared",
-          "name": "P3 known limit: a real receipt reprinted at any price up to the requester's cap, its QR regenerated to match, passes every check; the price charged is the reprint's, never above the cap",
+          "name": "P3 listed price: a real receipt reprinted above the item's listed price, within the requester's cap and its QR regenerated to match, goes to a person and is never passed",
+          "runs": 500
+        },
+        {
+          "pkg": "shared",
+          "name": "P3 known limit: a receipt reprinted at a higher price that stays at or under the listed price (or, for an item with no listed price, under the cap) passes every check; the charge is the reprint's, never above the listing or the cap",
           "runs": 500
         },
         {
@@ -154,19 +159,19 @@
           "runs": 120,
           "coverage": {
             "days": 120,
-            "checkIns": 216,
-            "matches": 203,
-            "clockFills": 34,
-            "completed": 41,
-            "rejected": 24,
-            "refunded": 9,
-            "captures": 68,
-            "payouts": 68,
-            "failures": 26,
+            "checkIns": 220,
+            "matches": 214,
+            "clockFills": 37,
+            "completed": 32,
+            "rejected": 25,
+            "refunded": 6,
+            "captures": 51,
+            "payouts": 51,
+            "failures": 21,
             "restarts": 118,
             "flaggedPayouts": 0,
             "reassigned": 6,
-            "expiredHolds": 40
+            "expiredHolds": 54
           }
         },
         {
@@ -175,18 +180,18 @@
           "coverage": {
             "days": 120,
             "checkIns": 230,
-            "matches": 228,
-            "clockFills": 36,
-            "completed": 52,
+            "matches": 238,
+            "clockFills": 44,
+            "completed": 28,
             "rejected": 16,
             "refunded": 10,
-            "captures": 86,
-            "payouts": 86,
-            "failures": 25,
+            "captures": 48,
+            "payouts": 48,
+            "failures": 14,
             "restarts": 184,
             "flaggedPayouts": 0,
             "reassigned": 12,
-            "expiredHolds": 38
+            "expiredHolds": 56
           }
         }
       ]
@@ -585,11 +590,12 @@
     "readingOnly": 6
   },
   "attack": {
-    "attempts": 22,
-    "movedNothing": 19,
-    "refused": 17,
+    "attempts": 23,
+    "movedNothing": 21,
+    "refused": 18,
     "toPerson": [
-      7
+      7,
+      22
     ],
     "intended": [
       {
@@ -609,27 +615,21 @@
     ],
     "knownLimits": [
       {
-        "n": 21,
-        "id": "reprint-at-cap",
-        "capturedCents": 5076,
-        "paidOutCents": 1080
-      },
-      {
-        "n": 22,
+        "n": 23,
         "id": "spoofed-check-in",
         "capturedCents": 0,
         "paidOutCents": 0
       }
     ],
     "stoppedBy": {
-      "rules": 5,
+      "rules": 6,
       "AI + rules": 3,
       "state machine": 6,
       "PayPal emulator": 3
     },
     "markets": 9,
-    "holdsChecked": 2,
-    "jobsChecked": 11,
+    "holdsChecked": 1,
+    "jobsChecked": 12,
     "violations": 0,
     "rows": [
       {
@@ -842,6 +842,19 @@
       },
       {
         "n": 17,
+        "id": "sell-out-alone",
+        "stoppedBy": "rules",
+        "code": "ONE_REPORT",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 18,
         "id": "guess-handover-code",
         "stoppedBy": "rules",
         "code": "RATE_LIMITED",
@@ -854,7 +867,7 @@
         }
       },
       {
-        "n": 18,
+        "n": 19,
         "id": "paypal-over-115",
         "stoppedBy": "PayPal emulator",
         "code": "MAX_CAPTURE_AMOUNT_EXCEEDED",
@@ -867,7 +880,7 @@
         }
       },
       {
-        "n": 19,
+        "n": 20,
         "id": "paypal-after-final",
         "stoppedBy": "PayPal emulator",
         "code": "AUTHORIZATION_ALREADY_CAPTURED",
@@ -880,7 +893,7 @@
         }
       },
       {
-        "n": 20,
+        "n": 21,
         "id": "paypal-payout-again",
         "stoppedBy": "PayPal emulator",
         "code": "USER_BUSINESS_ERROR",
@@ -893,20 +906,20 @@
         }
       },
       {
-        "n": 21,
+        "n": 22,
         "id": "reprint-at-cap",
-        "stoppedBy": "not stopped",
-        "code": "passed",
-        "outcome": "known_limit",
+        "stoppedBy": "sent to a person",
+        "code": "listed_price",
+        "outcome": "to_a_person",
         "moved": {
-          "captured": 5076,
+          "captured": 0,
           "refunded": 0,
-          "paidOut": 1080,
+          "paidOut": 0,
           "held": 0
         }
       },
       {
-        "n": 22,
+        "n": 23,
         "id": "spoofed-check-in",
         "stoppedBy": "not stopped",
         "code": "checked_in",
@@ -937,9 +950,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-08",
-    "attackSeconds": 10.9,
+    "attackSeconds": 11,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 5.9,
+    "aiEvalSeconds": 5.8,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -952,75 +965,75 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-08 03:00",
-      "commit": "9b85330",
+      "at": "2026-11-08 05:25",
+      "commit": "f2413fb",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "21c1a27239ea",
-        "server": "4ec86728a3c8",
-        "web": "bd8fe9283b30",
-        "ops": "8d1f2f98af7e",
-        "scripts": "a0bbf06d85c6"
+        "shared": "d1d4e15059d1",
+        "server": "93090ae1b09f",
+        "web": "1cc62a8a9289",
+        "ops": "294dd17095a7",
+        "scripts": "fe8d98e70d60"
       }
     },
     {
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-08 03:00",
-      "commit": "9b85330",
+      "at": "2026-11-08 05:25",
+      "commit": "f2413fb",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "21c1a27239ea",
-        "server": "4ec86728a3c8",
-        "web": "bd8fe9283b30",
-        "ops": "8d1f2f98af7e",
-        "scripts": "a0bbf06d85c6"
+        "shared": "d1d4e15059d1",
+        "server": "93090ae1b09f",
+        "web": "1cc62a8a9289",
+        "ops": "294dd17095a7",
+        "scripts": "fe8d98e70d60"
       }
     },
     {
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-08 03:00",
-      "commit": "9b85330",
+      "at": "2026-11-08 05:25",
+      "commit": "f2413fb",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "21c1a27239ea",
-        "server": "4ec86728a3c8",
-        "web": "bd8fe9283b30",
-        "ops": "8d1f2f98af7e",
-        "scripts": "a0bbf06d85c6"
+        "shared": "d1d4e15059d1",
+        "server": "93090ae1b09f",
+        "web": "1cc62a8a9289",
+        "ops": "294dd17095a7",
+        "scripts": "fe8d98e70d60"
       }
     },
     {
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-08 03:00",
-      "commit": "9b85330",
+      "at": "2026-11-08 05:25",
+      "commit": "f2413fb",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "21c1a27239ea",
-        "server": "4ec86728a3c8",
-        "web": "bd8fe9283b30",
-        "ops": "8d1f2f98af7e",
-        "scripts": "a0bbf06d85c6"
+        "shared": "d1d4e15059d1",
+        "server": "93090ae1b09f",
+        "web": "1cc62a8a9289",
+        "ops": "294dd17095a7",
+        "scripts": "fe8d98e70d60"
       }
     },
     {
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-08 03:00",
-      "commit": "9b85330",
+      "at": "2026-11-08 05:25",
+      "commit": "f2413fb",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "21c1a27239ea",
-        "server": "4ec86728a3c8",
-        "web": "bd8fe9283b30",
-        "ops": "8d1f2f98af7e",
-        "scripts": "a0bbf06d85c6"
+        "shared": "d1d4e15059d1",
+        "server": "93090ae1b09f",
+        "web": "1cc62a8a9289",
+        "ops": "294dd17095a7",
+        "scripts": "fe8d98e70d60"
       }
     }
   ]

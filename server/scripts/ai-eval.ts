@@ -337,7 +337,7 @@ async function main(): Promise<void> {
   console.log(`Money (retail, capture):  ${moneyOk}/${money.length} = ${pct(moneyOk, money.length)}`);
   console.log(`Fields read correctly:    ${fieldsOk}/${fields.length} = ${pct(fieldsOk, fields.length)}`);
   console.log(`Bad proofs caught:        ${caught}/${failCases.length}; genuine proofs wrongly failed: ${wrongly}/${genuine.length}`);
-  console.log(`Latency: median ${latency[Math.floor(latency.length / 2)] ?? 0} ms, max ${latency[latency.length - 1] ?? 0} ms`);
+  console.log(`Latency (${port.info.mode === 'live' || port.info.mode === 'record' ? 'model calls' : 'replay, not the model'}): median ${latency[Math.floor(latency.length / 2)] ?? 0} ms, max ${latency[latency.length - 1] ?? 0} ms`);
   const git = gitInfo();
   console.log(`Commit ${git.commit ?? 'unknown'}${git.dirty ? ' with uncommitted changes' : ''}, Node ${process.versions.node}, ${process.platform} ${process.arch}.`);
   const summary = {

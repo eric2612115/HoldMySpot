@@ -44,7 +44,7 @@ export interface PayPalSettings {
   merchantEmail: string;
   merchantId: string;
   buyerEmail: string;
-  twPayoutEmail: string;
+  payoutReceiverEmail: string;
   webhookId: string | null;
 }
 
@@ -143,7 +143,7 @@ function loadPayPal(env: Env, secretsDir: string): { settings: PayPalSettings | 
       merchantEmail: get('PAYPAL_MERCHANT_EMAIL'),
       merchantId: get('PAYPAL_MERCHANT_ID'),
       buyerEmail: get('PAYPAL_BUYER_EMAIL'),
-      twPayoutEmail: get('PAYPAL_PAYOUT_EMAIL'),
+      payoutReceiverEmail: get('PAYPAL_PAYOUT_EMAIL'),
       webhookId: get('PAYPAL_WEBHOOK_ID') || null,
     },
     missing: [],
@@ -261,6 +261,6 @@ export function loadConfig(env: Env = process.env, overrides: Partial<ServerConf
 
 /** One boot line: names and presence only, never secret values. */
 export function describeConfig(c: ServerConfig): string {
-  const pp = c.paypal ? `client id present, secret present, payouts to ${c.paypal.twPayoutEmail ? 'the sandbox receiver account' : 'nobody'}` : 'no credentials loaded';
+  const pp = c.paypal ? `client id present, secret present, payouts to ${c.paypal.payoutReceiverEmail ? 'the sandbox receiver account' : 'nobody'}` : 'no credentials loaded';
   return `mode=${c.mode} (${c.modeReason}) paypal: ${pp}; demo=${c.demo ? c.demoScript : 'off'}; db=${c.dbPath === ':memory:' ? 'memory' : 'file'}`;
 }

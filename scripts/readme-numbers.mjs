@@ -606,7 +606,7 @@ const BLOCKS = {
     const shopFee = w.receiptCapture.retailCents;
     return [
       `Mia: held \\${usd(w.heldCents)}, charged \\${usd(w.capturedCents)} (\\${usd(shopFee)} shop price, \\${usd(w.receiptCapture.feeCents)} fee, \\${usd(w.shippingCapture.shippingCents)} shipping, \\${usd(w.processingCents)} processing), \\${usd(w.releasedCents)} released.` +
-        ` Wei: received \\${usd(w.paidOutCents)} (\\${usd(reimb.amountCents)} back for the plush and the postage he paid, \\${usd(fee.amountCents)} for his time).` +
+        ` Wei: received \\${usd(w.paidOutCents)} (\\${usd(reimb.amountCents)} back for the plush and the postage he declared, \\${usd(fee.amountCents)} for his time).` +
         ` PayPal: \\${usd(w.paypalFeesCents)} (\\${usd(w.receiptCapture.paypalFeeCents)} and \\${usd(w.shippingCapture.paypalFeeCents)} on the two captures, \\${usd(w.pricing.payoutItemCents)} on each payout), exactly the processing line.` +
         ` HoldMySpot: \\${usd(w.platformCents)}, 10% of the queue fee. The fake receipt: \\$0.`,
     ];
@@ -667,7 +667,7 @@ const BLOCKS = {
       `| Sandbox gates | pass: ${list(g.pass)}; waiting: ${list(g.waiting)}; not run: ${list(g.notRun)} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md) |`,
       `| The model reads, the rules decide (${a.cases} demo photos, recorded ${a.stamp} answers) | ${a.modelCalls} model calls: ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | \`npm run ai:eval\` | [ai-eval.json](docs/evidence/ai-eval.json) |`,
       `| Which layer stops which fake | Fakes stopped: Rules + AI ${ab.rulesAndAi.fakesStopped}/${ab.cases.fake}; the rules on the true reading (each photo's truth.json, not a reader) ${ab.rulesOnly.fakesStopped}/${ab.cases.fake}; the model without the job, not asked for a verdict, ${ab.aiOnly.fakesStopped}/${ab.cases.fake}; code alone ${ab.codeAlone}/${ab.cases.fake}, a rule on the model's reading for the other ${ab.readingOnly}; genuine proofs passed ${ab.rulesAndAi.genuinePassed}/${ab.cases.genuine} in each | \`npm run ablation\` | [ABLATION.md](docs/ABLATION.md), [ablation.json](docs/evidence/ablation.json) |`,
-      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as claimed, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} got through, the known limits (a receipt reprinted at the cap, a spoofed position); ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} holds a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](docs/evidence/attack.json) |`,
+      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as claimed, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} got through, ${at.knownLimits.length === 1 ? 'the known limit' : 'the known limits'} (${at.knownLimits.map((x) => LIMIT_WORDS[x.id] ?? x.id).join(', ')}); ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](docs/evidence/attack.json) |`,
       `| A fresh start answers with no keys | ${list(s.answered)} answered, ready in ${s.readySeconds} s. PayPal: ${s.paypal}. AI: ${s.ai} | \`npm run demo -- --smoke\` | [smoke.json](docs/evidence/smoke.json) |`,
     ];
   },
@@ -686,6 +686,9 @@ const CLAIMS_BLOCKS = {
     ),
   ],
 };
+
+/** How README names each attack row that gets through as a known limit. */
+const LIMIT_WORDS = { 'spoofed-check-in': 'a spoofed position', 'reprint-at-cap': 'a receipt reprinted at the cap' };
 
 const marker = (name, edge) => `<!-- numbers:${name}:${edge} -->`;
 

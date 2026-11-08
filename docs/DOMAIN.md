@@ -6,7 +6,7 @@ Status: proposed, 2026-11-07. Types live in `shared/src/contract.ts`; the rules 
 
 HoldMySpot is a walking order book on the **queue fee**. A requester anywhere in the US posts a **bid**: "I want shop X's item, quantity N, I will pay the shop price up to a cap plus a queue fee up to F, by a deadline". The bid is backed by a PayPal **hold** (Orders v2, intent AUTHORIZE) for the most it could ever cost. A queuer near the shop posts an **ask**: "I will be at shop X at time T, I can buy N, for fee G per unit", optionally with a **fee clock** that steps the fee down after check-in. Bids and asks match by price-time priority, with partial fills. The queuer checks in at the shop, buys for each requester at the counter, and uploads the receipt. AI reads the receipt and deterministic rules check it; only then is money captured: the shop price at cost plus the matched fee, and later the actual shipping, each capture with its processing at cost (what PayPal charges to take that payment and to pay the queuer). Captures land in HoldMySpot's PayPal balance, and the queuer is paid from it by PayPal Payouts. A sold-out line, a no-show or a fake receipt captures nothing and the hold is released.
 
-The market is on the service (standing in line), never on the goods: retail, shipping and processing pass through at cost, and HoldMySpot keeps 10% of the queue fee and nothing else (D-105).
+The market is on the service (standing in line), never on the goods: the shop price from the checked receipt, the shipping the queuer declares (up to the budget) and processing pass through with no markup, and HoldMySpot keeps 10% of the queue fee and nothing else (D-105).
 
 ## 2. Glossary
 
@@ -56,7 +56,7 @@ One book = one shop item. The server runs `matchBook(bids, asks, { shopCityId, n
    - a claim-ask only fills the bid it targets.
 6. **Matchable.** A bid is matchable only while its hold is `held` or `partially_captured`, `renewalRequired` is false and the bid is not closing. An ask is matchable while `open`.
 7. **Re-offer.** When a job fails before purchase (no-show, rejected proof, queuer withdrew), its quantity goes back to the bid's `remainingQty` (if the deadline has not passed and the item is not sold out) and matching runs again with trigger `requeue`.
-8. **Sold out.** A checked-in queuer can report the item sold out (with an optional photo). The book turns `sold_out`; jobs not yet bought fail with `sold_out`; open bids stop matching and close (holds voided where nothing was captured). A sold-out book takes no new request or offer (`SOLD_OUT`): the quote and the bid are refused, and an approval that lands after the sell-out is not authorized, so nothing is held (D-116).
+8. **Sold out.** A checked-in queuer can report the item sold out (with an optional photo). One report ends only that queuer's own unbought jobs on the item (their quantity goes back to the bids, still held) and closes his offers on it; the book stays open (D-152). When a second, different checked-in queuer reports it too, the book turns `sold_out`; jobs not yet bought fail with `sold_out`; open bids stop matching and close (holds voided where nothing was captured). A sold-out book takes no new request or offer (`SOLD_OUT`): the quote and the bid are refused, and an approval that lands after the sell-out is not authorized, so nothing is held (D-116).
 
 ### Fee clock (`shared/src/stepdown.ts`)
 
@@ -172,7 +172,7 @@ stateDiagram-v2
 | Transition | Money side effect |
 |---|---|
 | proof_submitted -> verified (ship) | Capture #1: receipt retail (capped) + matched fee + processing (its PayPal fee and both payouts' fees), `final_capture=false`. Payout: fee minus platform fee. |
-| verified -> shipped | Add tracking to capture #1, then capture #2: shipping and prepaid duty at cost (capped) + its own PayPal fee, final if it is the last possible capture. Payout: retail + shipping. |
+| verified -> shipped | Add tracking to capture #1, then capture #2: shipping and prepaid duty as the queuer declares them (capped) + its own PayPal fee, final if it is the last possible capture. Payout: retail + shipping. |
 | verified -> delivered (local) | One capture: receipt retail (capped) + fee + processing (its PayPal fee and the payout's fee), final if last. Payout: retail + fee minus platform fee. |
 | any -> failed before purchase | None; quantity re-offered. If the bid can no longer use the hold, void. |
 | proof_submitted -> failed (rejected) | None ("$0 moved"); quantity re-offered. |
@@ -191,7 +191,7 @@ All amounts are integer US cents. Every seeded shop prices in US dollars; the en
 
 1. **One hold per bid** for `limitCents = qty * (retailCap + maxFee) + shippingBudget + processingReserve` (`bidLimitCents`). This is the requester's own limit. The reserve is the most processing the bid can be charged: every way the matcher can split its units into jobs, each capture at its cap (`processingReserveCents`); in practice one job per unit.
 2. **Never capture above the user's own limit.** PayPal accepts captures up to 115% of an authorization by default; our code refuses any capture that would take the total past 100% of the hold (`assertCaptureWithinLimit`, error `OVER_LIMIT`), and the bid screen says so.
-3. **Per-job caps** (`jobCaps`): retail `job.qty * retailCap`, fee `job.qty * matchedFee`, shipping `floor(shippingBudget * job.qty / bid.qty)`, and `processingCents`, the processing of the job's captures at those caps. Retail is charged at cost from the receipt up to its cap; shipping and prepaid duty at cost up to theirs; each capture may add only its own processing (`captureCapCents`). The queuer's app shows the retail cap at the counter.
+3. **Per-job caps** (`jobCaps`): retail `job.qty * retailCap`, fee `job.qty * matchedFee`, shipping `floor(shippingBudget * job.qty / bid.qty)`, and `processingCents`, the processing of the job's captures at those caps. Retail is charged from the receipt up to its cap (a price above the item's listed price goes to a person first, D-151); shipping and prepaid duty as the queuer declares them, up to theirs; each capture may add only its own processing (`captureCapCents`). The queuer's app shows the retail cap at the counter.
 4. **Capture schedule.** Ship mode: capture #1 at the verified receipt, capture #2 after tracking. Local mode: one capture at the handover. A capture is sent with `final_capture=true` only when it is the last possible one for the hold (`isFinalCapture`); otherwise the remainder is released later by a void.
 5. **Void on failure.** When a bid can no longer capture anything more (all jobs finished, nothing left to match), the server voids the authorization if the last capture was not final. A bid that ends with no captures is voided in full.
 6. **Hold renewal** (`renewalVerdict`). An untouched hold (no captures) of a bid that is still open is reauthorized for the same amount once the 3-day honor period is over (day 4) and at least one day before the 29-day validity ends. Reauthorization gives a new authorization id and a new honor period; validity still counts from the original. If reauthorization fails, is too late, or is not supported for the funding source (Venmo is unproven), the hold is marked `renewalRequired`, the bid stops matching and the requester is asked to approve a new hold. Holds with captures are never reauthorized; their later captures still work until day 29.
@@ -213,7 +213,7 @@ Mia in New York asks for the Mochi Bunny plush from Paper Moon Toys in San Franc
 | Receipt $34.00 (tax included) | retail $34.00 (cap $36.00) | at cost |
 | Capture #1 (`final_capture=false`) | $48.69 = $34.00 + $12.00 + $2.69 processing | $2.69 = PayPal's $2.19 fee on $48.69 (3.49% is $1.70, plus $0.49) + 2 x $0.25 payouts |
 | Payout #1 to Wei | $10.80 = $12.00 - $1.20 platform fee | fee payout |
-| Tracking added; shipping to New York $8.75, no duty | shipping $8.75 (cap $12.00) | at cost |
+| Tracking added; shipping to New York $8.75, no duty | shipping $8.75 (cap $12.00) | as declared |
 | Capture #2 (`final_capture=true`) | $9.57 = $8.75 + $0.82 processing; $5.44 released | $0.82 = PayPal's fee on $9.57 ($0.33 + $0.49); the final capture releases the rest |
 | Payout #2 to Wei | $42.75 = $34.00 + $8.75 | reimbursement |
 | Totals | Mia charged $58.26 of $63.70 held = $34.00 + $12.00 + $8.75 + $3.51 processing; Wei paid $53.55; PayPal's fees $3.51 ($2.19 + $0.82 + 2 x $0.25); HoldMySpot keeps $1.20 | |
@@ -233,8 +233,8 @@ HoldMySpot's margin by job type (`server/test/processing.test.ts`): a shipped or
 
 Required disclosures (exact numbers filled in):
 
-- Bid form: "PayPal holds up to $63.70. You pay the receipt price, the matched fee, the actual shipping and processing at cost, never more than this. The rest is released."
-- Bid form and ask form: "HoldMySpot keeps 10% of the queue fee. Shop price, shipping and processing are passed through at cost."
+- Bid form: "PayPal holds up to $63.70. You pay the receipt price, the matched fee, the shipping the queuer declares (up to your budget) and processing at cost, never more than this. The rest is released."
+- Bid form and ask form: "HoldMySpot keeps 10% of the queue fee. The shop price from the receipt, the shipping the queuer declares and processing are passed through with no markup."
 - Bid form: "Processing and payouts: up to $3.70, what taking your payment and paying the queuer costs (3.49% + $0.49 per charge, $0.25 per payout). HoldMySpot makes nothing on it." The cost is the same whichever button pays (D-105).
 - Every screen in sandbox or fake mode: a mode banner ("PayPal sandbox: no real money" or "Simulated PayPal").
 - AI results: "Checked by AI and rules" plus the provider stamp; a photo no model and no recording read says "Simulated reading, no AI" with the reading it got (D-128); estimates are labelled as estimates.

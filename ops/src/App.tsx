@@ -123,7 +123,7 @@ function TopBar({ market, view, brain }: { market: Market; view: ViewId; brain: 
         </div>
         <div className="agents-pill" data-kind={brain.kind} title={brain.reason || `Each agent turn is answered by ${brain.label}.`}>
           <span aria-hidden="true" />
-          {brain.kind === 'model' ? `Agents: ${brain.label.replace(/ on the server$/, '')}` : 'Agents: offline'}
+          {brain.kind === 'model' ? `Agents: ${brain.label.replace(/ on the server$/, '')}` : 'Agents: rules only (no model key)'}
         </div>
       </div>
     </header>

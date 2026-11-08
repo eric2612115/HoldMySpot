@@ -84,7 +84,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 |---|---|---|---|---|---|
 | `POST /api/bids/quote` | P0 | per | `QuoteRequest` | `BidQuote` | AI-SERVICES 4.3 and 4.4; suggested retail cap = shop price + 5%, rounded up to a dollar; 409 `SOLD_OUT` once the item sold out (D-116) |
 | `POST /api/bids` * | P0 | per | `CreateBidRequest` | `CreateBidResponse` | Requester in the US; item exists; mode allowed (local only in the requester's own city); qty within the per-person limit, counting the person's other live or bought requests for the item (D-132; the demo script's staged requests and the seeded crowd excepted); retail cap at least the shop price; max fee at least the item minimum; deadline within 10 days; button allowed; the item not sold out (409 `SOLD_OUT`, D-116). Creates the PayPal order |
-| `POST /api/bids/:bidId/authorize` * | P0 | per | `{ orderId }` | `BidResult` | Authorizes; bid `open`; matching runs; `matches` may already contain fills. After a sell-out nothing is authorized: bid `failed` (close reason `sold_out`), 409 `SOLD_OUT`, nothing held (D-116) |
+| `POST /api/bids/:bidId/authorize` * | P0 | per | `{ orderId }` | `BidResult` | Authorizes; bid `open` only when PayPal answers `CREATED` for the hold's exact amount, then matching runs; `matches` may already contain fills. `PENDING`: 503 `PAYPAL_UNAVAILABLE`, the bid stays `awaiting_approval` and the sweep reads the authorization again; `DENIED` or another amount: 402 `PAYPAL_DECLINED`, bid `failed` (another amount is voided) (D-150). After a sell-out nothing is authorized: bid `failed` (close reason `sold_out`), 409 `SOLD_OUT`, nothing held (D-116) |
 | `POST /api/bids/:bidId/approval-failed` * | P0 | per | `{ reason, detail }` | `{ bid, hold }` | Bid `failed` |
 | `GET /api/bids` | P0 | per | `?mine=1&status=&shopId=` | `{ bids }` | Own bids only |
 | `GET /api/bids/:bidId` | P0 | per | | `BidDetail` | Owner and ops |
@@ -107,7 +107,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `GET /api/jobs` | P0 | per | `?mine=1&role=&status=` | `{ jobs }` | |
 | `GET /api/jobs/:jobId` | P0 | per | | `JobDetail` | Participants and ops |
 | `POST /api/jobs/:jobId/bought` * | P0 | per | | `{ job }` | Queuer; job `queueing` |
-| `POST /api/jobs/:jobId/sold-out` * | P1 | per | `{ photoFileId }` | `{ job, book }` | Queuer, checked in; book becomes `sold_out` |
+| `POST /api/jobs/:jobId/sold-out` * | P1 | per | `{ photoFileId }` | `{ job, book }` | Queuer, checked in. The reporter's own unbought jobs fail and his offers close; the book becomes `sold_out` only at the second distinct reporter (D-152) |
 | `POST /api/jobs/:jobId/proof` * | P0 | per | `{ receiptFileId, itemFileId }` | `{ job, proof }` | Queuer; job `queueing` or `bought`; verification async (`proof.updated`, then `job.updated`, `ledger.appended`) |
 | `POST /api/jobs/:jobId/shipment` * | P0 | per | `AddShipmentRequest` | `JobMoneyResult` | Queuer; ship mode; job `verified`; adds tracking, then the shipping capture and the reimbursement payout |
 | `POST /api/jobs/:jobId/handover` * | P0 | per | `{ code }` | `JobMoneyResult` | Queuer types the requester's code (`WRONG_CODE`; after 5 misses in an hour `RATE_LIMITED`, D-56); local mode; job `verified`; one capture and the payout (`PAYPAL_DECLINED` fails the job) |

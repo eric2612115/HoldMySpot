@@ -577,14 +577,15 @@ export function purchaseCheckView(
   const totals = both(c, ['totals_add_up', 'qr_matches_print']);
   const code = both(c, ['code_visible']);
   const photos = both(c, ['duplicate_photo', 'generator_metadata']);
-  const cap = both(c, ['within_retail_cap']);
+  const cap = both(c, ['within_retail_cap', 'listed_price']);
   const printed = r?.issuedAt ? timeIn(Date.parse(r.issuedAt), shop.timezone) : null;
   const lines = r?.lines ?? [];
   const retail = proof.amounts?.retailCents ?? null;
   const capture = proof.amounts?.captureCents ?? null;
   const processing = proof.amounts?.processingCents ?? null;
   const rows: CheckRow[] = [
-    { label: 'Store', value: r?.printedName ? `${r.printedName}${storeId ? ` · store ID ${storeId}` : ''}` : '–', ...store },
+    // A failed store check says why on its own row: the printed name can be right while the store ID is another shop's.
+    { label: 'Store', value: r?.printedName ? `${r.printedName}${storeId ? ` · store ID ${storeId}${store.ok === false ? `, not ${shop.name}'s` : ''}` : ''}` : '–', ...store },
     {
       label: 'Time',
       value: printed ? `printed ${printed}${checkedInAt !== null ? `, check-in ${timeIn(checkedInAt, shop.timezone)}` : ''}` : '–',

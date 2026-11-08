@@ -4,8 +4,8 @@
 // the server's state machine, or PayPal's own limits on the emulator) and the money it moved
 // (docs/DECISIONS.md D-137 to D-139, D-147 to D-149). The layer follows from the answer: a receipt's
 // failed checks (server/src/ai/basis.ts, as in the ablation), or the refusal code (LAYER_OF_CODE in
-// server/src/demo/attack.ts). Two rows are known limits that no layer stops; they run so the table
-// shows what they move.
+// server/src/demo/attack.ts). One row is a known limit that no layer stops (a phone that reports the
+// shop's position from home); it runs so the table shows what it moves.
 //
 //   npm run attack                        starts its own zero-key server (simulated PayPal, recorded AI
 //                                         answers, an empty secrets folder), attacks it and stops it
@@ -15,10 +15,9 @@
 //   npm run attack -- --ci                plain output (no colour, no progress); server/test/attack.test.ts
 //
 // Exit 0 when every attempt moved exactly what the shared money rules say: $0.00 when refused, the
-// genuine receipt's amount for the control, shipping capped at the requester's budget, and for the two
-// known limits the amount the rules compute from what they were shown (a reprinted price, capped at the
-// requester's cap; a check-in moves nothing). Exit 1 when any attempt moved anything else, or an attempt
-// that must be refused was not.
+// genuine receipt's amount for the control, shipping capped at the requester's budget, and $0.00 for the
+// known limit (a check-in moves nothing). Exit 1 when any attempt moved anything else, or an attempt that
+// must be refused was not.
 //
 // The fake receipts are the rendered photos in server/fixtures/proofs, read by the recorded answers of a
 // real model, each on a fresh demo market (D-138). The last three rows go straight to the PayPal emulator
@@ -605,7 +604,7 @@ async function main() {
       const rightCode = must(await api('GET', `/api/jobs/${errand.jobId}`, { as: local }), `${local}'s job`).job.handoverCode;
       await attempt(
         {
-          order: 17,
+          order: 18,
           id: 'guess-handover-code',
           attempt: 'Guess the 4-digit handover code for two hours, then right',
           expectLayer: 'rules',
@@ -764,8 +763,33 @@ async function main() {
       );
 
       await clock('11:50');
-      must(await api('POST', `/api/jobs/${rex.jobId}/sold-out`, { as: 'rex', body: { photoFileId: null } }), 'Rex reports the plush sold out');
-      await clock('11:51');
+      // One queuer's word: Rex, checked in on Priya's request, reports the plush sold out (D-152).
+      await attempt(
+        { order: 17, id: 'sell-out-alone', attempt: 'Report the plush sold out alone, to void every hold on it', expectLayer: 'rules', mustRefuse: true, expect: ZERO, expectCode: 'ONE_REPORT' },
+        async () => {
+          const before = await records();
+          const others = before.holds.filter((h) => (h.status === 'held' || h.status === 'partially_captured') && before.bids.some((b) => b.holdId === h.id && b.itemId === HERO.itemId));
+          const r = await api('POST', `/api/jobs/${rex.jobId}/sold-out`, { as: 'rex', body: { photoFileId: null } });
+          if (!r.ok) return refusal(r);
+          const after = await settled();
+          const still = others.filter((h) => after.holds.find((x) => x.id === h.id)?.status === h.status).length;
+          if (r.json.book.status !== 'open') return { refused: false, code: 'SOLD_OUT', layer: 'nothing', answer: 'book closed on one report', detail: `One report closed the book; ${still} of ${others.length} holds stayed.` };
+          return {
+            refused: true,
+            code: 'ONE_REPORT',
+            layer: layerOf('ONE_REPORT'),
+            answer: 'only his own job ended; book open',
+            detail: `Rex's own job ended (${r.json.job.failure?.reason}) and Priya's request went back on the book; the book stays open until a second checked-in queuer confirms, and ${still} of the ${others.length} holds on the plush stayed held.`,
+          };
+        },
+      );
+      // A second queuer takes Priya's request, checks in (a simulated reading of a line photo) and confirms.
+      await clock('11:52');
+      const lin = await claim('lin', priya.bid.id, '11:52');
+      const linLine = must(await api('POST', '/api/files?purpose=line_photo&fixture=line_ok', { as: 'lin', bytes: fixture('little-lantern-2plush-genuine/item.png') }), 'Lin uploads a line photo').file;
+      await checkIn('lin', lin.claimId, linLine);
+      must(await api('POST', `/api/jobs/${lin.jobId}/sold-out`, { as: 'lin', body: { photoFileId: null } }), 'Lin confirms the plush sold out');
+      await clock('11:53');
       must(await api('POST', `/api/fake/paypal/orders/${leoAgain.orderId}/approve`, { as: 'leo', body: { funding: 'paypal', outcome: 'approve' } }), 'Leo approves in the simulated PayPal sheet');
       await attempt(
         { order: 16, id: 'approve-after-sell-out', attempt: 'Approve a hold after the item sold out', expectLayer: 'state machine', mustRefuse: true, expect: ZERO, expectCode: 'SOLD_OUT' },
@@ -774,12 +798,12 @@ async function main() {
       await checkInvariants('money tricks');
     }
 
-    // ---- part 3: two known limits, run to show what they move (D-147) ------------------------------
+    // ---- part 3: a known limit and the reprint the listed price now catches (D-147, D-151) ------------
     if (parts.has('limits')) {
       market++;
       const { requesterId, queuerId, spooferId, reprintCaseId, reprintOf } = ATTACK_LIMITS;
       const spoofer = user(spooferId);
-      progress(`Market ${market} of ${markets} (fresh, 10:30): two known limits. ${spoofer.displayName} runs a fee clock from home; ${user(queuerId).displayName} reprints ${user(requesterId).displayName}'s receipt at her cap.`);
+      progress(`Market ${market} of ${markets} (fresh, 10:30): a known limit and a reprint. ${spoofer.displayName} runs a fee clock from home; ${user(queuerId).displayName} reprints ${user(requesterId).displayName}'s receipt at her cap.`);
       await reset();
       await clock('10:31');
       const request = await placeRequest(requesterId);
@@ -809,7 +833,7 @@ async function main() {
       const km = (distanceMeters(spoofer.home, shop.lngLat) / 1000).toFixed(1);
       const spoof = await attempt(
         {
-          order: 22,
+          order: 23,
           id: 'spoofed-check-in',
           attempt: "Check in from home, the phone reporting the shop's position",
           expectLayer: 'not stopped',
@@ -867,26 +891,23 @@ async function main() {
       const real = caseOf(reprintOf).expect.retailCents;
       const forged = receiptCapture(job.caps, caseOf(reprintCaseId).expect.retailCents, 'ship');
       const honest = receiptCapture(job.caps, real, 'ship');
-      const feePayout = payoutsForCapture('ship', 'receipt', { retailCents: forged.retailCents, feeCents: forged.feeCents, shippingCents: 0 })[0].amountCents;
       await attempt(
         {
-          order: 21,
+          order: 22,
           id: 'reprint-at-cap',
           attempt: `Reprint the ${usd(real)} receipt at the ${usd(job.caps.retailCents)} cap, QR to match`,
-          expectLayer: 'not stopped',
-          mustRefuse: false,
-          outcome: 'known_limit',
-          expect: { captured: forged.amountCents, paidOut: feePayout },
-          expectCode: 'passed',
+          expectLayer: 'sent to a person',
+          mustRefuse: true,
+          expect: ZERO,
+          expectCode: 'listed_price',
           fixture: reprintCaseId,
         },
         async () => {
           const out = await sendProof(queuerId, errand.jobId, reprintCaseId, { passLayer: 'not stopped' });
-          if (out.proofStatus !== 'passed') return out;
+          if (out.proofStatus === 'passed') return out;
           return {
             ...out,
-            answer: `passed: shop price read as ${usd(forged.retailCents)}`,
-            detail: `${out.detail} The reprint matches itself (lines, total and QR) and stays under the cap, so every check passes: ${usd(forged.amountCents - honest.amountCents)} more is captured than the real receipt would (${usd(forged.retailCents - honest.retailCents)} of shop price and PayPal's fee on it), and never more than the cap.`,
+            detail: `${out.detail} The reprint matches itself (lines, total and QR) and stays under the ${usd(job.caps.retailCents)} cap, but ${usd(forged.retailCents)} is above the plush's listed ${usd(real)}, so a person decides (D-151); had it passed, ${usd(forged.amountCents - honest.amountCents)} more would have been captured than the real receipt (${usd(forged.amountCents)}, not ${usd(honest.amountCents)}).`,
           };
         },
       );
@@ -954,13 +975,13 @@ async function main() {
       const over = Math.floor((limit * 11_500) / 10_000) + 1;
       const a1 = await ppHold();
       await ppAttempt(
-        { order: 18, id: 'paypal-over-115', attempt: `Capture ${usd(over)} of a ${usd(limit)} hold, straight at PayPal`, expectLayer: 'PayPal emulator', mustRefuse: true, expect: ZERO, expectCode: 'MAX_CAPTURE_AMOUNT_EXCEEDED' },
+        { order: 19, id: 'paypal-over-115', attempt: `Capture ${usd(over)} of a ${usd(limit)} hold, straight at PayPal`, expectLayer: 'PayPal emulator', mustRefuse: true, expect: ZERO, expectCode: 'MAX_CAPTURE_AMOUNT_EXCEEDED' },
         () => pp.captureAuthorization(a1, { requestId: `attack-${run}-cap-over`, amountCents: over, finalCapture: false, invoiceId: `HMS-ATTACK-${run}-OVER`, noteToPayer: 'attack', softDescriptor: 'HOLDMYSPOT' }),
       );
       const a2 = await ppHold();
       await pp.captureAuthorization(a2, { requestId: `attack-${run}-cap-final`, amountCents: example.receipt.amountCents, finalCapture: true, invoiceId: `HMS-ATTACK-${run}-R`, noteToPayer: 'attack', softDescriptor: 'HOLDMYSPOT' });
       await ppAttempt(
-        { order: 19, id: 'paypal-after-final', attempt: 'Capture again after the final capture, straight at PayPal', expectLayer: 'PayPal emulator', mustRefuse: true, expect: ZERO, expectCode: 'AUTHORIZATION_ALREADY_CAPTURED' },
+        { order: 20, id: 'paypal-after-final', attempt: 'Capture again after the final capture, straight at PayPal', expectLayer: 'PayPal emulator', mustRefuse: true, expect: ZERO, expectCode: 'AUTHORIZATION_ALREADY_CAPTURED' },
         () => pp.captureAuthorization(a2, { requestId: `attack-${run}-cap-again`, amountCents: example.shipping.amountCents, finalCapture: true, invoiceId: `HMS-ATTACK-${run}-S`, noteToPayer: 'attack', softDescriptor: 'HOLDMYSPOT' }),
       );
       const batch = {
@@ -971,7 +992,7 @@ async function main() {
       };
       await pp.createPayout(batch);
       await ppAttempt(
-        { order: 20, id: 'paypal-payout-again', attempt: 'Send the same payout batch again, straight at PayPal', expectLayer: 'PayPal emulator', mustRefuse: true, expect: ZERO, expectCode: 'USER_BUSINESS_ERROR' },
+        { order: 21, id: 'paypal-payout-again', attempt: 'Send the same payout batch again, straight at PayPal', expectLayer: 'PayPal emulator', mustRefuse: true, expect: ZERO, expectCode: 'USER_BUSINESS_ERROR' },
         () => pp.createPayout(batch),
       );
     }
@@ -1033,12 +1054,12 @@ async function main() {
       ...(toPerson.length ? [`${toPerson.length} sent to a person, $0.00 moved so far${listed(toPerson)}`] : []),
       ...(kind('intended').length ? [`${kind('intended').length} moved exactly the intended amount${listed(kind('intended'))}`] : []),
       ...(kind('capped').length ? [`${kind('capped').length} paid as claimed up to the requester's budget${listed(kind('capped'))}`] : []),
-      ...(kind('known_limit').length ? [`${kind('known_limit').length} not stopped, the known limits README lists${listed(kind('known_limit'))}`] : []),
+      ...(kind('known_limit').length ? [`${kind('known_limit').length} not stopped, ${kind('known_limit').length === 1 ? 'the known limit' : 'the known limits'} README lists${listed(kind('known_limit'))}`] : []),
     ];
     console.log(`${rows.length} attempts: ${summary.join('; ')}.`);
     if (invariantRuns.length > 0) {
       const after = invariantRuns.length === 1 ? 'the market' : `each of the ${invariantRuns.length} markets`;
-      console.log(`Checked after ${after}: no hold captured more than PayPal held, and no job paid out more than it charged (${holds} holds a capture was tried on, ${jobs} jobs).`);
+      console.log(`Checked after ${after}: no hold captured more than PayPal held, and no job paid out more than it charged (${holds} ${holds === 1 ? 'hold' : 'holds'} a capture was tried on, ${jobs} jobs).`);
     }
     console.log(
       ok

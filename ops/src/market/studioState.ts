@@ -121,7 +121,7 @@ const widgets = {
       cols: [{ id: 'payouts.queuer' }, sum('payouts.amountUsd'), sum('payouts.platformFeeUsd'), { id: 'payouts.purpose' }, { id: 'payouts.status' }],
     },
     sort: [{ field: sum('payouts.amountUsd'), direction: 'desc' }],
-    format: { ...title('PayPal Payouts to queuers', 'Queue fee after the 10% platform fee, and shop price plus shipping at cost; total pinned'), style: { ...GRID_STYLE, grandTotalRow: { enabled: true, borderColor: '#cfc8fd', borderWidth: 2 } } },
+    format: { ...title('PayPal Payouts to queuers', 'Queue fee after the 10% platform fee, and the shop price plus declared shipping; total pinned'), style: { ...GRID_STYLE, grandTotalRow: { enabled: true, borderColor: '#cfc8fd', borderWidth: 2 } } },
   },
 };
 

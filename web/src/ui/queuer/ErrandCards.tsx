@@ -245,7 +245,7 @@ export function InLineCard({ errand, point }: CardProps) {
       ) : (
         <div className="q-soldout">
           <p>
-            <b>Report {point.itemShort} sold out?</b> Every request not yet bought closes and PayPal releases its hold. Nothing is charged, and no fee is paid for this visit.
+            <b>Report {point.itemShort} sold out?</b> Your job ends and nothing is charged or paid for this visit; the request goes back on the book. When a second queuer in line reports it too, every request not yet bought closes and PayPal releases its hold.
           </p>
           <PhotoField name="sold-out" label="Photo of the sign (optional)" hint="A sold-out sign or the empty shelf." file={photo} onFile={setPhoto} disabled={reporting} />
           <div className="q-actions">
@@ -441,7 +441,7 @@ export function PayoutCard({ errand, point }: CardProps) {
           </p>
         )}
         <p className="q-note">
-          The shop price{job.mode === 'ship' ? ' and shipping' : ''} for {job.requesterName}&rsquo;s {point.itemShort} {job.mode === 'ship' ? 'were' : 'was'} paid back at cost; HoldMySpot kept 10% of the fee.{' '}
+          The shop price from the receipt{job.mode === 'ship' ? ' and the shipping you declared' : ''} for {job.requesterName}&rsquo;s {point.itemShort} {job.mode === 'ship' ? 'were' : 'was'} paid back with no markup; HoldMySpot kept 10% of the fee.{' '}
           {job.requesterName} paid processing and payouts at cost, so none of it came out of your pay.
         </p>
       </section>

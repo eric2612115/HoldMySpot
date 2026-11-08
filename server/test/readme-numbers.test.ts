@@ -90,7 +90,7 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     assert.equal(n.attack.violations, 0);
     const a = n.attack;
     assert.equal(a.refused + a.toPerson.length + a.intended.length + a.capped.length + a.knownLimits.length, a.attempts, 'every attempt is refused, sent to a person, intended, capped or a known limit');
-    assert.deepEqual([a.intended.map((x) => x.n), a.capped.map((x) => x.n), a.knownLimits.map((x) => x.n)], [[1], [12], [21, 22]]);
+    assert.deepEqual([a.intended.map((x) => x.n), a.capped.map((x) => x.n), a.knownLimits.map((x) => x.n)], [[1], [12], [23]]);
     // One day per run; P5 plays each of its days twice, with and without PayPal failures.
     for (const d of n.tests.properties.serverDays) assert.equal(d.coverage.days, /^P5\b/.test(d.name) ? 2 * d.runs : d.runs, `${d.name}: the server days report what they reached`);
     // Every log names the code it ran on. npm run numbers -- --record writes tests.json and runs.json after

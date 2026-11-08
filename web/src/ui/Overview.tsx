@@ -5,9 +5,11 @@ import { REASON_TEXT, distanceText, rateText, reachOf, reachRadiusMeters, travel
 import { formatUsd } from '../domain/money';
 import type { ItemKind, TaskPoint } from '../domain/types';
 import { useLook } from '../state/look';
+import { useMarket } from '../state/market';
 import { usePosition } from '../state/position';
 import { useNow } from './hooks';
 import { ItemIcon, PlayerFace } from './ItemIcon';
+import { usePhone } from './queuer/phone';
 
 /**
  * The top-down overview: every task point of the city as a dot weighted by
@@ -124,6 +126,11 @@ export function Overview({
   const now = useNow(1000);
   const me = usePosition((s) => s.lngLat);
   const palette = useLook((s) => s.palette);
+  // A requester with a server persona (Mia asks from New York) is not the one walking: the overview's walk ring and
+  // "you can take" counts are the queuer's, so her phone labels them as what a queuer here sees.
+  const hasPersona = useMarket((s) => s.persona !== null);
+  const phone = usePhone((s) => s.phone);
+  const asker = hasPersona && phone === 'requester';
   const [filters, setFilters] = useState<OverviewFilters>(NO_FILTERS);
   const [sort, setSort] = useState<SortKey>('rate');
   const [frame, setFrame] = useState(0);
@@ -304,7 +311,7 @@ export function Overview({
           <circle cx={placed.me.x} cy={placed.me.y} r={placed.ring} />
           {placed.label && (
             <text x={placed.label.x} y={placed.label.y} textAnchor="middle">
-              30 minutes from you
+              {asker ? '30-minute walk for a queuer here' : '30 minutes from you'}
             </text>
           )}
           {placed.dots.map(
@@ -396,14 +403,14 @@ export function Overview({
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
           <path d="M3 4h10M3 8h10M3 12h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
-        {listOpen ? 'Map' : `List · ${claimable} you can take${filtered ? ' (filtered)' : ''}`}
+        {listOpen ? 'Map' : asker ? `List · ${shown.length} to request${filtered ? ' (filtered)' : ''}` : `List · ${claimable} you can take${filtered ? ' (filtered)' : ''}`}
       </button>
 
       <section className={`ov-list${listOpen && active ? ' is-open' : ''}`} aria-label="Tasks" aria-hidden={!(listOpen && active)}>
         <header className="ov-list__head">
           <h2>
             {shown.length} {shown.length === 1 ? 'task' : 'tasks'}
-            <small>{claimable} you can take</small>
+            <small>{asker ? 'what a queuer here earns per hour' : `${claimable} you can take`}</small>
           </h2>
           <div className="ov-sort" role="radiogroup" aria-label="Sort by">
             {(

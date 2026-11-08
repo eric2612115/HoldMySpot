@@ -260,6 +260,12 @@ function ActionZone({
       {offer && fee !== null && !sandbox && (
         <PayPalButton state={inFlight && order?.kind === 'now' ? 'waiting' : 'ready'} waitingLabel={waitingLabel} disabled={full || inFlight} label={`Book ${offer.queuerName} now for ${formatUsd(fee)}`} onClick={onBook} />
       )}
+      {status === 'approving' && !sandbox && (
+        // After a reload or a closed tab no approval sheet comes back, so the request can always be ended here.
+        <button type="button" className="text-button" onClick={onStopWaiting}>
+          Stop waiting and release the request
+        </button>
+      )}
       <button type="button" className={offer ? 'ghost-button' : 'pp-button is-ready'} disabled={inFlight} onClick={onPick}>
         Set my max fee
       </button>
@@ -355,7 +361,7 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
         </div>
         <p>
           {order.mode === 'ship'
-            ? `${queuer} bought your ${point.itemShort}. Receipt checked: you paid the shop price, the fee and processing at cost. ${formatUsd(held, { exact: true })} stays held until ${queuer} adds tracking; then shipping is charged at cost and the rest is released.`
+            ? `${queuer} bought your ${point.itemShort}. Receipt checked: you paid the shop price, the fee and processing at cost. ${formatUsd(held, { exact: true })} stays held until ${queuer} adds tracking; then the shipping ${queuer} declares is charged, up to your shipping budget, and the rest is released.`
             : `${queuer} bought your ${point.itemShort}. Receipt checked. You are charged when you give ${queuer} your handover code: the shop price, the fee and processing at cost; the rest of the hold is released.`}
         </p>
       </div>
@@ -375,7 +381,7 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
           )}
         </div>
         <p>
-          {queuer} bought your {point.itemShort} and was paid out. Receipt checked. You paid the shop price{order.mode === 'ship' ? ', shipping' : ''} and processing at cost, plus the fee; Money lists every line.
+          {queuer} bought your {point.itemShort} and was paid out. Receipt checked. You paid the shop price from the receipt{order.mode === 'ship' ? `, the shipping ${queuer} declared (up to your budget)` : ''}, processing at cost and the fee; Money lists every line.
         </p>
       </div>
     );
@@ -453,9 +459,16 @@ function MaxPicker({
       ) : (
         <PayPalButton state={busy ? 'waiting' : 'ready'} label={`Hold ${formatUsd(hold)} with PayPal`} onClick={() => onConfirm(v)} />
       )}
-      <button type="button" className="text-button" onClick={onCancel} disabled={busy}>
-        Not now
-      </button>
+      {busy && !sandbox ? (
+        // After a reload or a closed tab no approval sheet comes back: end the request instead of waiting forever.
+        <button type="button" className="text-button" onClick={onStopWaiting}>
+          Stop waiting and release the request
+        </button>
+      ) : (
+        <button type="button" className="text-button" onClick={onCancel} disabled={busy}>
+          Not now
+        </button>
+      )}
     </div>
   );
 }

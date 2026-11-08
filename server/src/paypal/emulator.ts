@@ -256,7 +256,7 @@ function emptyState(): EmulatorState {
 // ---------------------------------------------------------------------------
 
 export type FailOp = 'oauth' | 'create' | 'get' | 'authorize' | 'capture' | 'void' | 'reauthorize' | 'refund' | 'track' | 'payout' | 'dispute' | 'verify' | 'any';
-export type FailEffect = 'unavailable' | 'ratelimit' | 'lost' | 'decline' | 'pending' | 'unclaimed' | 'failed' | 'expired';
+export type FailEffect = 'unavailable' | 'ratelimit' | 'lost' | 'decline' | 'pending' | 'denied' | 'unclaimed' | 'failed' | 'expired';
 
 export interface FailRule {
   op: FailOp;
@@ -266,14 +266,15 @@ export interface FailRule {
 }
 
 const FAIL_OPS: readonly FailOp[] = ['oauth', 'create', 'get', 'authorize', 'capture', 'void', 'reauthorize', 'refund', 'track', 'payout', 'dispute', 'verify', 'any'];
-const FAIL_EFFECTS: readonly FailEffect[] = ['unavailable', 'ratelimit', 'lost', 'decline', 'pending', 'unclaimed', 'failed', 'expired'];
+const FAIL_EFFECTS: readonly FailEffect[] = ['unavailable', 'ratelimit', 'lost', 'decline', 'pending', 'denied', 'unclaimed', 'failed', 'expired'];
 
 /**
  * Parses HMS_FAKE_FAIL rules, comma-separated `<op>:<effect>[:<count>|:*]`.
  * `once` is `unavailable` one time, `always` is `unavailable` every time.
  * Examples: `capture:once`, `payout:unclaimed`, `payout:unclaimed:*`,
  * `capture:lost` (PayPal applies it, the response is lost; the retry with the
- * same request id gets the first result), `authorize:decline`, `any:ratelimit:2`.
+ * same request id gets the first result), `authorize:decline`, `authorize:pending` (an authorization PayPal
+ * holds for review, PENDING_REVIEW), `authorize:denied` (an authorization answered DENIED), `any:ratelimit:2`.
  */
 export function parseFailures(spec: string | readonly string[] | null | undefined): FailRule[] {
   const tokens = (typeof spec === 'string' ? spec.split(',') : [...(spec ?? [])]).map((t) => t.trim()).filter(Boolean);
@@ -518,6 +519,16 @@ export class PayPalEmulator {
     if (it.status === 'UNCLAIMED') {
       it.status = 'SUCCESS';
       it.updatedAt = this.#now();
+    }
+  }
+
+  /** Settles a PENDING authorization (HMS_FAKE_FAIL authorize:pending): PayPal holds it (CREATED) or refuses it (DENIED). */
+  settlePendingAuthorization(authorizationId: string, to: 'CREATED' | 'DENIED'): void {
+    const a = this.#state.authorizations[authorizationId];
+    if (!a) throw new ContractError('NOT_FOUND', `No fake PayPal authorization ${authorizationId}.`);
+    if (a.status === 'PENDING') {
+      a.status = to;
+      a.updatedAt = this.#now();
     }
   }
 
@@ -774,12 +785,14 @@ export class PayPalEmulator {
       throw unprocessable('INSTRUMENT_DECLINED', "The instrument presented was either declined by the processor or bank, or it can't be used for this payment.");
     }
     const now = this.#now();
+    // PayPal can answer an authorization it is still reviewing (PENDING, PENDING_REVIEW) or one it refused (DENIED).
+    const outcome = this.#take('authorize', ['pending', 'denied']);
     const a: EmAuthorization = {
       id: this.#id('AUTH'),
       orderId: o.id,
       parentId: null,
       amountCents: o.amountCents,
-      status: 'CREATED',
+      status: outcome === 'pending' ? 'PENDING' : outcome === 'denied' ? 'DENIED' : 'CREATED',
       createdAt: now,
       updatedAt: now,
       expiresAt: now + VALIDITY_DAYS * DAY_MS,

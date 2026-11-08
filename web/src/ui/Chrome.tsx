@@ -3,11 +3,32 @@ import type { CityConfig } from '../config/cities';
 import { useLook } from '../state/look';
 import { toastsFor, useMarket } from '../state/market';
 import { PlayerFace } from './ItemIcon';
+import { PersonaFace } from './queuer/faces';
 import { usePhone } from './queuer/phone';
 
+/**
+ * Who you are on the phone on screen: with a server persona, the requester's or the queuer's own face and name,
+ * and where they are (Mia asks from New York while viewing Japantown); otherwise the map's player and city.
+ */
 export function PlayerChip({ city }: { city: CityConfig }) {
   // The same colours as the player on the map (set on the characters page).
   const palette = useLook((s) => s.palette);
+  const persona = useMarket((s) => s.persona);
+  const phone = usePhone((s) => s.phone);
+  if (persona) {
+    const asker = phone === 'requester';
+    const name = asker ? persona.requesterName : persona.queuerName;
+    const where = asker && persona.requesterCity !== city.name ? `${persona.requesterCity} · viewing ${city.area}` : `${city.name} · ${city.area}`;
+    return (
+      <Link to={`/characters${window.location.search}`} className="player-chip" aria-label={`You are ${name}, ${asker ? 'the requester' : 'the queuer'}. ${where}.`}>
+        <PersonaFace id={asker ? persona.requesterId : persona.queuerId} size={34} />
+        <span className="player-chip__text">
+          <strong>{name}</strong>
+          <span>{where}</span>
+        </span>
+      </Link>
+    );
+  }
   return (
     <Link to={`/characters${window.location.search}`} className="player-chip" aria-label="Your character">
       <PlayerFace hair={palette.hair} skin={palette.skin} top={palette.top} />

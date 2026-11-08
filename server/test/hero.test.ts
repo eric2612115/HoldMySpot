@@ -101,7 +101,7 @@ describe('hero script', () => {
       captures.map((e) => [e.amount.cents, e.paypal?.feeCents, e.text]),
       [
         [4869, 219, 'Charged $48.69: shop price $34.00 at cost, queue fee 1 x $12.00 for Mochi Bunny plush, and processing $2.69 at cost ($2.19 to take this payment, $0.50 for 2 payouts).'],
-        [957, 82, 'Charged $9.57: shipping $8.75 at cost and processing $0.82 at cost (taking this payment).'],
+        [957, 82, 'Charged $9.57: shipping $8.75 as the queuer declared it, up to the budget, and processing $0.82 at cost (taking this payment).'],
       ],
     );
     assert.deepEqual(s.app.store.payouts.where('job_id = ?', job.id).map((p) => p.paypalFeeCents), [25, 25]);

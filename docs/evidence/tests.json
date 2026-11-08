@@ -2,16 +2,16 @@
   "tool": "npm test",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-08T03:00:35.128Z",
-  "seconds": 77,
-  "commit": "9b85330",
+  "startedAt": "2026-11-08T05:25:36.332Z",
+  "seconds": 82.1,
+  "commit": "f2413fb",
   "uncommittedChanges": true,
   "codeTrees": {
-    "shared": "21c1a27239ea",
-    "server": "4ec86728a3c8",
-    "web": "bd8fe9283b30",
-    "ops": "8d1f2f98af7e",
-    "scripts": "a0bbf06d85c6"
+    "shared": "d1d4e15059d1",
+    "server": "93090ae1b09f",
+    "web": "1cc62a8a9289",
+    "ops": "294dd17095a7",
+    "scripts": "fe8d98e70d60"
   },
   "node": "24.22.2",
   "npm": "11.19.1",
@@ -26,8 +26,8 @@
   ],
   "totals": {
     "steps": 6,
-    "tests": 679,
-    "passed": 679,
+    "tests": 684,
+    "passed": 684,
     "failed": 0,
     "skipped": 0
   },
@@ -36,9 +36,9 @@
       "pkg": "shared",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 1.7,
-      "tests": 102,
-      "passed": 102,
+      "seconds": 1.8,
+      "tests": 103,
+      "passed": 103,
       "failed": 0,
       "skipped": 0,
       "properties": [
@@ -63,7 +63,11 @@
           "runs": 500
         },
         {
-          "name": "P3 known limit: a real receipt reprinted at any price up to the requester's cap, its QR regenerated to match, passes every check; the price charged is the reprint's, never above the cap",
+          "name": "P3 listed price: a real receipt reprinted above the item's listed price, within the requester's cap and its QR regenerated to match, goes to a person and is never passed",
+          "runs": 500
+        },
+        {
+          "name": "P3 known limit: a receipt reprinted at a higher price that stays at or under the listed price (or, for an item with no listed price, under the cap) passes every check; the charge is the reprint's, never above the listing or the cap",
           "runs": 500
         },
         {
@@ -108,9 +112,9 @@
       "pkg": "server",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 66.7,
-      "tests": 426,
-      "passed": 426,
+      "seconds": 69.3,
+      "tests": 429,
+      "passed": 429,
       "failed": 0,
       "skipped": 0,
       "properties": [
@@ -119,19 +123,19 @@
           "runs": 120,
           "coverage": {
             "days": 120,
-            "checkIns": 216,
-            "matches": 203,
-            "clockFills": 34,
-            "completed": 41,
-            "rejected": 24,
-            "refunded": 9,
-            "captures": 68,
-            "payouts": 68,
-            "failures": 26,
+            "checkIns": 220,
+            "matches": 214,
+            "clockFills": 37,
+            "completed": 32,
+            "rejected": 25,
+            "refunded": 6,
+            "captures": 51,
+            "payouts": 51,
+            "failures": 21,
             "restarts": 118,
             "flaggedPayouts": 0,
             "reassigned": 6,
-            "expiredHolds": 40
+            "expiredHolds": 54
           }
         },
         {
@@ -140,18 +144,18 @@
           "coverage": {
             "days": 120,
             "checkIns": 230,
-            "matches": 228,
-            "clockFills": 36,
-            "completed": 52,
+            "matches": 238,
+            "clockFills": 44,
+            "completed": 28,
             "rejected": 16,
             "refunded": 10,
-            "captures": 86,
-            "payouts": 86,
-            "failures": 25,
+            "captures": 48,
+            "payouts": 48,
+            "failures": 14,
             "restarts": 184,
             "flaggedPayouts": 0,
             "reassigned": 12,
-            "expiredHolds": 38
+            "expiredHolds": 56
           }
         }
       ]
@@ -160,15 +164,15 @@
       "pkg": "web",
       "label": "type check",
       "ok": true,
-      "seconds": 3.3
+      "seconds": 4.2
     },
     {
       "pkg": "web",
       "label": "tests (vitest)",
       "ok": true,
-      "seconds": 0.8,
-      "tests": 131,
-      "passed": 131,
+      "seconds": 1.1,
+      "tests": 132,
+      "passed": 132,
       "failed": 0,
       "skipped": 0
     },
@@ -176,13 +180,13 @@
       "pkg": "ops",
       "label": "type check",
       "ok": true,
-      "seconds": 3.5
+      "seconds": 4.7
     },
     {
       "pkg": "ops",
       "label": "tests",
       "ok": true,
-      "seconds": 0.9,
+      "seconds": 1,
       "tests": 20,
       "passed": 20,
       "failed": 0,

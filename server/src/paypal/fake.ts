@@ -57,6 +57,10 @@ export class FakePayPal extends PayPalRestClient implements FakePaymentsControls
     this.emulator.completePendingCapture(captureId);
   }
 
+  settlePendingAuthorization(authorizationId: string, to: 'CREATED' | 'DENIED'): void {
+    this.emulator.settlePendingAuthorization(authorizationId, to);
+  }
+
   exportState(): EmulatorState {
     return this.emulator.exportState();
   }

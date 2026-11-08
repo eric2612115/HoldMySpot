@@ -70,11 +70,12 @@ const EXPECTED: readonly [id: string, stoppedBy: string, code: string, outcome: 
   ['capture-after-final', 'state machine', 'INVALID_TRANSITION', 'refused'],
   ['second-fee-payout', 'state machine', 'INVALID_TRANSITION', 'refused'],
   ['approve-after-sell-out', 'state machine', 'SOLD_OUT', 'refused'],
+  ['sell-out-alone', 'rules', 'ONE_REPORT', 'refused'],
   ['guess-handover-code', 'rules', 'RATE_LIMITED', 'refused'],
   ['paypal-over-115', 'PayPal emulator', 'MAX_CAPTURE_AMOUNT_EXCEEDED', 'refused'],
   ['paypal-after-final', 'PayPal emulator', 'AUTHORIZATION_ALREADY_CAPTURED', 'refused'],
   ['paypal-payout-again', 'PayPal emulator', 'USER_BUSINESS_ERROR', 'refused'],
-  ['reprint-at-cap', 'not stopped', 'passed', 'known_limit'],
+  ['reprint-at-cap', 'sent to a person', 'listed_price', 'to_a_person'],
   ['spoofed-check-in', 'not stopped', 'checked_in', 'known_limit'],
 ];
 
@@ -84,8 +85,6 @@ const MOVES: Record<string, Partial<Money>> = {
   genuine: { captured: 4869, paidOut: 1080 },
   // Shipping as Wei reports it, capped at the $12.00 budget, + $0.94 PayPal fee on it; the $34.00 shop price and that $12.00 back to Wei.
   'inflate-shipping': { captured: 1294, paidOut: 4600 },
-  // Known limit (D-147): the reprinted $36.00 at the cap + $12.00 fee + $2.76 processing, $2.07 more than the real receipt.
-  'reprint-at-cap': { captured: 5076, paidOut: 1080 },
 };
 
 // A busy machine can slow the nine markets down a lot (11 s idle, minutes under load), so the limit is generous.

@@ -358,7 +358,7 @@ describe('end to end over HTTP: a sell-out voids the hold', () => {
   });
   after(() => s.done());
 
-  it("Lin reports the cloud cakes sold out from inside the line: the job fails and Noor's whole hold is released", async () => {
+  it("Lin alone reports the cloud cakes sold out from inside the line (D-152): her job ends, Noor's request goes back on the book and PayPal keeps holding it; nothing is charged", async () => {
     const item = BAKERY.items[0]!;
     const { created, authorized } = await holdBid(s, 'noor', { shopId: BAKERY.id, itemId: item.id, qty: 1, destination: { mode: 'local', cityId: 'sf' }, maxFeeCents: 600, funding: 'paypal' });
     const held = authorized.hold.amount.cents;
@@ -381,17 +381,15 @@ describe('end to end over HTTP: a sell-out voids the hold', () => {
     const out = await ok(s, 'POST', `/api/jobs/${jobId}/sold-out`, { as: 'lin', body: { photoFileId: shelf.id } });
     assert.equal(out.job.status, 'failed');
     assert.equal(out.job.failure.reason, 'sold_out');
-    assert.equal(out.book.status, 'sold_out');
+    assert.equal(out.book.status, 'open', 'one report does not close the book');
     await s.app.idle();
 
     const bid = await ok(s, 'GET', `/api/bids/${created.bid.id}`, { as: 'noor' });
-    assert.equal(bid.hold.status, 'released');
-    assert.deepEqual([bid.hold.capturedCents, bid.hold.releasedCents], [0, held]);
-    assert.deepEqual(bid.ledger.map((e: any) => [e.kind, e.amount.cents, e.status]).reverse(), [
-      ['held', held, 'succeeded'],
-      ['released', held, 'succeeded'],
-    ]);
-    assert.equal(s.app.fakePayPal.inspectAuthorization(authorized.hold.authorizationId)?.status, 'VOIDED', 'PayPal voided the authorization');
+    assert.deepEqual([bid.bid.status, bid.bid.remainingQty, bid.bid.closeReason], ['open', 1, null]);
+    assert.equal(bid.hold.status, 'held');
+    assert.deepEqual([bid.hold.capturedCents, bid.hold.releasedCents], [0, 0]);
+    assert.deepEqual(bid.ledger.map((e: any) => [e.kind, e.amount.cents, e.status]).reverse(), [['held', held, 'succeeded']]);
+    assert.equal(s.app.fakePayPal.inspectAuthorization(authorized.hold.authorizationId)?.status, 'CREATED', 'PayPal still holds it, uncaptured');
     assert.deepEqual((await ok(s, 'GET', '/api/payouts?mine=1', { as: 'lin' })).payouts, []);
   });
 });

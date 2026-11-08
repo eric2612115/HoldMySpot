@@ -27,7 +27,7 @@ export interface SandboxSettings {
   merchantEmail: string;
   merchantId: string;
   buyerEmail: string;
-  twPayoutEmail: string;
+  payoutReceiverEmail: string;
   webhookId: string | null;
 }
 

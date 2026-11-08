@@ -268,12 +268,51 @@ export async function authorizeHold(app: App, bidId: string, orderId: string): P
     return { entry, request };
   });
   if (!prep.request) return prep.entry;
-  return finishAuthorize(app, prep.entry.id, prep.request as Extract<MoneyRequest, { op: 'authorize' }>);
+  const entry = await finishAuthorize(app, prep.entry.id, prep.request as Extract<MoneyRequest, { op: 'authorize' }>);
+  // D-150: the request opens only on a hold PayPal says it holds, for the amount asked.
+  if (entry.status === 'pending') {
+    throw new ContractError('PAYPAL_UNAVAILABLE', 'PayPal is reviewing this payment, so nothing is held yet. The request opens when PayPal confirms the hold; nothing is charged.', {
+      authorizationId: entry.paypal?.authorizationId ?? null,
+    });
+  }
+  if (entry.status === 'failed') {
+    throw new ContractError('PAYPAL_DECLINED', 'PayPal did not hold the money for this request, so it did not open. Nothing was charged; start a new request to try again.', {
+      authorizationId: entry.paypal?.authorizationId ?? null,
+    });
+  }
+  return entry;
 }
 
+/** The bid and hold of a request whose authorization PayPal refused, or held for another amount (D-150). Inside app.tx. */
+function endUnheldApproval(app: App, bid: BidTask, hold: Hold): void {
+  if (bid.status === 'awaiting_approval') {
+    assertTransition('bid', bid.status, 'failed');
+    bid.status = 'failed';
+    bid.closeReason = 'approval_failed';
+    bid.updatedAt = app.now();
+    app.store.bids.update(bid);
+    emitBid(app, bid);
+  }
+  if (hold.status === 'pending_approval') {
+    hold.status = 'failed';
+    hold.updatedAt = app.now();
+    app.store.holds.update(hold);
+    emitHold(app, hold, bid.requesterId);
+  }
+}
+
+/**
+ * Sends the authorization, or, when PayPal already answered PENDING for this entry, reads that authorization
+ * again (a resend with the same PayPal-Request-Id would only repeat the first answer). The entry ends
+ * `succeeded` only when PayPal says CREATED for exactly the hold's amount; PENDING keeps it pending for the
+ * recovery sweep; anything else fails it, and a CREATED authorization for another amount is voided (D-150).
+ */
 async function finishAuthorize(app: App, ledgerId: string, req: Extract<MoneyRequest, { op: 'authorize' }>): Promise<LedgerEntry> {
   const entry0 = app.store.ledger.must(ledgerId);
-  const res = await send(app, req.adapter, (p) => p.authorizeOrder(req.orderId, entry0.idempotencyKey));
+  const known = entry0.paypal?.authorizationId ?? null;
+  const res = known
+    ? await send(app, req.adapter, (p) => p.getAuthorization(known))
+    : await send(app, req.adapter, (p) => p.authorizeOrder(req.orderId, entry0.idempotencyKey));
   if (!res.ok) {
     // Settle the failure in its own transaction, then throw (a throw inside app.tx would roll it back).
     // An outage stays pending and is resent with the same key; a refusal gets a new key next time.
@@ -302,6 +341,40 @@ async function finishAuthorize(app: App, ledgerId: string, req: Extract<MoneyReq
           kind: 'released',
           amountCents: hold.amount.cents,
           text: `Released ${usd(hold.amount.cents)}: PayPal confirmed the hold after the request had ended.`,
+          userId: bid.requesterId,
+          idempotencyKey: key,
+          mode: req.adapter,
+          holdId: hold.id,
+          bidId: bid.id,
+          paypal: { orderId: req.orderId, authorizationId: auth.authorizationId },
+        },
+        request,
+      );
+      return { entry, release };
+    }
+    const sameAmount = auth.amountCents === hold.amount.cents;
+    if (auth.status === 'PENDING' && sameAmount) {
+      // PayPal is reviewing the payment (PENDING_REVIEW): no money is held yet, so the request does not open and
+      // no queuer is matched. The entry stays pending with the authorization id; the recovery sweep reads it again.
+      entry.paypal = { ...(entry.paypal ?? {}), authorizationId: auth.authorizationId, debugId: auth.debugId ?? undefined };
+      app.store.ledger.update(entry);
+      return { entry, release: null };
+    }
+    if (auth.status !== 'CREATED' || !sameAmount) {
+      // Denied, voided or expired, or held for another amount than the requester approved: the request never opens
+      // on it. A CREATED authorization for another amount is released at once.
+      settleLedger(app, entry, 'failed', { authorizationId: auth.authorizationId, debugId: auth.debugId ?? undefined });
+      endUnheldApproval(app, bid, hold);
+      if (auth.status !== 'CREATED') return { entry, release: null };
+      const { key, existing } = ledgerKey(app, `void:${hold.id}:amount`);
+      if (existing) return { entry, release: existing.status === 'pending' ? existing : null };
+      const request: MoneyRequest = { op: 'void', adapter: req.adapter, authorizationId: auth.authorizationId, holdId: hold.id, amountCents: auth.amountCents, stray: true };
+      const release = appendLedger(
+        app,
+        {
+          kind: 'released',
+          amountCents: auth.amountCents,
+          text: `Released ${usd(auth.amountCents)}: PayPal held ${usd(auth.amountCents)}, not the ${usd(hold.amount.cents)} the request asked for.`,
           userId: bid.requesterId,
           idempotencyKey: key,
           mode: req.adapter,
@@ -418,7 +491,7 @@ export async function captureForJob(
     const processing = (parts.processingCents ?? 0) > 0 ? processingWords(parts) : null;
     const text =
       part === 'shipping'
-        ? `Charged ${usd(amountCents)}: ${dutyCents > 0 ? 'shipping and duty' : 'shipping'} ${usd(parts.shippingCents)} at cost${processing ? ` and ${processing}` : ''}.`
+        ? `Charged ${usd(amountCents)}: ${dutyCents > 0 ? 'shipping and duty' : 'shipping'} ${usd(parts.shippingCents)} as the queuer declared it, up to the budget${processing ? `, and ${processing}` : ''}.`
         : `Charged ${usd(amountCents)}: shop price ${usd(parts.retailCents)} at cost, queue fee ${job.qty} x ${usd(job.feeCents)} for ${item.shortName}${processing ? `, and ${processing}` : ''}.`;
     const entry = appendLedger(
       app,
@@ -456,7 +529,7 @@ async function finishCapture(app: App, ledgerId: string, req: Extract<MoneyReque
       amountCents: req.amountCents,
       finalCapture: req.finalCapture,
       invoiceId: req.invoiceId,
-      noteToPayer: req.part === 'shipping' ? 'Shipping at cost' : 'Shop price at cost plus queue fee',
+      noteToPayer: req.part === 'shipping' ? 'Shipping as declared by the queuer, up to your budget' : 'Shop price from the receipt plus queue fee',
       softDescriptor: 'HOLDMYSPOT',
     }),
   );
@@ -597,13 +670,13 @@ async function payout(app: App, jobId: string, part: PayoutPart): Promise<Ledger
     const { key, existing } = ledgerKey(app, `payout:${job.id}:${PAYOUT_SUFFIX[part.purpose]}`);
     if (existing) return { existing, request: null };
     const queuer = userDoc(app, job.queuerId);
-    const receiverEmail = adapter === 'sandbox' ? (app.config.paypal?.twPayoutEmail ?? '') : (queuer.payoutEmail ?? `${job.queuerId}@queuers.example`);
+    const receiverEmail = adapter === 'sandbox' ? (app.config.paypal?.payoutReceiverEmail ?? '') : (queuer.payoutEmail ?? `${job.queuerId}@queuers.example`);
     const { shop, item } = itemById(job.itemId);
     const what =
       part.purpose === 'fee'
         ? `Queue fee, ${job.qty} x ${item.shortName}, ${shop.name}`
         : part.purpose === 'reimbursement'
-          ? `Shop price and shipping at cost, ${job.qty} x ${item.shortName}, ${shop.name}`
+          ? `Shop price and declared shipping, ${job.qty} x ${item.shortName}, ${shop.name}`
           : `Shop price at cost and queue fee, ${job.qty} x ${item.shortName}, ${shop.name}`;
     const note = `${what} (${job.queuerName})`;
     const payoutId = app.nextId('po');

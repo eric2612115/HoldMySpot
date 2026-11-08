@@ -252,7 +252,7 @@ export function QueuerBoard({ bars, rows, bundle, now, selectedId, onSelect, val
                       class: 'hms-who-name',
                       children: [
                         { tag: 'strong', text: row.name },
-                        row.reliability !== null ? { tag: 'span', class: `hms-rel${row.reliability < 70 ? ' is-low' : ''}`, text: `${row.reliability}%`, dataset: { tip: 'Reliability' } } : null,
+                        row.reliability !== null ? { tag: 'span', class: `hms-rel${row.reliability < 70 ? ' is-low' : ''}`, text: `${row.reliability}% reliable`, dataset: { tip: 'Reliability: completed claims over all claims that ended' } } : null,
                         row.earnedCents > 0 ? { tag: 'span', class: 'hms-earned', text: `+${formatUsd(row.earnedCents, { exact: true })}` } : null,
                       ],
                     },

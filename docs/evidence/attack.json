@@ -2,20 +2,20 @@
   "tool": "npm run attack",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-08T03:00:22.294Z",
-  "commit": "9b85330",
+  "startedAt": "2026-11-08T05:25:23.341Z",
+  "commit": "f2413fb",
   "uncommittedChanges": true,
   "codeTrees": {
-    "shared": "21c1a27239ea",
-    "server": "4ec86728a3c8",
-    "web": "bd8fe9283b30",
-    "ops": "8d1f2f98af7e",
-    "scripts": "a0bbf06d85c6"
+    "shared": "d1d4e15059d1",
+    "server": "93090ae1b09f",
+    "web": "1cc62a8a9289",
+    "ops": "294dd17095a7",
+    "scripts": "fe8d98e70d60"
   },
   "node": "24.22.2",
   "platform": "darwin arm64",
   "server": {
-    "url": "http://127.0.0.1:51947",
+    "url": "http://127.0.0.1:57164",
     "startedHere": true,
     "mode": "fake",
     "ai": {
@@ -471,6 +471,33 @@
     },
     {
       "n": 17,
+      "id": "sell-out-alone",
+      "attempt": "Report the plush sold out alone, to void every hold on it",
+      "stoppedBy": "rules",
+      "answer": "only his own job ended; book open",
+      "code": "ONE_REPORT",
+      "detail": "Rex's own job ended (sold_out) and Priya's request went back on the book; the book stays open until a second checked-in queuer confirms, and 12 of the 12 holds on the plush stayed held.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 18,
       "id": "guess-handover-code",
       "attempt": "Guess the 4-digit handover code for two hours, then right",
       "stoppedBy": "rules",
@@ -497,7 +524,7 @@
       "notes": []
     },
     {
-      "n": 18,
+      "n": 19,
       "id": "paypal-over-115",
       "attempt": "Capture $73.26 of a $63.70 hold, straight at PayPal",
       "stoppedBy": "PayPal emulator",
@@ -524,7 +551,7 @@
       "notes": []
     },
     {
-      "n": 19,
+      "n": 20,
       "id": "paypal-after-final",
       "attempt": "Capture again after the final capture, straight at PayPal",
       "stoppedBy": "PayPal emulator",
@@ -551,7 +578,7 @@
       "notes": []
     },
     {
-      "n": 20,
+      "n": 21,
       "id": "paypal-payout-again",
       "attempt": "Send the same payout batch again, straight at PayPal",
       "stoppedBy": "PayPal emulator",
@@ -578,34 +605,34 @@
       "notes": []
     },
     {
-      "n": 21,
+      "n": 22,
       "id": "reprint-at-cap",
       "attempt": "Reprint the $34.00 receipt at the $36.00 cap, QR to match",
-      "stoppedBy": "not stopped",
-      "answer": "passed: shop price read as $36.00",
-      "code": "passed",
-      "detail": "Receipt matches Paper Moon Toys at 11:41. The reprint matches itself (lines, total and QR) and stays under the cap, so every check passes: $2.07 more is captured than the real receipt would ($2.00 of shop price and PayPal's fee on it), and never more than the cap.",
-      "refused": false,
+      "stoppedBy": "sent to a person",
+      "answer": "listed_price (to a person)",
+      "code": "listed_price",
+      "detail": "Receipt needs a person to check 1 check: listed price. The price is above the listed shop price ($34.00); a person checks it before anything is charged. The reprint matches itself (lines, total and QR) and stays under the $36.00 cap, but $36.00 is above the plush's listed $34.00, so a person decides (D-151); had it passed, $2.07 more would have been captured than the real receipt ($50.76, not $48.69).",
+      "refused": true,
       "moved": {
-        "captured": 5076,
+        "captured": 0,
         "refunded": 0,
-        "paidOut": 1080,
+        "paidOut": 0,
         "held": 0
       },
       "expected": {
-        "captured": 5076,
+        "captured": 0,
         "refunded": 0,
-        "paidOut": 1080,
+        "paidOut": 0,
         "held": 0
       },
-      "outcome": "known_limit",
+      "outcome": "to_a_person",
       "intended": false,
       "ok": true,
       "asExpected": true,
       "notes": []
     },
     {
-      "n": 22,
+      "n": 23,
       "id": "spoofed-check-in",
       "attempt": "Check in from home, the phone reporting the shop's position",
       "stoppedBy": "not stopped",
@@ -686,12 +713,12 @@
       "market": "money tricks",
       "holds": 1,
       "holdsInMarket": 67,
-      "jobs": 2,
+      "jobs": 3,
       "violations": []
     },
     {
       "market": "known limits",
-      "holds": 1,
+      "holds": 0,
       "holdsInMarket": 65,
       "jobs": 2,
       "violations": []
@@ -715,11 +742,12 @@
     "14  Add tracking again to capture after the final one            state machine     INVALID_TRANSITION                             $0.00",
     "15  Send the receipt again for a second fee payout               state machine     INVALID_TRANSITION                             $0.00",
     "16  Approve a hold after the item sold out                       state machine     SOLD_OUT                                       $0.00",
-    "17  Guess the 4-digit handover code for two hours, then right    rules             locked after 10 wrong codes                    $0.00",
-    "18  Capture $73.26 of a $63.70 hold, straight at PayPal          PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED                    $0.00",
-    "19  Capture again after the final capture, straight at PayPal    PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED                 $0.00",
-    "20  Send the same payout batch again, straight at PayPal         PayPal emulator   USER_BUSINESS_ERROR                            $0.00",
-    "21  Reprint the $34.00 receipt at the $36.00 cap, QR to match    not stopped       passed: shop price read as $36.00              $50.76 charged, $10.80 paid out (known limit)",
-    "22  Check in from home, the phone reporting the shop's position  not stopped       checked in; fee fell to $11.00 and filled      $0.00 (known limit)"
+    "17  Report the plush sold out alone, to void every hold on it    rules             only his own job ended; book open              $0.00",
+    "18  Guess the 4-digit handover code for two hours, then right    rules             locked after 10 wrong codes                    $0.00",
+    "19  Capture $73.26 of a $63.70 hold, straight at PayPal          PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED                    $0.00",
+    "20  Capture again after the final capture, straight at PayPal    PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED                 $0.00",
+    "21  Send the same payout batch again, straight at PayPal         PayPal emulator   USER_BUSINESS_ERROR                            $0.00",
+    "22  Reprint the $34.00 receipt at the $36.00 cap, QR to match    sent to a person  listed_price (to a person)                     $0.00",
+    "23  Check in from home, the phone reporting the shop's position  not stopped       checked in; fee fell to $11.00 and filled      $0.00 (known limit)"
   ]
 }

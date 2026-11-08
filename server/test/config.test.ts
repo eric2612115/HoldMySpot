@@ -73,11 +73,11 @@ describe('HMS_MODE=sandbox', () => {
     );
     const c = loadConfig({ HMS_MODE: 'sandbox', HMS_SECRETS_DIR: dir, HMS_DB_PATH: ':memory:' });
     assert.equal(c.mode, 'sandbox');
-    assert.equal(c.paypal?.twPayoutEmail, 'payouts@personal.example.com');
+    assert.equal(c.paypal?.payoutReceiverEmail, 'payouts@personal.example.com');
     // The payout receiver's older name is still read (D-132).
     const old = tempDir();
     writeFileSync(join(old, 'sandbox.env'), readFileSync(join(dir, 'sandbox.env'), 'utf8').replace('PAYPAL_PAYOUT_EMAIL=', 'PAYPAL_TW_PAYOUT_EMAIL='));
-    assert.equal(loadConfig({ HMS_MODE: 'sandbox', HMS_SECRETS_DIR: old, HMS_DB_PATH: ':memory:' }).paypal?.twPayoutEmail, 'payouts@personal.example.com');
+    assert.equal(loadConfig({ HMS_MODE: 'sandbox', HMS_SECRETS_DIR: old, HMS_DB_PATH: ':memory:' }).paypal?.payoutReceiverEmail, 'payouts@personal.example.com');
     assert.equal(c.sandboxFallback, false);
     assert.equal(loadConfig({ HMS_SECRETS_DIR: tempDir(), HMS_DB_PATH: ':memory:' }).mode, 'fake');
   });

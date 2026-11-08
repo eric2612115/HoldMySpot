@@ -47,9 +47,12 @@ export const ATTACK_HANDOVER: AttackReceipt = { caseId: 'paper-moon-mia-genuine'
  *   handover-code lock (RATE_LIMITED).
  * - state machine: the request's, job's or call's state allows nothing more (INVALID_TRANSITION,
  *   CONFLICT, SOLD_OUT, and REPLAYED, an Idempotency-Key that answers with the first response).
+ * - ONE_REPORT is not a refusal code of the API: a sell-out report is accepted, and the rule that one
+ *   report ends only the reporter's own job (D-152) is what the attack reads from the answer.
  */
 export const LAYER_OF_CODE: Readonly<Record<string, 'rules' | 'state machine'>> = {
   OVER_LIMIT: 'rules',
+  ONE_REPORT: 'rules',
   OUTSIDE_GEOFENCE: 'rules',
   RATE_LIMITED: 'rules',
   INVALID_TRANSITION: 'state machine',
@@ -59,10 +62,10 @@ export const LAYER_OF_CODE: Readonly<Record<string, 'rules' | 'state machine'>> 
 };
 
 /**
- * The attack's known limits (D-147): two attempts no layer stops, run so the table shows what they
- * do. Wei sends Mia's real receipt reprinted at her $36.00 cap with a matching QR
+ * The attack's last market (D-147, D-151): Rex checks in from home while his phone reports the shop's
+ * position, with his rendered line photo (its code pinned on rex at Paper Moon Toys), a known limit no
+ * layer stops; and Wei sends Mia's real receipt reprinted at her $36.00 cap with a matching QR
  * (server/fixtures/proofs/_reprint-at-cap, its code pinned on mia>wei by the hero setup like her
- * genuine one), and Rex checks in from home while his phone reports the shop's position, with his
- * rendered line photo (its code pinned on rex at Paper Moon Toys).
+ * genuine one), which the listed-price check now sends to a person.
  */
 export const ATTACK_LIMITS = { reprintCaseId: '_reprint-at-cap', reprintOf: 'paper-moon-mia-genuine', requesterId: 'mia', queuerId: 'wei', spooferId: 'rex' } as const;

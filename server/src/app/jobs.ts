@@ -63,8 +63,9 @@ function handoverMisses(app: App, jobId: string): { all: number[]; recent: numbe
  * Fails a job (inside app.tx). Before purchase, a queuer-side failure gives
  * the quantity back to the bid (re-offered); a requester-side failure gives
  * the capacity back to the ask. The caller runs matching and reconciles the bid.
+ * `reoffer` gives the quantity back for another reason too (one queuer's unconfirmed sell-out report, D-152).
  */
-export function failJob(app: App, job: Job, reason: JobFailureReason, detail: string): void {
+export function failJob(app: App, job: Job, reason: JobFailureReason, detail: string, opts: { reoffer?: boolean } = {}): void {
   const was = job.status;
   const now = app.now();
   job.failure = { reason, at: now, detail };
@@ -72,7 +73,7 @@ export function failJob(app: App, job: Job, reason: JobFailureReason, detail: st
   const bid = app.store.bids.must(job.bidId);
   const beforePurchase = JOB_BEFORE_PURCHASE.includes(was) || (reason === 'proof_rejected' && was === 'proof_submitted');
   if (
-    QUEUER_SIDE.includes(reason) &&
+    (QUEUER_SIDE.includes(reason) || opts.reoffer === true) &&
     beforePurchase &&
     bid.closeReason === null &&
     LIVE_BID_STATUSES.includes(bid.status) &&
@@ -349,7 +350,7 @@ export async function addShipment(app: App, u: User, jobId: string, req: AddShip
   const sent = liveCaptureRequest(app, job.id, 'shipping');
   let shippingCents = sent ? sent.parts.shippingCents : ship.shippingCents;
   if (shippingCents > 0) {
-    // Shipping at cost plus this capture's own PayPal fee at cost (D-105); a resend keeps what was sent.
+    // Shipping as the queuer declared it (capped) plus this capture's own PayPal fee at cost (D-105); a resend keeps what was sent.
     const out = await captureForJob(
       app,
       job.id,
@@ -444,7 +445,15 @@ export async function markDelivered(app: App, jobId: string): Promise<{ job: Job
   return { job: app.store.jobs.must(job.id) };
 }
 
-/** A checked-in queuer reports the item sold out: unbought jobs fail, open bids close and are voided. */
+/** Distinct checked-in queuers whose sell-out reports close a book (D-152). */
+export const SOLD_OUT_REPORTS = 2;
+
+/**
+ * A checked-in queuer reports the item sold out (D-152). The report alone ends only the reporter's own unbought
+ * jobs and offers on the item: nothing else is closed on one person's word (a check-in trusts the position the
+ * phone reports, and the photo is optional and not read). When SOLD_OUT_REPORTS distinct checked-in queuers have
+ * reported it, the book is sold out: every unbought job fails, open bids close and their holds are voided.
+ */
 export async function reportSoldOut(app: App, u: User, jobId: string, photoFileId: string | null): Promise<{ job: Job; book: BookSnapshot }> {
   const job = ownJobAsQueuer(app, u, jobId);
   const claim = app.store.claims.must(job.claimId);
@@ -453,6 +462,31 @@ export async function reportSoldOut(app: App, u: User, jobId: string, photoFileI
   const bidIds = app.tx(() => {
     const book = bookState(app, job.itemId);
     if (book.status === 'sold_out') return [];
+    const reporters = [...new Set([...(book.soldOutReports ?? []), u.id])];
+    book.soldOutReports = reporters;
+    if (reporters.length < SOLD_OUT_REPORTS) {
+      // One report: the reporter's own unbought jobs end and his offers on the item close; every other job,
+      // request and hold stays as it was, and the book stays open until a second queuer in line confirms.
+      app.store.books.update(book);
+      const own = new Set<string>();
+      for (const j of app.store.jobs.where('item_id = ?', job.itemId)) {
+        if (j.queuerId === u.id && JOB_BEFORE_PURCHASE.includes(j.status)) {
+          failJob(app, j, 'sold_out', `${u.displayName} reported ${itemById(j.itemId).item.shortName} sold out; the book closes when a second queuer in line confirms.`, { reoffer: true });
+          own.add(j.bidId);
+        }
+      }
+      for (const a of app.store.asks.where("item_id = ? AND status IN ('open', 'filled', 'withdrawn')", job.itemId)) {
+        if (a.queuerId === u.id && canTransition('ask', a.status, 'closed')) {
+          a.status = 'closed';
+          a.updatedAt = app.now();
+          app.store.asks.update(a);
+          emitAsk(app, a);
+        }
+      }
+      if (own.size > 0) runBook(app, job.itemId, 'requeue');
+      emitBook(app, job.itemId);
+      return [...own];
+    }
     book.status = 'sold_out';
     book.soldOutAt = app.now();
     app.store.books.update(book);

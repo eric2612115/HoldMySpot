@@ -33,6 +33,7 @@ export function checkBasis(code: ProofCheckCode, qrStoreId: boolean): { basis: B
     case 'item_match':
       return at('reading', 'line names');
     case 'within_retail_cap':
+    case 'listed_price':
       return at('reading', 'price');
     case 'code_visible':
       return at('reading', 'one-time code');

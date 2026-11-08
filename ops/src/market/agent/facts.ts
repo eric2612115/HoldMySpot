@@ -139,7 +139,7 @@ function capturesText(snap: MarketSnapshot, shop?: string): string {
     `${ok.length} captures succeeded for ${total(ok)}${shop ? ` at ${shop}` : ''}; ${released.length} releases gave back ${total(released)}${refunded.length ? `; ${refunded.length} refunds of ${total(refunded)}` : ''}.`,
     list.length ? `Captures: ${list.join('; ')}.` : '',
     failed.length ? `Failed captures: ${failed.map((r) => `${s(r.who)} ${usd(n(r.amountUsd))} at ${s(r.slot)} (${s(r.text)})`).join('; ')}.` : 'No capture failed.',
-    'Captures happen at a verified receipt (shop price, queue fee and processing at cost) and after tracking (shipping plus its own PayPal fee at cost), never above the request\'s hold.',
+    'Captures happen at a verified receipt (shop price, queue fee and processing at cost) and after tracking (the shipping the queuer declared, up to the budget, plus its own PayPal fee at cost), never above the request\'s hold.',
   ]
     .filter(Boolean)
     .join(' ');

@@ -46,8 +46,8 @@ describe('bid quote helpers', () => {
     const b = { qty: 1, retailCapCents: cap, maxFeeCents: 1200, shippingBudgetCents: 1200, mode: 'ship' as const };
     assert.equal(bidLimitCents(b), 6370);
     const [hold, fee, processing] = bidDisclosures(b);
-    assert.match(hold!, /PayPal holds up to \$63\.70\. You pay the receipt price, the matched fee, the actual shipping and processing at cost/);
-    assert.match(fee!, /keeps 10% of the queue fee\. Shop price, shipping and processing are passed through at cost\./);
+    assert.match(hold!, /PayPal holds up to \$63\.70\. You pay the receipt price, the matched fee, the shipping the queuer declares \(up to your budget\) and processing at cost/);
+    assert.match(fee!, /keeps 10% of the queue fee\. The shop price from the receipt, the shipping the queuer declares and processing are passed through with no markup\./);
     assert.equal(processing, 'Processing and payouts: up to $3.70, what taking your payment and paying the queuer costs (3.49% + $0.49 per charge, $0.25 per payout). HoldMySpot makes nothing on it.');
     assert.deepEqual(platformFeeLine(1200), { bps: 1000, perUnitCents: 120 });
   });
@@ -55,6 +55,6 @@ describe('bid quote helpers', () => {
   it('discloses a local errand without shipping', () => {
     const [hold, fee] = bidDisclosures({ qty: 1, retailCapCents: 4000, maxFeeCents: 900, shippingBudgetCents: 0, mode: 'local' });
     assert.match(hold!, /PayPal holds up to \$51\.54\. You pay the receipt price, the matched fee and processing at cost/);
-    assert.match(fee!, /Shop price and processing are passed through at cost\./);
+    assert.match(fee!, /The shop price from the receipt and processing are passed through with no markup\./);
   });
 });

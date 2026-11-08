@@ -292,7 +292,7 @@ export interface BidTask {
   retailCapCents: Cents;
   /** Per unit: the most the requester will pay a queuer. */
   maxFeeCents: Cents;
-  /** Whole bid: shipping and duty budget, charged at cost up to this. 0 for local errands. */
+  /** Whole bid: shipping and duty budget; the queuer's declared shipping is charged up to this. 0 for local errands. */
   shippingBudgetCents: Cents;
   /**
    * The user's own limit and the hold amount: qty * (retailCap + maxFee) +
@@ -681,6 +681,7 @@ export const PROOF_CHECK_CODES = [
   'totals_add_up',
   'qr_matches_print',
   'within_retail_cap',
+  'listed_price',
   'duplicate_photo',
   'generator_metadata',
 ] as const;

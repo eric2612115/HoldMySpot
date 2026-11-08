@@ -107,7 +107,7 @@ export function ownDuplicate(photos: readonly PhotoFacts[], prior: readonly Prio
 
 /** Checks decided by hashes, QR data, metadata or arithmetic alone (not by what a model read). */
 function basisOf(code: ProofCheckCode, reading: PurchaseReading | null): 'rule' | 'read' {
-  if (code === 'geofence' || code === 'duplicate_photo' || code === 'generator_metadata' || code === 'within_retail_cap') return 'rule';
+  if (code === 'geofence' || code === 'duplicate_photo' || code === 'generator_metadata' || code === 'within_retail_cap' || code === 'listed_price') return 'rule';
   if (code === 'shop_match' && reading?.qr?.sellerTaxId) return 'rule';
   return 'read';
 }

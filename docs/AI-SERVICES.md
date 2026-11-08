@@ -68,6 +68,7 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 | `qty_within_limit` | hard | Units on the receipt for this item equal the job's qty, within the per-person limit |
 | `item_match` | soft | Lines match the item's `receiptAliases`; no unrelated lines |
 | `within_retail_cap` | soft | Retail in USD at the job's locked rate is above $0 and within the job's retail cap (a $0 reading goes to a person, whose pass charges the shop price, D-135) |
+| `listed_price` | soft | Within the cap, the item's lines are at or under the item's listed shop price times the quantity, compared in the receipt's currency; above it, a person checks it (D-151). Not raised when the price is already above the cap |
 | `generator_metadata` | soft | No image-generator metadata (C2PA or EXIF software) |
 
   Any hard failure: `failed`. Any soft failure: `needs_review` (ops decides). Otherwise `passed`.
@@ -84,7 +85,7 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 
 - **When:** bid quote for ship mode.
 - **Formula (code, `shared/src/estimates.ts`):** parcel = qty x `weightGrams` + 200 g packing. Shipping = demo rate table for the fictional "Harbor Parcel Ground, tracked" within the US: $5.50 + $0.50 per started 100 g, 2 to 5 days. Parcels stay in the US, so the duty rate table is all zeros (it stays for a parcel that would cross a border). Budget = shipping x 1.3, rounded up to whole dollars. One Mochi Bunny plush to New York: 650 g, $9.00 shipping, $12 budget (the hero's label costs $8.75).
-- **Notes always shown:** "Estimate, charged at cost up to your budget." "Ships within the US, so no import duty applies."
+- **Notes always shown:** "Estimate. You are charged the shipping the queuer declares, up to your budget." "Ships within the US, so no import duty applies."
 - **Model:** writes the explanation; for catalog items every number comes from the catalog and tables. (Estimating packed size from a photo is a later extension, not v1.)
 
 ### 4.5 Bidding agent (Best Use of Agentic Commerce)

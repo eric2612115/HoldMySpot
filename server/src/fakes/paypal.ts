@@ -108,6 +108,15 @@ export class FakePayPal implements PaymentsPort, FakePaymentsControls {
     return true;
   }
 
+  /** Simulates PayPal finishing its review of a PENDING authorization (HMS_FAKE_FAIL authorize:pending). True when it was pending. */
+  settlePendingAuthorization(authorizationId: string, to: 'CREATED' | 'DENIED'): boolean {
+    const a = this.#inner.exportState().authorizations[authorizationId];
+    if (!a || a.status !== 'PENDING') return false;
+    this.#inner.settlePendingAuthorization(authorizationId, to);
+    this.#save();
+    return true;
+  }
+
   /** Simulates PayPal finishing a PENDING capture (HMS_FAKE_FAIL capture:pending). True when it was pending. */
   completePendingCapture(captureId: string): boolean {
     const capture = this.#inner.exportState().captures[captureId];
