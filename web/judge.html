@@ -23,7 +23,7 @@
       <p class="note" id="note">Your own private copy. PayPal is simulated.</p>
     </header>
     <main class="stage">
-      <figure class="phone"><figcaption><b>Mia</b> pays</figcaption><iframe id="mia" title="Mia's phone"></iframe></figure>
+      <figure class="phone"><figcaption><b>Mia</b> pays</figcaption><iframe id="mia" title="Mia's phone" allow="payment; publickey-credentials-get; publickey-credentials-create"></iframe></figure>
       <aside class="money" aria-label="What moved">
         <dl>
           <div><dt>Held</dt><dd id="held" class="is-held">$0.00</dd></div>
@@ -35,7 +35,7 @@
         <ol id="ids" class="ids" hidden></ol>
         <button type="button" id="sandbox" class="sandbox" hidden>Use the real PayPal sandbox</button>
       </aside>
-      <figure class="phone" id="wei-phone"><figcaption><b>Wei</b> stands in line</figcaption><iframe id="wei" title="Wei's phone"></iframe></figure>
+      <figure class="phone" id="wei-phone"><figcaption><b>Wei</b> stands in line</figcaption><iframe id="wei" title="Wei's phone" allow="payment; publickey-credentials-get; publickey-credentials-create"></iframe></figure>
     </main>
     <div id="gone" class="gone" hidden>
       <p>This copy was cleared after sitting idle.</p>

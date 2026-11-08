@@ -62,6 +62,12 @@ BASE_URL=http://127.0.0.1:9496 node web/scripts/hosted-walk.mjs   # the browser 
 
 Add `HMS_SECRETS_DIR=~/.config/paypal-hackathon` to build with the AG Studio key and offer the real sandbox. `HOST_ALIAS=judge.holdmyspot.test` on the walk shows the site under a name that is not localhost, where a licence watermark would be drawn.
 
+## The real PayPal sandbox choice
+
+With the PayPal variables set, the judge's page offers "Use the real PayPal sandbox". The judge approves the hold in PayPal's window with a sandbox buyer login you give privately in Devpost, then presses "Let Wei run the errand", and the page lists PayPal's ids. Capped at 20 markets a day.
+
+Not yet proven end to end: its market, a real order and PayPal's window were checked, and Wei's errand has run on the emulator, but no full run has gone through PayPal's real sandbox on this path. Before giving the URL to judges, do it once yourself: start it with `HMS_SECRETS_DIR=~/.config/paypal-hackathon npm run hosted -- --port-offset 701`, approve the hold in PayPal's window, press the button, and confirm the ids appear.
+
 ## For an AI reviewer
 
 ```sh
