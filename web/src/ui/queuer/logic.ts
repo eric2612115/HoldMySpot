@@ -394,7 +394,7 @@ export interface PayoutSummary {
 
 const PURPOSE_LABEL: Record<Payout['purpose'], string> = {
   fee: 'Queue fee, after HoldMySpot’s 10%',
-  reimbursement: 'Shop price and shipping, at cost',
+  reimbursement: 'Shop price at cost, shipping as declared',
   fee_and_reimbursement: 'Shop price at cost and the queue fee, after HoldMySpot’s 10%',
 };
 

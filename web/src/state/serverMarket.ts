@@ -353,7 +353,7 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
       checkout: {
         pointId,
         amountCents: b.limitCents,
-        description: `${what} from ${p.shop.name}: the shop price at cost, a queue fee of up to ${formatUsd(maxFeeCents)}${destination.mode === 'ship' ? ', shipping at cost' : ''} and processing at cost`,
+        description: `${what} from ${p.shop.name}: the shop price at cost, a queue fee of up to ${formatUsd(maxFeeCents)}${destination.mode === 'ship' ? ', shipping up to your budget' : ''} and processing at cost`,
         disclosures: bidDisclosures({ qty: b.qty, retailCapCents: b.retailCapCents, maxFeeCents: b.maxFeeCents, shippingBudgetCents: b.shippingBudgetCents, mode: destination.mode }),
       },
     });

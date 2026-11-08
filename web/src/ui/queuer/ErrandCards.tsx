@@ -329,7 +329,7 @@ function ShipForm({ job }: { job: Job }) {
         <span>Label cost (USD)</span>
         <input name="cost" value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" placeholder="8.75" />
       </label>
-      <p className="q-note">Shipping is paid back at cost, up to {formatUsd(job.caps.shippingCents, { exact: true })}. The tracking number goes to PayPal before the last capture.</p>
+      <p className="q-note">Shipping is paid back as you declare it, up to {formatUsd(job.caps.shippingCents, { exact: true })}. The tracking number goes to PayPal before the last capture.</p>
       <button type="submit" className="take-button" disabled={!ok || sending}>
         {sending ? 'Adding tracking…' : 'Add tracking'}
       </button>
@@ -437,7 +437,7 @@ export function PayoutCard({ errand, point }: CardProps) {
         </div>
         {job.shipment && (
           <p className="q-note">
-            {job.shipment.carrierName} {job.shipment.trackingNumber}. {job.mode === 'ship' ? `Shipping ${formatUsd(job.amounts.shippingCents ?? 0, { exact: true })} at cost.` : ''}
+            {job.shipment.carrierName} {job.shipment.trackingNumber}. {job.mode === 'ship' ? `Shipping ${formatUsd(job.amounts.shippingCents ?? 0, { exact: true })}, as declared.` : ''}
           </p>
         )}
         <p className="q-note">

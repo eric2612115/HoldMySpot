@@ -312,7 +312,7 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
             ? `${offer.queuerName}'s fee reaches yours at ${formatUsd(fill)}${eta !== null && eta > 0 ? ` in about ${minutesWord(eta)}` : sched?.preview ? ' after check-in' : ''}. `
             : 'You are booked automatically when an offer reaches your max fee. '}
           {ahead === null ? '' : ahead === 0 ? 'Yours is the best request in the book.' : `${ahead} ${ahead === 1 ? 'request is' : 'requests are'} ahead of you.`}
-          {order.mode === 'ship' ? ' Shipped to you; shipping is charged at cost.' : ''}
+          {order.mode === 'ship' ? ' Shipped to you; shipping is charged as the queuer declares it, up to your shipping budget.' : ''}
         </p>
         <button type="button" className="text-button" onClick={onCancel}>
           Cancel and release the hold
