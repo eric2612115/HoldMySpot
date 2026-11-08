@@ -2,20 +2,20 @@
   "tool": "npm run attack",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-08T06:19:47.836Z",
-  "commit": "95e190f",
+  "startedAt": "2026-11-08T11:35:31.453Z",
+  "commit": "eeb8708",
   "uncommittedChanges": true,
   "codeTrees": {
-    "shared": "d1d4e15059d1",
-    "server": "0c94ca884d5b",
-    "web": "7872fc7c7250",
-    "ops": "294dd17095a7",
+    "shared": "b775dea6a700",
+    "server": "36979ddc4202",
+    "web": "c4764db96da7",
+    "ops": "a806cc75bb65",
     "scripts": "e3831f06a9c0"
   },
   "node": "24.22.2",
   "platform": "darwin arm64",
   "server": {
-    "url": "http://127.0.0.1:64303",
+    "url": "http://127.0.0.1:52668",
     "startedHere": true,
     "mode": "fake",
     "ai": {
@@ -179,7 +179,7 @@
       "stoppedBy": "AI + rules",
       "answer": "code_visible",
       "code": "code_visible",
-      "detail": "Receipt failed 1 check: one-time code. The job code was not found next to the item.",
+      "detail": "Receipt failed 1 check: one-time code. The job code was not found on the item photo.",
       "refused": true,
       "moved": {
         "captured": 0,

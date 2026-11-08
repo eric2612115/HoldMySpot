@@ -22,23 +22,23 @@
   },
   "tests": {
     "steps": 6,
-    "tests": 699,
-    "passed": 699,
+    "tests": 707,
+    "passed": 707,
     "failed": 0,
     "skipped": 0,
     "byPackage": {
       "shared": 103,
-      "server": 444,
-      "web": 132,
+      "server": 446,
+      "web": 138,
       "ops": 20
     },
-    "seconds": 76.9,
-    "aboutSeconds": 80,
+    "seconds": 88.3,
+    "aboutSeconds": 90,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "95e190f",
+    "commit": "eeb8708",
     "recordedOn": "2026-11-08",
     "properties": {
       "tests": 19,
@@ -1078,9 +1078,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-08",
-    "attackSeconds": 11,
+    "attackSeconds": 12.1,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 5.7,
+    "aiEvalSeconds": 6.4,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1093,14 +1093,14 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-08 06:20",
-      "commit": "95e190f",
+      "at": "2026-11-08 11:35",
+      "commit": "eeb8708",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "d1d4e15059d1",
-        "server": "0c94ca884d5b",
-        "web": "7872fc7c7250",
-        "ops": "294dd17095a7",
+        "shared": "b775dea6a700",
+        "server": "36979ddc4202",
+        "web": "c4764db96da7",
+        "ops": "a806cc75bb65",
         "scripts": "e3831f06a9c0"
       }
     },
@@ -1108,14 +1108,14 @@
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-08 06:19",
-      "commit": "95e190f",
+      "at": "2026-11-08 11:35",
+      "commit": "eeb8708",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "d1d4e15059d1",
-        "server": "0c94ca884d5b",
-        "web": "7872fc7c7250",
-        "ops": "294dd17095a7",
+        "shared": "b775dea6a700",
+        "server": "36979ddc4202",
+        "web": "c4764db96da7",
+        "ops": "a806cc75bb65",
         "scripts": "e3831f06a9c0"
       }
     },
@@ -1123,14 +1123,14 @@
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-08 06:19",
-      "commit": "95e190f",
+      "at": "2026-11-08 11:35",
+      "commit": "eeb8708",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "d1d4e15059d1",
-        "server": "0c94ca884d5b",
-        "web": "7872fc7c7250",
-        "ops": "294dd17095a7",
+        "shared": "b775dea6a700",
+        "server": "36979ddc4202",
+        "web": "c4764db96da7",
+        "ops": "a806cc75bb65",
         "scripts": "e3831f06a9c0"
       }
     },
@@ -1138,14 +1138,14 @@
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-08 06:19",
-      "commit": "95e190f",
+      "at": "2026-11-08 11:35",
+      "commit": "eeb8708",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "d1d4e15059d1",
-        "server": "0c94ca884d5b",
-        "web": "7872fc7c7250",
-        "ops": "294dd17095a7",
+        "shared": "b775dea6a700",
+        "server": "36979ddc4202",
+        "web": "c4764db96da7",
+        "ops": "a806cc75bb65",
         "scripts": "e3831f06a9c0"
       }
     },
@@ -1153,14 +1153,14 @@
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-08 06:19",
-      "commit": "95e190f",
+      "at": "2026-11-08 11:35",
+      "commit": "eeb8708",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "d1d4e15059d1",
-        "server": "0c94ca884d5b",
-        "web": "7872fc7c7250",
-        "ops": "294dd17095a7",
+        "shared": "b775dea6a700",
+        "server": "36979ddc4202",
+        "web": "c4764db96da7",
+        "ops": "a806cc75bb65",
         "scripts": "e3831f06a9c0"
       }
     }
