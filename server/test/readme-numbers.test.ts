@@ -37,16 +37,17 @@ function run(args: string[]): { code: number | null; out: string } {
   return { code: r.status, out: `${r.stdout}${r.stderr}` };
 }
 
-/** README.md with one edit, in a temporary file; the check runs against it. */
-function checkEdited(edit: (readme: string) => string): { code: number | null; out: string } {
+/** docs/TECHNICAL-DETAILS.md (or, with `page`, README.md) with one edit, in a temporary file; the check runs against it. */
+function checkEdited(edit: (readme: string) => string, page: 'details' | 'front' = 'details'): { code: number | null; out: string } {
   const dir = mkdtempSync(join(tmpdir(), 'hms-readme-numbers-'));
   try {
-    const readme = readFileSync(join(REPO, 'README.md'), 'utf8');
+    const source = page === 'front' ? join(REPO, 'README.md') : join(REPO, 'docs', 'TECHNICAL-DETAILS.md');
+    const readme = readFileSync(source, 'utf8');
     const edited = edit(readme);
-    assert.notEqual(edited, readme, 'the edit changed README.md');
-    const file = join(dir, 'README.md');
+    assert.notEqual(edited, readme, 'the edit changed the page');
+    const file = join(dir, 'page.md');
     writeFileSync(file, edited);
-    return run(['--check', '--readme', file]);
+    return run(['--check', page === 'front' ? '--front' : '--readme', file]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -180,6 +181,30 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const gone = checkEdited((t) => t.replace(/readings of all 21 demo photos, recorded live on \d{4}-\d{2}-\d{2}/, 'readings of the demo photos'));
     assert.equal(gone.code, 1, gone.out);
     assert.match(gone.out, /no longer states live run date and photos/);
+  });
+
+  it("turns red when README.md's generated numbers, typed amounts, PayPal ids, size, opening or wording drift", () => {
+    const block = checkEdited((t) => t.replace(/(<!-- numbers:front-proof:start -->[\s\S]*?)21\/21 verdicts/, (_m, head: string) => `${head}20/21 verdicts`), 'front');
+    assert.equal(block.code, 1, block.out);
+    assert.match(block.out, /generated block "front-proof" differs/);
+    const capture = checkEdited((t) => t.replace('PayPal captures **\\$48.69**', 'PayPal captures **\\$48.70**'), 'front');
+    assert.equal(capture.code, 1, capture.out);
+    assert.match(capture.out, /the receipt capture as 48\.70; the source says 48\.69/);
+    const amount = checkEdited((t) => t.replace('\\$48.69 and \\$9.57:', '\\$48.71 and \\$9.57:'), 'front');
+    assert.equal(amount.code, 1, amount.out);
+    assert.match(amount.out, /states \$48\.71, which no log or story input gives/);
+    const id = checkEdited((t) => t.replace('`54N68839TA957213Y`', '`54N68839TA957213Z`'), 'front');
+    assert.equal(id.code, 1, id.out);
+    assert.match(id.out, /the PayPal id 54N68839TA957213Z/);
+    const heavy = checkEdited((t) => `${t}\n${'x'.repeat(30_000)}\n`, 'front');
+    assert.equal(heavy.code, 1, heavy.out);
+    assert.match(heavy.out, /more than the 22 KB it may weigh/);
+    const opening = checkEdited((t) => `${'filler line\n'.repeat(800)}${t}`, 'front');
+    assert.equal(opening.code, 1, opening.out);
+    assert.match(opening.out, /first 8192 bytes do not say/);
+    const wording = checkEdited((t) => t.replace('Receipts that fail the checks move', 'Fake receipts move'), 'front');
+    assert.equal(wording.code, 1, wording.out);
+    assert.match(wording.out, /wording it must not use/);
   });
 
   it('runs npm run ai:eval again now, with a key named in the environment and in a key file: it reads no key, calls no model, and gives the numbers recorded in docs/evidence/ai-eval.json (D-149)', () => {

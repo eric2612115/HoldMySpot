@@ -1,6 +1,6 @@
 // Reports what the AG licence keys do in the running ops console. It never prints a key.
 //
-//   npm run dev              (in another terminal; keys as in README "Licences", or none)
+//   npm run dev              (in another terminal; keys as in docs/TECHNICAL-DETAILS.md "Keys", or none)
 //   npm run licence:check    (add -- --strict to exit 1 unless no AG licence banner or watermark shows)
 //
 // It opens the market dashboard on the in-browser mock, scrolls AG Studio so every widget draws

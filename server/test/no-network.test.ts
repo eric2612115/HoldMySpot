@@ -7,7 +7,7 @@ import { SERVER_ROOT } from '../src/config.ts';
 import { testServer, type TestServer } from './helpers.ts';
 
 /**
- * The zero-key demo calls neither PayPal nor a model (README, "What is simulated"; claims.md H4; D-149):
+ * The zero-key demo calls neither PayPal nor a model (docs/TECHNICAL-DETAILS.md, "What is simulated"; claims.md H4; D-149):
  * the hero day on the real AI services with the recorded model answers and the PayPal emulator, with
  * every outgoing call refused and recorded. Both ways out are watched: `fetch` (the PayPal REST
  * client's sandbox transport, the model providers and the Anthropic SDK use it) and raw sockets

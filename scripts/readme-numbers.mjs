@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// README.md's numbers, derived from the logs and fixtures that prove them (docs/DECISIONS.md D-143).
+// The numbers README.md and docs/TECHNICAL-DETAILS.md state, derived from the logs and fixtures that prove them
+// (docs/DECISIONS.md D-143, D-162). README.md is the short front page; docs/TECHNICAL-DETAILS.md holds the full
+// write-up, the generated blocks it always had and every sentence the prose checks read.
 //
 //   npm run numbers                     derive docs/evidence/numbers.json from the files below and rewrite
 //                                       README.md's generated blocks; then check the rest of README.md
@@ -21,7 +23,7 @@
 // the Venmo check), the recorded model answers in server/fixtures/ai/, and the worked examples computed by the
 // shared money rules (shared/src/money.ts).
 //
-// README.md holds generated blocks between <!-- numbers:NAME:start --> and <!-- numbers:NAME:end -->
+// Both pages hold generated blocks between <!-- numbers:NAME:start --> and <!-- numbers:NAME:end -->
 // markers, rewritten from numbers.json, and prose that the checks below read: a hand edit of a number
 // that disagrees with its source turns npm test red. Nothing here needs a key or the network.
 
@@ -33,19 +35,20 @@ import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
 import { AI_KEY_NAMES, REPO, bold, dim, gitState, green, npmCommand, npmVersion, red, requireNode } from './common.mjs';
 
-const USAGE = `Derive README.md's numbers from the logs and fixtures that prove them, and check README.md.
+const USAGE = `Derive the numbers of README.md and docs/TECHNICAL-DETAILS.md from the logs and fixtures that prove them, and check both.
 
   npm run numbers [-- options]
 
 Options:
-  --check            write nothing; exit 1 when docs/evidence/numbers.json or README.md is out of date
+  --check            write nothing; exit 1 when docs/evidence/numbers.json, README.md or docs/TECHNICAL-DETAILS.md is out of date
   --record           run npm run ai:eval, npm run attack, npm run demo -- --smoke and then npm test first
                      (zero keys) and save their reports in docs/evidence/; record from a committed tree on an
                      idle machine when the reports are evidence (each report says which code it ran on)
   --fresh <dir>      with --check: also compare with the reports in <dir> (tests.json, ai-eval.json,
                      attack.json, smoke.json, any of them), written by a fresh run (CI)
   --port-offset <n>  with --record: the smoke check's port offset (default 400)
-  --readme <file>    check this file instead of README.md (tests)
+  --readme <file>    check this file instead of docs/TECHNICAL-DETAILS.md (tests)
+  --front <file>     check this file instead of README.md (tests)
   --numbers <file>   compare this file instead of docs/evidence/numbers.json (tests)
   --print            print the derived numbers as JSON and stop
   -h, --help
@@ -71,6 +74,7 @@ const SRC = {
   rules: 'shared/src/money.ts',
 };
 const NUMBERS = 'docs/evidence/numbers.json';
+const DETAILS = 'docs/TECHNICAL-DETAILS.md';
 
 /** The worked example's inputs (docs/DOMAIN.md section 7, shared/src/money.test.ts): Mia's request and Wei's receipt and label. */
 const WORKED = { bid: { qty: 1, retailCapCents: 3600, maxFeeCents: 1200, shippingBudgetCents: 1200 }, receiptCents: 3400, labelCents: 875 };
@@ -705,7 +709,7 @@ async function derive() {
   return {
     format: 1,
     generatedBy: 'npm run numbers (scripts/readme-numbers.mjs)',
-    note: 'Derived from the files in "sources"; do not edit. server/test/readme-numbers.test.ts fails when this file or README.md disagrees with them.',
+    note: 'Derived from the files in "sources"; do not edit. server/test/readme-numbers.test.ts fails when this file, README.md or docs/TECHNICAL-DETAILS.md disagrees with them.',
     sources: SRC,
     tests,
     workedExample: worked,
@@ -802,16 +806,16 @@ const BLOCKS = {
     return [
       '| Claim | Result | Run it | Log or fixture |',
       '|---|---|---|---|',
-      `| The tests pass with no keys, calling neither PayPal nor a model | ${t.tests} tests in ${t.steps} steps: ${t.passed} passed, ${t.failed} failed (${pkgs}); on ${t.os} (${t.platform.split(' ')[1]}), Node ${t.node}, npm ${t.npm}, ${t.recordedOn} | \`npm test\` | [tests.json](docs/evidence/tests.json) |`,
-      `| The money and market rules hold on generated cases (${t.properties.covers[0]} to ${t.properties.covers.at(-1)}) | ${t.properties.tests} property tests, ${grouped(t.properties.runs)} generated cases in every \`npm test\` (fixed seed; each test's name gives its runs): ${grouped(t.properties.runsByPackage.shared)} cases of the shared rules, ${grouped(t.properties.runsByPackage.ops)} rescheduler mornings on the ops console's replay model, and ${grouped(t.properties.runsByPackage.server)} generated market days on the server with the PayPal emulator${p5 ? ` (P5 plays each of its ${p5.runs} days twice, with and without PayPal failures)` : ''}. ${daysLine} | \`npm test\` | [tests.json](docs/evidence/tests.json) |`,
-      `| PayPal's sandbox charged what the rules say | Run \`${run.run}\`: held \\${usd(run.authorization.amountCents)}, captured ${capt}, released \\${usd(run.releasedCents)}, paid out ${paid}; PayPal's fees ${fees} = \\${usd(run.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(run.platformCents)}; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match; the same amounts as the worked example in \`shared/src/money.ts\` | \`npm run gates -- lifecycle\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), [PayPal's answers](${run.fixtures}/) |`,
-      `| The web app run on PayPal's sandbox read back the same | PayPal on ${web.readBackAt}: authorization \`${web.authorization.id}\` \\${usd(web.authorization.amountCents)} ${web.authorization.status}; captures ${web.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')} ${[...new Set(web.captures.map((c) => c.status))].join(', ')} (PayPal's fees ${web.captures.map((c) => `\\${usd(c.paypalFeeCents)}`).join(' + ')}); released \\${usd(web.releasedCents)}; payouts ${web.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')} ${[...new Set(web.payouts.map((p) => p.status))].join(', ')}; tracking ${web.tracking.status}; HoldMySpot kept \\${usd(web.platformCents)}. The walk's own checks of the server's ledger: ${web.walkChecks.passed}/${web.walkChecks.of}, the same ids and amounts | \`web/scripts/sandbox-walk.mjs\` (your sandbox keys, a second sandbox buyer) | [web-run-20261107.txt](docs/evidence/web-run-20261107.txt), [sandbox-readback-20261107.txt](docs/evidence/sandbox-readback-20261107.txt) |`,
-      `| A local pickup errand on PayPal's sandbox charged what the rules say | Run \`${lr.run}\` (Sam's plush, a \`PICKUP_FROM_PERSON\` order): held \\${usd(lr.authorization.amountCents)}, nothing captured at the receipt, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)} in one payout; PayPal's fees \\${usd(lr.captures[0].paypalFeeCents)} + \\${usd(lr.payouts[0].paypalFeeCents)} = \\${usd(lr.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(lr.platformCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match; the same amounts as the shared rules give for this local errand | \`npm run gates -- lifecycle --local\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox), [PayPal's answers](${lr.fixtures}/) |`,
-      `| Sandbox gates | ${gateLists} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](docs/SANDBOX-GATES.md) |`,
-      `| The model reads, the rules decide (${a.cases} demo photos, recorded ${a.stamp} answers) | ${a.modelCalls} model calls: ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | \`npm run ai:eval\` | [ai-eval.json](docs/evidence/ai-eval.json) |`,
-      `| Which layer stops which fake | Fakes stopped: Rules + AI ${ab.rulesAndAi.fakesStopped}/${ab.cases.fake}; the rules on the true reading (each photo's truth.json, not a reader) ${ab.rulesOnly.fakesStopped}/${ab.cases.fake}; the model without the job, not asked for a verdict, ${ab.aiOnly.fakesStopped}/${ab.cases.fake}; code alone ${ab.codeAlone}/${ab.cases.fake}, a rule on the model's reading for the other ${ab.readingOnly}; genuine proofs passed ${ab.rulesAndAi.genuinePassed}/${ab.cases.genuine} in each | \`npm run ablation\` | [ABLATION.md](docs/ABLATION.md), [ablation.json](docs/evidence/ablation.json) |`,
-      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as claimed, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} got through, ${at.knownLimits.length === 1 ? 'the known limit' : 'the known limits'} (${at.knownLimits.map((x) => LIMIT_WORDS[x.id] ?? x.id).join(', ')}); ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](docs/evidence/attack.json) |`,
-      `| A fresh start answers with no keys | ${list(s.answered)} answered, ready in ${s.readySeconds} s. PayPal: ${s.paypal}. AI: ${s.ai} | \`npm run demo -- --smoke\` | [smoke.json](docs/evidence/smoke.json) |`,
+      `| The tests pass with no keys, calling neither PayPal nor a model | ${t.tests} tests in ${t.steps} steps: ${t.passed} passed, ${t.failed} failed (${pkgs}); on ${t.os} (${t.platform.split(' ')[1]}), Node ${t.node}, npm ${t.npm}, ${t.recordedOn} | \`npm test\` | [tests.json](evidence/tests.json) |`,
+      `| The money and market rules hold on generated cases (${t.properties.covers[0]} to ${t.properties.covers.at(-1)}) | ${t.properties.tests} property tests, ${grouped(t.properties.runs)} generated cases in every \`npm test\` (fixed seed; each test's name gives its runs): ${grouped(t.properties.runsByPackage.shared)} cases of the shared rules, ${grouped(t.properties.runsByPackage.ops)} rescheduler mornings on the ops console's replay model, and ${grouped(t.properties.runsByPackage.server)} generated market days on the server with the PayPal emulator${p5 ? ` (P5 plays each of its ${p5.runs} days twice, with and without PayPal failures)` : ''}. ${daysLine} | \`npm test\` | [tests.json](evidence/tests.json) |`,
+      `| PayPal's sandbox charged what the rules say | Run \`${run.run}\`: held \\${usd(run.authorization.amountCents)}, captured ${capt}, released \\${usd(run.releasedCents)}, paid out ${paid}; PayPal's fees ${fees} = \\${usd(run.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(run.platformCents)}; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match; the same amounts as the worked example in \`shared/src/money.ts\` | \`npm run gates -- lifecycle\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md#full-job-through-the-server-sandbox), [PayPal's answers](../${run.fixtures}/) |`,
+      `| The web app run on PayPal's sandbox read back the same | PayPal on ${web.readBackAt}: authorization \`${web.authorization.id}\` \\${usd(web.authorization.amountCents)} ${web.authorization.status}; captures ${web.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')} ${[...new Set(web.captures.map((c) => c.status))].join(', ')} (PayPal's fees ${web.captures.map((c) => `\\${usd(c.paypalFeeCents)}`).join(' + ')}); released \\${usd(web.releasedCents)}; payouts ${web.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')} ${[...new Set(web.payouts.map((p) => p.status))].join(', ')}; tracking ${web.tracking.status}; HoldMySpot kept \\${usd(web.platformCents)}. The walk's own checks of the server's ledger: ${web.walkChecks.passed}/${web.walkChecks.of}, the same ids and amounts | \`web/scripts/sandbox-walk.mjs\` (your sandbox keys, a second sandbox buyer) | [web-run-20261107.txt](evidence/web-run-20261107.txt), [sandbox-readback-20261107.txt](evidence/sandbox-readback-20261107.txt) |`,
+      `| A local pickup errand on PayPal's sandbox charged what the rules say | Run \`${lr.run}\` (Sam's plush, a \`PICKUP_FROM_PERSON\` order): held \\${usd(lr.authorization.amountCents)}, nothing captured at the receipt, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)} in one payout; PayPal's fees \\${usd(lr.captures[0].paypalFeeCents)} + \\${usd(lr.payouts[0].paypalFeeCents)} = \\${usd(lr.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(lr.platformCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match; the same amounts as the shared rules give for this local errand | \`npm run gates -- lifecycle --local\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md#local-errand-through-the-server-sandbox), [PayPal's answers](../${lr.fixtures}/) |`,
+      `| Sandbox gates | ${gateLists} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md) |`,
+      `| The model reads, the rules decide (${a.cases} demo photos, recorded ${a.stamp} answers) | ${a.modelCalls} model calls: ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | \`npm run ai:eval\` | [ai-eval.json](evidence/ai-eval.json) |`,
+      `| Which layer stops which fake | Fakes stopped: Rules + AI ${ab.rulesAndAi.fakesStopped}/${ab.cases.fake}; the rules on the true reading (each photo's truth.json, not a reader) ${ab.rulesOnly.fakesStopped}/${ab.cases.fake}; the model without the job, not asked for a verdict, ${ab.aiOnly.fakesStopped}/${ab.cases.fake}; code alone ${ab.codeAlone}/${ab.cases.fake}, a rule on the model's reading for the other ${ab.readingOnly}; genuine proofs passed ${ab.rulesAndAi.genuinePassed}/${ab.cases.genuine} in each | \`npm run ablation\` | [ABLATION.md](ABLATION.md), [ablation.json](evidence/ablation.json) |`,
+      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as claimed, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} got through, ${at.knownLimits.length === 1 ? 'the known limit' : 'the known limits'} (${at.knownLimits.map((x) => LIMIT_WORDS[x.id] ?? x.id).join(', ')}); ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](evidence/attack.json) |`,
+      `| A fresh start answers with no keys | ${list(s.answered)} answered, ready in ${s.readySeconds} s. PayPal: ${s.paypal}. AI: ${s.ai} | \`npm run demo -- --smoke\` | [smoke.json](evidence/smoke.json) |`,
     ];
   },
 };
@@ -829,6 +833,154 @@ const CLAIMS_BLOCKS = {
     ),
   ],
 };
+
+/**
+ * README.md's generated blocks. The page stands alone for a reader who sees nothing else, so its key numbers
+ * come from the same logs as docs/TECHNICAL-DETAILS.md's (D-162).
+ */
+const FRONT_BLOCKS = {
+  'front-proof': (n) => {
+    const t = n.tests;
+    const w = n.workedExample;
+    const run = n.sandbox.serverRun;
+    const lr = n.sandbox.localRun;
+    const g = n.sandbox.gates;
+    const a = n.aiEval;
+    const at = n.attack;
+    const list = (xs) => xs.join(', ');
+    const gateLists = [
+      ['pass', g.pass],
+      ['partial', g.partial],
+      ['waiting', g.waiting],
+      ['not run', g.notRun],
+    ]
+      .filter(([, xs]) => xs.length > 0)
+      .map(([k, xs]) => `${k}: ${list(xs)}`)
+      .join('; ');
+    return [
+      '| Proof | Result | Log |',
+      '|---|---|---|',
+      `| Hero errand on the real PayPal sandbox, through the web app and through the API | Held \\${usd(run.authorization.amountCents)}, captured ${run.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')}, released \\${usd(run.releasedCents)}, paid out ${run.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')}; PayPal's fees \\${usd(run.paypalFeesCents)}, exactly the processing line; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox) |`,
+      `| Local pickup on the real PayPal sandbox | Held \\${usd(lr.authorization.amountCents)}, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match | [gates](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox) |`,
+      `| Sandbox gates | ${gateLists} | [gates](docs/SANDBOX-GATES.md) |`,
+      `| AI reads, rules decide (${a.cases} demo photos) | ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |`,
+      `| \`npm run attack\`, no keys | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved; ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as declared, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} is the known limit | [attack.json](docs/evidence/attack.json) |`,
+      `| \`npm test\`, no keys | ${t.tests} tests, ${t.failed} failed; ${t.properties.tests} property tests, ${grouped(t.properties.runs)} generated cases | [tests.json](docs/evidence/tests.json) |`,
+    ];
+  },
+  'front-money': (n) => {
+    const w = n.workedExample;
+    const fee = w.payouts.find((p) => p.purpose === 'fee');
+    const reimb = w.payouts.find((p) => p.purpose === 'reimbursement');
+    return [
+      `Mia: held \\${usd(w.heldCents)}, charged \\${usd(w.capturedCents)}, \\${usd(w.releasedCents)} released. Wei: received \\${usd(w.paidOutCents)} (\\${usd(reimb.amountCents)} back for the plush and the postage he declared, \\${usd(fee.amountCents)} for his time). PayPal's fees: \\${usd(w.paypalFeesCents)}, exactly the processing line. HoldMySpot: \\${usd(w.platformCents)}, 10% of the queue fee.`,
+    ];
+  },
+};
+
+/** The most README.md may weigh, and what its first 8 KB must already say: an AI reader's text may be cut off. */
+const FRONT_MAX_BYTES = 22 * 1024;
+const FRONT_FIRST_BYTES = 8192;
+const FRONT_MUST_OPEN_WITH = ['For AI reviewers', 'Orders v2', 'Payouts', 'Muse Spark', 'AG Studio', 'Bryntum', 'read-back checks', 'verdicts', 'attempts'];
+
+/** Words and sentences the front page must never carry. */
+const FRONT_BANNED = [/\b(?:scalp|resell|flip)\w*/i, /fake receipts? moves? /i];
+
+/** Amounts of the demo day's story that are inputs rather than results; server/test checks them (claims.md H1). */
+const FRONT_STORY_CENTS = [1500, 800, 100, 3600, 1200, 5600];
+
+/** Press figures quoted on the front page, with their sources next to them (claims.md F8). */
+const FRONT_PRESS_CENTS = [2500, 3750];
+
+function frontAmounts(n) {
+  const w = n.workedExample;
+  const le = n.localExample;
+  const lr = n.sandbox.localRun;
+  const v = n.sandbox.venmo;
+  return new Set(
+    [
+      w.heldCents,
+      w.capturedCents,
+      w.releasedCents,
+      w.paypalFeesCents,
+      w.platformCents,
+      w.paidOutCents,
+      w.receiptCapture.amountCents,
+      w.receiptCapture.retailCents,
+      w.shippingCapture.amountCents,
+      ...w.payouts.map((p) => p.amountCents),
+      le.heldCents,
+      le.capturedCents,
+      le.releasedCents,
+      lr.paidOutCents,
+      v.amountCents,
+      v.paypal.capture.amountCents,
+      0,
+      ...FRONT_STORY_CENTS,
+      ...FRONT_PRESS_CENTS,
+    ].map(d),
+  );
+}
+
+function frontChecks(n) {
+  const w = n.workedExample;
+  const fee = w.payouts.find((p) => p.purpose === 'fee');
+  const reimb = w.payouts.find((p) => p.purpose === 'reimbursement');
+  const $ = '\\\\?\\$';
+  const amt = '(\\d+(?:\\.\\d\\d)?)';
+  return [
+    { name: 'the hold', re: new RegExp(`PayPal authorizes a \\*\\*${$}${amt} hold\\*\\*`, 'g'), want: [d(w.heldCents)] },
+    { name: 'the receipt capture', re: new RegExp(`PayPal captures \\*\\*${$}${amt}\\*\\*`, 'g'), want: [d(w.receiptCapture.amountCents)] },
+    { name: 'the shipping capture and the release', re: new RegExp(`a final capture of \\*\\*${$}${amt}\\*\\* \\([^)]*\\) releases \\*\\*${$}${amt}\\*\\*`, 'g'), want: [d(w.shippingCapture.amountCents), d(w.releasedCents)] },
+    { name: 'the payouts to Wei', re: new RegExp(`Payouts sends Wei \\*\\*${$}${amt}\\*\\*`, 'g'), want: [[d(fee.amountCents)], [d(reimb.amountCents)]] },
+    { name: 'the demo photo count', re: /All (\d+) demo photos/g, want: [String(n.aiEval.cases)] },
+    { name: 'the rules on the true reading', re: /With the rules on the true reading, (\d+) of (\d+) bad proofs/g, want: [String(n.ablation.rulesOnly.fakesStopped), String(n.ablation.cases.fake)] },
+  ];
+}
+
+/** Everything README.md must keep: its generated blocks, its typed numbers and ids, its size and its opening. */
+function frontProblems(front, numbers) {
+  const name = 'README.md';
+  const problems = [];
+  const { text, missing } = renderReadme(front, numbers, FRONT_BLOCKS);
+  for (const m of missing) problems.push(`${name} has no generated block "${m}" (${marker(m, 'start')} ... ${marker(m, 'end')})`);
+  for (const b of Object.keys(FRONT_BLOCKS)) {
+    if (missing.includes(b)) continue;
+    const grab = (t) => t.slice(t.indexOf(marker(b, 'start')), t.indexOf(marker(b, 'end')));
+    if (grab(text) !== grab(front)) problems.push(`${name}'s generated block "${b}" differs from docs/evidence/numbers.json (npm run numbers rewrites it)`);
+  }
+  for (const c of frontChecks(numbers)) {
+    const found = [...front.matchAll(c.re)].map((m) => m.slice(1));
+    if (found.length === 0) {
+      problems.push(`${name} no longer states ${c.name} where this check looks (${c.re.source}); update scripts/readme-numbers.mjs with the new sentence`);
+      continue;
+    }
+    const sequence = Array.isArray(c.want[0]);
+    found.forEach((got, i) => {
+      const want = sequence ? c.want[i] : c.want;
+      if (!want) problems.push(`${name} states ${c.name} more often than its source has values (${got.join(', ')})`);
+      else if (!isDeepStrictEqual(got, want)) problems.push(`${name} states ${c.name} as ${got.join(', ')}; the source says ${want.join(', ')}`);
+    });
+  }
+  const allowed = frontAmounts(numbers);
+  for (const m of front.matchAll(/\\?\$(\d+(?:\.\d\d)?)/g)) {
+    const value = Number(m[1]).toFixed(2);
+    if (!allowed.has(value)) problems.push(`${name} states \$${m[1]}, which no log or story input gives`);
+  }
+  const known = new Set(anchors(numbers).map(([, t]) => t.replace(/^batch /, '').replaceAll('`', '')));
+  for (const m of front.matchAll(/`([0-9A-Z]{13,17})`/g)) {
+    if (/\d/.test(m[1]) && /[A-Z]/.test(m[1]) && !known.has(m[1])) problems.push(`${name} shows the PayPal id ${m[1]}, which the recorded runs do not have`);
+  }
+  const bytes = Buffer.byteLength(front);
+  if (bytes > FRONT_MAX_BYTES) problems.push(`${name} is ${(bytes / 1024).toFixed(1)} KB, more than the ${FRONT_MAX_BYTES / 1024} KB it may weigh; details belong in ${DETAILS}`);
+  const opening = Buffer.from(front).subarray(0, FRONT_FIRST_BYTES).toString('utf8');
+  for (const words of FRONT_MUST_OPEN_WITH) if (!opening.includes(words)) problems.push(`${name}'s first ${FRONT_FIRST_BYTES} bytes do not say "${words}"`);
+  for (const re of FRONT_BANNED) {
+    const hit = re.exec(front);
+    if (hit) problems.push(`${name} uses wording it must not use: "${hit[0]}"`);
+  }
+  return problems;
+}
 
 /** How README names each attack row that gets through as a known limit. */
 const LIMIT_WORDS = { 'spoofed-check-in': 'a spoofed position', 'reprint-at-cap': 'a receipt reprinted at the cap' };
@@ -1001,7 +1153,7 @@ function anchors(n) {
 /** Gates named in README's "Gates passed" line must have that status on the gates page. */
 function gateLineProblems(readme, n) {
   const line = readme.split('\n').find((l) => l.startsWith('- **Gates passed**'));
-  if (!line) return ['README.md has no "- **Gates passed**" line'];
+  if (!line) return ['docs/TECHNICAL-DETAILS.md has no "- **Gates passed**" line'];
   // The line's parts by their bold labels: the passed gates first, then any of Partial, Waiting and "Not on the gates page yet".
   const labels = [
     ['**Partial:**', 'partial'],
@@ -1030,7 +1182,7 @@ function gateLineProblems(readme, n) {
 /** Every refusal code in README's edge-case table must be one PayPal gave in the probe, with the same amounts. */
 function edgeProblems(readme, n) {
   const rows = tableAfter(readme, "| Call | PayPal's answer |");
-  if (rows.length === 0) return ["README.md has no \"| Call | PayPal's answer |\" table"];
+  if (rows.length === 0) return ["docs/TECHNICAL-DETAILS.md has no \"| Call | PayPal's answer |\" table"];
   const problems = [];
   for (const [call, answer] of rows) {
     const code = /`([A-Z_]+)`/.exec(answer)?.[1];
@@ -1049,27 +1201,27 @@ function edgeProblems(readme, n) {
 function readmeProblems(readme, numbers) {
   const problems = [];
   const { text, missing } = renderReadme(readme, numbers);
-  for (const name of missing) problems.push(`README.md has no generated block "${name}" (${marker(name, 'start')} ... ${marker(name, 'end')})`);
+  for (const name of missing) problems.push(`docs/TECHNICAL-DETAILS.md has no generated block "${name}" (${marker(name, 'start')} ... ${marker(name, 'end')})`);
   if (text !== readme) {
     for (const name of Object.keys(BLOCKS)) {
       const grab = (t) => t.slice(t.indexOf(marker(name, 'start')), t.indexOf(marker(name, 'end')));
-      if (!missing.includes(name) && grab(text) !== grab(readme)) problems.push(`README.md's generated block "${name}" differs from docs/evidence/numbers.json (npm run numbers rewrites it)`);
+      if (!missing.includes(name) && grab(text) !== grab(readme)) problems.push(`docs/TECHNICAL-DETAILS.md's generated block "${name}" differs from docs/evidence/numbers.json (npm run numbers rewrites it)`);
     }
   }
   for (const c of proseChecks(numbers)) {
     const found = [...readme.matchAll(c.re)].map((m) => m.slice(1));
     if (found.length === 0) {
-      if (c.required) problems.push(`README.md no longer states ${c.name} where this check looks (${c.re.source}); update scripts/readme-numbers.mjs with the new sentence`);
+      if (c.required) problems.push(`docs/TECHNICAL-DETAILS.md no longer states ${c.name} where this check looks (${c.re.source}); update scripts/readme-numbers.mjs with the new sentence`);
       continue;
     }
     const sequence = Array.isArray(c.want[0]);
     found.forEach((got, i) => {
       const want = sequence ? c.want[i] : c.want;
-      if (!want) problems.push(`README.md states ${c.name} more often than its source has values (${got.join(', ')})`);
-      else if (!isDeepStrictEqual(got, want)) problems.push(`README.md states ${c.name} as ${got.join(', ')}; the source says ${want.join(', ')}`);
+      if (!want) problems.push(`docs/TECHNICAL-DETAILS.md states ${c.name} more often than its source has values (${got.join(', ')})`);
+      else if (!isDeepStrictEqual(got, want)) problems.push(`docs/TECHNICAL-DETAILS.md states ${c.name} as ${got.join(', ')}; the source says ${want.join(', ')}`);
     });
   }
-  for (const [name, text2] of anchors(numbers)) if (!readme.includes(text2)) problems.push(`README.md does not show the ${name}, ${text2}, recorded in docs/evidence/ or ${numbers.sandbox.serverRun.fixtures}`);
+  for (const [name, text2] of anchors(numbers)) if (!readme.includes(text2)) problems.push(`docs/TECHNICAL-DETAILS.md does not show the ${name}, ${text2}, recorded in docs/evidence/ or ${numbers.sandbox.serverRun.fixtures}`);
   problems.push(...gateLineProblems(readme, numbers), ...edgeProblems(readme, numbers));
   return problems;
 }
@@ -1253,17 +1405,20 @@ async function record(portOffset, outDir = rel('docs', 'evidence')) {
   return failures;
 }
 
-/** Writes numbers.json and the generated blocks of README.md and claims.md; returns what it wrote. */
-function writeDerived(numbers, files = { numbers: rel(NUMBERS), readme: rel('README.md'), claims: rel('claims.md') }) {
+/** Writes numbers.json and the generated blocks of README.md, docs/TECHNICAL-DETAILS.md and claims.md; returns what it wrote. */
+function writeDerived(numbers, files = { numbers: rel(NUMBERS), readme: rel(DETAILS), front: rel('README.md'), claims: rel('claims.md') }) {
   fs.mkdirSync(path.dirname(files.numbers), { recursive: true });
   fs.writeFileSync(files.numbers, serialize(numbers));
   const readme = fs.readFileSync(files.readme, 'utf8');
+  const front = fs.readFileSync(files.front, 'utf8');
   const claims = fs.readFileSync(files.claims, 'utf8');
   const r = renderReadme(readme, numbers);
+  const f = renderReadme(front, numbers, FRONT_BLOCKS);
   const c = renderReadme(claims, numbers, CLAIMS_BLOCKS);
   if (r.text !== readme) fs.writeFileSync(files.readme, r.text);
+  if (f.text !== front) fs.writeFileSync(files.front, f.text);
   if (c.text !== claims) fs.writeFileSync(files.claims, c.text);
-  return { readme: r, claims: c, readmeChanged: r.text !== readme, claimsChanged: c.text !== claims };
+  return { readme: r, front: f, claims: c, readmeChanged: r.text !== readme || f.text !== front, claimsChanged: c.text !== claims };
 }
 
 // ---------------------------------------------------------------------------
@@ -1279,6 +1434,7 @@ async function main() {
         fresh: { type: 'string' },
         'port-offset': { type: 'string' },
         readme: { type: 'string' },
+        front: { type: 'string' },
         numbers: { type: 'string' },
         print: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
@@ -1321,26 +1477,29 @@ async function main() {
   }
 
   const numbersFile = args.numbers ? path.resolve(args.numbers) : rel(NUMBERS);
-  const readmeFile = args.readme ? path.resolve(args.readme) : rel('README.md');
+  const readmeFile = args.readme ? path.resolve(args.readme) : rel(DETAILS);
+  const frontFile = args.front ? path.resolve(args.front) : rel('README.md');
   const claimsFile = rel('claims.md');
   const readme = fs.readFileSync(readmeFile, 'utf8');
+  const front = fs.readFileSync(frontFile, 'utf8');
   const claims = fs.readFileSync(claimsFile, 'utf8');
   const problems = [];
 
   if (args.check) {
     const onDisk = fs.existsSync(numbersFile) ? fs.readFileSync(numbersFile, 'utf8') : null;
     if (onDisk !== serialize(numbers)) problems.push(`${path.relative(REPO, numbersFile)} is ${onDisk === null ? 'missing' : 'out of date with its sources'} (npm run numbers rewrites it)`);
-    problems.push(...readmeProblems(readme, numbers));
+    problems.push(...readmeProblems(readme, numbers), ...frontProblems(front, numbers));
     const c = renderReadme(claims, numbers, CLAIMS_BLOCKS);
     for (const name of c.missing) problems.push(`claims.md has no generated block "${name}"`);
     if (c.text !== claims) problems.push('claims.md\'s generated block "logs" differs from docs/evidence/ (npm run numbers rewrites it)');
     if (args.fresh) problems.push(...freshProblems(path.resolve(args.fresh), numbers));
   } else {
-    const w = writeDerived(numbers, { numbers: numbersFile, readme: readmeFile, claims: claimsFile });
-    console.log(`${green('Wrote')} ${path.relative(REPO, numbersFile)}${w.readmeChanged ? ` and README.md's generated blocks` : ''}${w.claimsChanged ? " and claims.md's logs table" : ''}.`);
-    for (const name of w.readme.missing) problems.push(`README.md has no generated block "${name}"`);
+    const w = writeDerived(numbers, { numbers: numbersFile, readme: readmeFile, front: frontFile, claims: claimsFile });
+    console.log(`${green('Wrote')} ${path.relative(REPO, numbersFile)}${w.readmeChanged ? ' and the generated blocks of README.md and docs/TECHNICAL-DETAILS.md' : ''}${w.claimsChanged ? " and claims.md's logs table" : ''}.`);
+    for (const name of w.readme.missing) problems.push(`docs/TECHNICAL-DETAILS.md has no generated block "${name}"`);
     for (const name of w.claims.missing) problems.push(`claims.md has no generated block "${name}"`);
     problems.push(...readmeProblems(w.readme.text, numbers).filter((p) => !p.includes('generated block')));
+    problems.push(...frontProblems(w.front.text, numbers).filter((p) => !p.includes('generated block')));
   }
 
   const t = numbers.tests;
@@ -1355,7 +1514,7 @@ async function main() {
     for (const p of problems) console.error(red(`  - ${p}`));
     return 1;
   }
-  console.log(green(args.check ? 'README.md and docs/evidence/numbers.json agree with the logs and fixtures.' : 'README.md agrees with the logs and fixtures.'));
+  console.log(green(args.check ? 'README.md, docs/TECHNICAL-DETAILS.md and docs/evidence/numbers.json agree with the logs and fixtures.' : 'README.md and docs/TECHNICAL-DETAILS.md agree with the logs and fixtures.'));
   return 0;
 }
 

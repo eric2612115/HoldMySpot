@@ -18,7 +18,7 @@ const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:5197';
 const OUT = path.resolve(process.env.OUT_DIR ?? path.join(here, '..', '..', 'proto-shots', 'v2', 'live'));
 const SPEED = Number(process.env.SPEED ?? 60);
 const DESKTOP = { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, timezoneId: 'America/Los_Angeles' };
-// Expected noise: AG Studio's trial banner when the dev server has no AG Studio key (README, Licences)
+// Expected noise: AG Studio's trial banner when the dev server has no AG Studio key (docs/TECHNICAL-DETAILS.md)
 // and MapLibre style warnings.
 const IGNORE = /\*{10}|License Key Not Found|Incompatible License|studio\/licensing|unlocked for trial|hide the watermark|AG Studio Pro with AI|Expected value to be of type/;
 const DAY = '2026-11-12';

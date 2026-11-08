@@ -1,11 +1,11 @@
 # Claims
 
-Every claim that [README.md](README.md) and the Devpost text make, the test or script that proves it, the log or fixture it leaves, and its status (docs/DECISIONS.md D-143 to D-155).
+Every claim that [README.md](README.md), [docs/TECHNICAL-DETAILS.md](docs/TECHNICAL-DETAILS.md) and the Devpost text make, the test or script that proves it, the log or fixture it leaves, and its status (docs/DECISIONS.md D-143 to D-155).
 
 - **VERIFIED**: a test in `npm test`, a command's recorded output in [docs/evidence/](docs/evidence/), a committed fixture or a committed screenshot shows the claim as worded. Where a row adds a scope, the claim holds within it.
-- **UNVERIFIED**: nothing in this repository shows it, or something shows it is wrong. README.md states none of these. The UNVERIFIED rows are Devpost wording to fix before submission, proofs still to come, and wording README used until 11-08 that the 11-08 review showed was unproven or false; those rows stay so a reader comparing versions sees why the wording changed.
+- **UNVERIFIED**: nothing in this repository shows it, or something shows it is wrong. README.md and docs/TECHNICAL-DETAILS.md state none of these. The UNVERIFIED rows are Devpost wording to fix before submission, proofs still to come, and wording README used until 11-08 that the 11-08 review showed was unproven or false; those rows stay so a reader comparing versions sees why the wording changed.
 
-**Totals on 2026-11-08 (after the round 1 fixes, D-150 to D-155, the local errand on PayPal's sandbox, D-156, gate G4, D-157, and Needs a person, D-160, D-161):** 155 claims: 137 VERIFIED, 18 UNVERIFIED. All 116 claims README.md (or AGENTS.md) makes are VERIFIED (many are in the Devpost text too). Of the 27 claims made only in the Devpost text, 18 are VERIFIED and 9 UNVERIFIED (D1 to D9), and draft v3 uses none of those 9; section 10 says what it writes instead. Of the other 12 rows, M35 and M36 state what docs/NEEDS-A-PERSON.md says, and 7 are README wording withdrawn on 11-08: 6 still UNVERIFIED (M3b shipping at cost, M5a every fake moves \$0, M25 the authorization proves the money is there, M27 a claimed payout cannot be pulled back, F2a no falling fee from home, F8a legal) and M26 (the same fees whichever button pays), since shown on the sandbox for one Venmo-funded capture; and 3 are UNVERIFIED proofs still to come that neither text states as done: reauthorization on PayPal's sandbox (S7), CI on GitHub (T7) and a logged run from a clean clone (T8).
+**Totals on 2026-11-08 (after the round 1 fixes, D-150 to D-155, the local errand on PayPal's sandbox, D-156, gate G4, D-157, and Needs a person, D-160, D-161):** 155 claims: 137 VERIFIED, 18 UNVERIFIED. All 116 claims docs/TECHNICAL-DETAILS.md (or AGENTS.md) makes are VERIFIED, and README.md's are a subset of them (the table below) (many are in the Devpost text too). Of the 27 claims made only in the Devpost text, 18 are VERIFIED and 9 UNVERIFIED (D1 to D9), and draft v3 uses none of those 9; section 10 says what it writes instead. Of the other 12 rows, M35 and M36 state what docs/NEEDS-A-PERSON.md says, and 7 are README wording withdrawn on 11-08: 6 still UNVERIFIED (M3b shipping at cost, M5a every fake moves \$0, M25 the authorization proves the money is there, M27 a claimed payout cannot be pulled back, F2a no falling fee from home, F8a legal) and M26 (the same fees whichever button pays), since shown on the sandbox for one Venmo-funded capture; and 3 are UNVERIFIED proofs still to come that neither text states as done: reauthorization on PayPal's sandbox (S7), CI on GitHub (T7) and a logged run from a clean clone (T8).
 
 **How to check a row with no keys:** `npm run setup`, then the command in its Proof column; `npm test` runs every test named here (`npm test -- --only server` for one package). Numbers in README come from [docs/evidence/numbers.json](docs/evidence/numbers.json), which `npm run numbers` derives from the logs and fixtures below; `npm test` fails when README disagrees (`server/test/readme-numbers.test.ts`).
 
@@ -21,7 +21,45 @@ Every claim that [README.md](README.md) and the Devpost text make, the test or s
 | [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-08 11:35 | `eeb8708` | yes | `b775dea6a700`, `36979ddc4202`, `c4764db96da7`, `a806cc75bb65`, `e3831f06a9c0` |
 <!-- numbers:logs:end -->
 
-**Where:** R = README.md, by section; D = the Devpost text, by field. Test names are quoted in part; `P1` to `P8` are the property tests in section 3.
+**Where:** R = docs/TECHNICAL-DETAILS.md, by section (the long page that README.md points to; on 11-08 it took over the old README's sections under the same names, so `R:` names them); D = the Devpost text, by field. Test names are quoted in part; `P1` to `P8` are the property tests in section 3.
+
+## 0. The front page (README.md)
+
+README.md states these in short form; each one rests on the rows named. All are VERIFIED. Its typed amounts and ids and its generated blocks are checked by `npm run numbers -- --check` (`frontProblems` in `scripts/readme-numbers.mjs`, D-162).
+
+| README.md says | Rows |
+|---|---|
+| No charge until the receipt passes AI reading, rules or human review | M2 |
+| The hold is an Orders v2 `AUTHORIZE` for the whole limit, approved in PayPal's window | M1, S13 |
+| Partial captures, shipping declared by the queuer and capped by the budget, the final capture releases the rest | M3, M3a |
+| Payouts after a `COMPLETED` capture; HoldMySpot keeps 10% of the fee | M7, M8 |
+| Captures stop at 100% of the hold though PayPal allows 115% | M4 |
+| Every money call carries a `PayPal-Request-Id`; the emulator copies PayPal's recorded answers | M9, M22 |
+| Hero errand on the sandbox, its ids, every amount read back | S1, S2, S3, H2 |
+| Local pickup on the sandbox, its ids and amounts | S16 |
+| Gates passed, waiting and not run; reauthorization day 1 refused, G10 waits | S5, S6, S12 |
+| Venmo-button hold and Venmo-funded capture | S10, S11 |
+| Tracking on the order; void; refunds; status sync; OAuth | M13, M11, M15, M16, S5 |
+| Disputes: opened and synced on the sandbox, the note drafted, evidence and adjudicate refused there, settling from the console on the emulator and in tests only | M33, M34, M36 |
+| AI jobs, what the model reads and what code decides | A1, A4, A5, A5a, A11, A12, M36, G3, G9, G12 |
+| A provider error never passes a proof; every result is stamped | A2, A3 |
+| Only Muse Spark has been called live; other adapters exist | A6, A9, A10 |
+| 21 photos: verdicts, fields, bad proofs caught | A6, A7, A8 |
+| `npm run attack`, its 23 attempts | K1, K4 |
+| With the rules on the true reading, 10 of 10 bad proofs are stopped | K3 |
+| `npm test` with no keys, property tests | T2, P1 to P8 |
+| The numbers are generated and `npm test` fails if the page disagrees | T5 |
+| Bryntum Scheduler: package, board, drag, rescheduler | G8, G9, G10 |
+| AG Studio: widgets, grids, charts, market desk, delegates, offline planner, the live chart | G1, G2, G4, G5b, G7 |
+| Every screen says PayPal sandbox or simulated | H5 |
+| The problem, the audience, the market evidence | F8, F8b, M24 |
+| Fair by construction: receipt's price, one item for one named requester, 10%, out-of-scope queues | F4, F5, M7, F6 |
+| The reusable pattern | F7 |
+| An order book on the queue fee; a fee that falls only after a passed check-in | F1, F2 |
+| The six-step day | H1, H2, M5 |
+| Setup with zero keys and with your own keys | T1, T4, T9, T10, H6 |
+| The limits | M5b, M3a, K4, M23, M30, M31, M17, S6, S12, M34, A8, A6 |
+| Other tools, licence | T13, T11 |
 
 ## 1. Money and PayPal
 
@@ -190,8 +228,8 @@ Each runs inside `npm test` with a fixed seed; the counts are in [docs/evidence/
 | T2 | `npm test` passes every test in its 6 steps with no keys (it strips `HMS_*`, `PAYPAL_*` and model keys) and calls neither PayPal nor a model. | R: Tests, Evidence, For AI coding agents; D: 15 | `scripts/test-all.mjs`; `server/test/no-network.test.ts` | `docs/evidence/tests.json` | VERIFIED as worded: no network isolation of the whole suite is tested; the hero day is played with the network refused |
 | T3 | Checked on macOS with Node 24.22 and npm 11.19. | R: Quick start, Known limits | `npm run numbers -- --record` | `docs/evidence/tests.json`, `docs/evidence/smoke.json` | VERIFIED |
 | T4 | `npm run demo -- --smoke` starts the server, web app and ops console with no keys, checks each and stops. | R: For AI coding agents; AGENTS.md | `scripts/dev.mjs --smoke` | `docs/evidence/smoke.json` | VERIFIED |
-| T5 | README cannot drift from the committed logs: `npm test` fails when README disagrees with them, and it runs the AI eval, the attack and the ablation again and compares them with their logs. | R: Evidence | `server/test/readme-numbers.test.ts` (including a fresh `npm run ai:eval`), `server/test/attack.test.ts`, `server/test/ablation.test.ts` | `docs/evidence/numbers.json` | VERIFIED. The test counts and the smoke check are compared with fresh runs only in CI (`--fresh`), which has not run yet (T7) |
-| T6 | `.github/workflows/ci.yml` is set up to run setup, the full tests, the AI eval, the smoke check, the attack, the numbers check against those fresh reports and the property tests on a random seed, on Ubuntu with Node 24; it has not run on GitHub yet. | R: Known limits, Evidence | the workflow file | - | VERIFIED (what the file runs) |
+| T5 | README and docs/TECHNICAL-DETAILS.md cannot drift from the committed logs: `npm test` fails when either disagrees with them, and it runs the AI eval, the attack and the ablation again and compares them with their logs. | R: Evidence | `server/test/readme-numbers.test.ts` (including a fresh `npm run ai:eval`), `server/test/attack.test.ts`, `server/test/ablation.test.ts` | `docs/evidence/numbers.json` | VERIFIED. The test counts and the smoke check are compared with fresh runs only in CI (`--fresh`), which has not run yet (T7) |
+| T6 | `.github/workflows/ci.yml`, written but not pushed yet, is set up to run setup, the full tests, the AI eval, the smoke check, the attack, the numbers check against those fresh reports and the property tests on a random seed, on Ubuntu with Node 24; it has not run on GitHub yet. | R: Known limits, Evidence | the workflow file | - | VERIFIED (what the file runs) |
 | T7 | CI passes on GitHub. | not stated in README | the first push | - | UNVERIFIED |
 | T8 | The README's steps work from a clean clone (three fresh runs before commit `c63df99`). | not stated in README | a clean clone, or CI (T7) | - | UNVERIFIED: no log of those runs was kept |
 | T9 | Where keys come from: PayPal and AG keys from `.secrets/`, the folder `HMS_SECRETS_DIR` names, or variables set by hand; AI keys also from the dotenv files `HMS_AI_KEY_FILES` lists (in the environment or `server/.env.local`); `npm test`, `npm run ai:eval` without `--live` and `npm run attack` ignore every key; values are never printed. | R: Quick start, For AI coding agents; AGENTS.md | `server/test/paypal/credentials.test.ts` "finds the secrets folder from HMS_SECRETS_DIR, else the repo's own .secrets/ (D-131)"; `server/test/ai/config.test.ts` "reads only the two key names from dotenv files", "narrows a key file to the names after #, so only MODEL_API_KEY is read from another project" and "SecretValue hides itself everywhere"; `server/test/readme-numbers.test.ts` (`ai:eval` with a key variable and a key file reads neither and prints no value); `server/test/paypal/sandbox-client.test.ts` "never logs the secret or the token"; `scripts/attack.mjs` (`zeroKeyEnv`) | - | VERIFIED |

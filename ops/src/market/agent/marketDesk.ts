@@ -54,7 +54,7 @@ export const OFFLINE_STARTERS: AgAiPromptStarter[] = [
   { label: 'Top earner', prompt: 'Which queuer earned the most so far?' },
 ];
 
-/** Questions that finish in a few turns with a live model (README, AG Studio). */
+/** Questions that finish in a few turns with a live model (docs/TECHNICAL-DETAILS.md, AG Studio). */
 export const MODEL_STARTERS: AgAiPromptStarter[] = [
   { label: `Widest ${W.spread.toLowerCase()}`, prompt: `Which shop has the ${W.widestSpread} right now?` },
   { label: 'Captures by shop', prompt: 'Show a table of the PayPal captures by shop, with the average capture, and tell me which shop took the most.' },

@@ -1,7 +1,7 @@
 {
   "format": 1,
   "generatedBy": "npm run numbers (scripts/readme-numbers.mjs)",
-  "note": "Derived from the files in \"sources\"; do not edit. server/test/readme-numbers.test.ts fails when this file or README.md disagrees with them.",
+  "note": "Derived from the files in \"sources\"; do not edit. server/test/readme-numbers.test.ts fails when this file, README.md or docs/TECHNICAL-DETAILS.md disagrees with them.",
   "sources": {
     "tests": "docs/evidence/tests.json",
     "aiEval": "docs/evidence/ai-eval.json",

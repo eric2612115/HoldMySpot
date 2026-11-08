@@ -13,7 +13,7 @@ import { DEMO_MARKET_START } from '@holdmyspot/shared';
  * its own zero-key server, six fake receipts on fresh demo markets, the money tricks over the HTTP API,
  * the two known limits on one more market, and three calls straight at the PayPal emulator. Every
  * attempt must move exactly what the shared money rules say ($0.00 when refused), the layer the run
- * derives from each answer must be the one README names, and README's sample table must be this
+ * derives from each answer must be the one docs/TECHNICAL-DETAILS.md names, and its sample table must be this
  * run's table. Against a server that pays the queuer more than the rules say, it must exit 1.
  */
 
@@ -153,10 +153,10 @@ describe('npm run attack, CI mode', { skip: QUICK }, () => {
       assert.equal(report.markets.length, 9, 'six fake-receipt markets, the handover market, the money market and the known-limits market');
       assert.deepEqual(report.markets.flatMap((m) => m.violations), []);
 
-      const readme = readFileSync(join(REPO, 'README.md'), 'utf8');
+      const readme = readFileSync(join(REPO, 'docs', 'TECHNICAL-DETAILS.md'), 'utf8');
       const block = /<!-- attack-table:start -->\n```text\n([\s\S]*?)\n```\n<!-- attack-table:end -->/.exec(readme);
-      assert.ok(block, 'README.md has the sample table between its attack-table markers');
-      assert.deepEqual(block[1]!.split('\n'), report.table, "README's sample table is this run's table (run npm run attack and paste it)");
+      assert.ok(block, 'docs/TECHNICAL-DETAILS.md has the sample table between its attack-table markers');
+      assert.deepEqual(block[1]!.split('\n'), report.table, "docs/TECHNICAL-DETAILS.md's sample table is this run's table (run npm run attack and paste it)");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

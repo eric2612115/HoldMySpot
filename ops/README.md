@@ -4,7 +4,7 @@ The operator console for HoldMySpot: a **queuer board** (Bryntum Scheduler) with
 
 ## Run
 
-From the repo root, `npm run setup` and `npm run demo` (Node 24) install and start this console together with the server and the web app; see the [root README](../README.md#quick-start-with-zero-keys). To run the console alone:
+From the repo root, `npm run setup` and `npm run demo` (Node 24) install and start this console together with the server and the web app; see the [root README](../README.md#run-it). To run the console alone:
 
 ```sh
 npm install
