@@ -22,23 +22,23 @@
   },
   "tests": {
     "steps": 6,
-    "tests": 707,
-    "passed": 707,
+    "tests": 731,
+    "passed": 731,
     "failed": 0,
     "skipped": 0,
     "byPackage": {
       "shared": 103,
-      "server": 446,
+      "server": 463,
       "web": 138,
-      "ops": 20
+      "ops": 27
     },
-    "seconds": 88.3,
-    "aboutSeconds": 90,
+    "seconds": 83.3,
+    "aboutSeconds": 80,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "eeb8708",
+    "commit": "28faa8b",
     "recordedOn": "2026-11-08",
     "properties": {
       "tests": 19,
@@ -1078,9 +1078,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-08",
-    "attackSeconds": 12.1,
+    "attackSeconds": 11.1,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 6.4,
+    "aiEvalSeconds": 5.9,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1093,75 +1093,75 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-08 11:35",
-      "commit": "eeb8708",
+      "at": "2026-11-08 12:38",
+      "commit": "28faa8b",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "b775dea6a700",
-        "server": "36979ddc4202",
-        "web": "c4764db96da7",
-        "ops": "a806cc75bb65",
-        "scripts": "e3831f06a9c0"
+        "shared": "d358c655a04b",
+        "server": "9dbb8d64aa8b",
+        "web": "2c27221817a3",
+        "ops": "d367ddecce60",
+        "scripts": "607c48ccaea6"
       }
     },
     {
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-08 11:35",
-      "commit": "eeb8708",
+      "at": "2026-11-08 12:38",
+      "commit": "28faa8b",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "b775dea6a700",
-        "server": "36979ddc4202",
-        "web": "c4764db96da7",
-        "ops": "a806cc75bb65",
-        "scripts": "e3831f06a9c0"
+        "shared": "d358c655a04b",
+        "server": "9dbb8d64aa8b",
+        "web": "2c27221817a3",
+        "ops": "d367ddecce60",
+        "scripts": "607c48ccaea6"
       }
     },
     {
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-08 11:35",
-      "commit": "eeb8708",
+      "at": "2026-11-08 12:38",
+      "commit": "28faa8b",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "b775dea6a700",
-        "server": "36979ddc4202",
-        "web": "c4764db96da7",
-        "ops": "a806cc75bb65",
-        "scripts": "e3831f06a9c0"
+        "shared": "d358c655a04b",
+        "server": "9dbb8d64aa8b",
+        "web": "2c27221817a3",
+        "ops": "d367ddecce60",
+        "scripts": "607c48ccaea6"
       }
     },
     {
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-08 11:35",
-      "commit": "eeb8708",
+      "at": "2026-11-08 12:38",
+      "commit": "28faa8b",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "b775dea6a700",
-        "server": "36979ddc4202",
-        "web": "c4764db96da7",
-        "ops": "a806cc75bb65",
-        "scripts": "e3831f06a9c0"
+        "shared": "d358c655a04b",
+        "server": "9dbb8d64aa8b",
+        "web": "2c27221817a3",
+        "ops": "d367ddecce60",
+        "scripts": "607c48ccaea6"
       }
     },
     {
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-08 11:35",
-      "commit": "eeb8708",
+      "at": "2026-11-08 12:38",
+      "commit": "28faa8b",
       "uncommittedChanges": true,
       "codeTrees": {
-        "shared": "b775dea6a700",
-        "server": "36979ddc4202",
-        "web": "c4764db96da7",
-        "ops": "a806cc75bb65",
-        "scripts": "e3831f06a9c0"
+        "shared": "d358c655a04b",
+        "server": "9dbb8d64aa8b",
+        "web": "2c27221817a3",
+        "ops": "d367ddecce60",
+        "scripts": "607c48ccaea6"
       }
     }
   ]

@@ -14,11 +14,11 @@ Every claim that [README.md](README.md), [docs/TECHNICAL-DETAILS.md](docs/TECHNI
 <!-- numbers:logs:start -->
 | Log | Made by | Recorded (UTC) | Commit | Uncommitted changes | Git trees of shared, server, web, ops and scripts |
 |---|---|---|---|---|---|
-| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-08 11:35 | `eeb8708` | yes | `b775dea6a700`, `36979ddc4202`, `c4764db96da7`, `a806cc75bb65`, `e3831f06a9c0` |
-| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-08 11:35 | `eeb8708` | yes | `b775dea6a700`, `36979ddc4202`, `c4764db96da7`, `a806cc75bb65`, `e3831f06a9c0` |
-| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-08 11:35 | `eeb8708` | yes | `b775dea6a700`, `36979ddc4202`, `c4764db96da7`, `a806cc75bb65`, `e3831f06a9c0` |
-| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-08 11:35 | `eeb8708` | yes | `b775dea6a700`, `36979ddc4202`, `c4764db96da7`, `a806cc75bb65`, `e3831f06a9c0` |
-| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-08 11:35 | `eeb8708` | yes | `b775dea6a700`, `36979ddc4202`, `c4764db96da7`, `a806cc75bb65`, `e3831f06a9c0` |
+| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-08 12:38 | `28faa8b` | yes | `d358c655a04b`, `9dbb8d64aa8b`, `2c27221817a3`, `d367ddecce60`, `607c48ccaea6` |
+| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-08 12:38 | `28faa8b` | yes | `d358c655a04b`, `9dbb8d64aa8b`, `2c27221817a3`, `d367ddecce60`, `607c48ccaea6` |
+| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-08 12:38 | `28faa8b` | yes | `d358c655a04b`, `9dbb8d64aa8b`, `2c27221817a3`, `d367ddecce60`, `607c48ccaea6` |
+| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-08 12:38 | `28faa8b` | yes | `d358c655a04b`, `9dbb8d64aa8b`, `2c27221817a3`, `d367ddecce60`, `607c48ccaea6` |
+| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-08 12:38 | `28faa8b` | yes | `d358c655a04b`, `9dbb8d64aa8b`, `2c27221817a3`, `d367ddecce60`, `607c48ccaea6` |
 <!-- numbers:logs:end -->
 
 **Where:** R = docs/TECHNICAL-DETAILS.md, by section (the long page that README.md points to; on 11-08 it took over the old README's sections under the same names, so `R:` names them); D = the Devpost text, by field. Test names are quoted in part; `P1` to `P8` are the property tests in section 3.
