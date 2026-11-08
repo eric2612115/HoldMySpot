@@ -266,6 +266,8 @@ const REASON = { type: 'string', description: 'One plain sentence for the reques
 interface RunState {
   decision: AgentDecision | null;
   refused: string[];
+  /** A fee the model asked for that the hold does not cover (shown as "Refused"). */
+  refusedFeeCents?: Cents;
 }
 
 function applyProposal(
@@ -285,6 +287,7 @@ function applyProposal(
   let problem: string | null = null;
   if (p.kind === 'set_fee') {
     problem = feeProblem(input, ceiling, p.cents);
+    if (problem && typeof p.cents === 'number' && p.cents > ceiling) state.refusedFeeCents = p.cents;
     if (!problem) {
       const to = p.cents as number;
       state.decision = decision(to > cur ? 'raise_fee' : 'lower_fee', cur, to, reason || `Changed the fee to ${usd(to)}.`);
@@ -412,7 +415,7 @@ export async function runAgent(input: AgentRunInput, provider: AiProvider | null
         fixtureKey: fixtureKey({ task: 'bidding_agent', schemaName: 'tools-v1', system: AGENT_SYSTEM, prompt: `${prompt}\n${JSON.stringify(view)}`, images: [] }),
       });
       const d = state.decision ?? decision('keep', input.bid.maxFeeCents, input.bid.maxFeeCents, res.summary ? oneSentence(res.summary) : `Kept the fee at ${usd(input.bid.maxFeeCents)}.`);
-      return finish(d, { toolCalls: res.toolCalls, refused: state.refused, decidedBy: 'model', ai: res.stamp });
+      return finish(d, { toolCalls: res.toolCalls, refused: state.refused, refusedFeeCents: state.refusedFeeCents ?? null, decidedBy: 'model', ai: res.stamp });
     } catch (e) {
       if (asAiError(e).kind !== 'unsupported') throw e;
     }
@@ -440,7 +443,7 @@ export async function runAgent(input: AgentRunInput, provider: AiProvider | null
     const kind = out.action === 'raise_fee' || out.action === 'lower_fee' ? 'set_fee' : out.action === 'cancel' ? 'cancel' : out.action === 'reduce_qty' ? 'reduce_qty' : 'keep';
     applyProposal(input, ceiling, view, state, { kind, cents: out.maxFeeCents, qty: out.qty, reason: out.reason });
     const d = state.decision ?? decision('keep', input.bid.maxFeeCents, input.bid.maxFeeCents, `Kept the fee at ${usd(input.bid.maxFeeCents)}; the suggested change was outside your limit.`);
-    return finish(d, { refused: state.refused, decidedBy: 'model', ai: res.stamp });
+    return finish(d, { refused: state.refused, refusedFeeCents: state.refusedFeeCents ?? null, decidedBy: 'model', ai: res.stamp });
   } catch (e) {
     const err = asAiError(e);
     const cur = input.bid.maxFeeCents;

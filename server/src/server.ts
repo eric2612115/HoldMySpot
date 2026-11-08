@@ -7,7 +7,7 @@ import type { MarketClock } from './clock.ts';
 import type { ServerConfig } from './config.ts';
 import { Director } from './demo/director.ts';
 import { heroScript } from './demo/scripts/hero.ts';
-import { localErrandScript, renewalScript } from './demo/scripts/others.ts';
+import { feeAgentScript, localErrandScript, renewalScript } from './demo/scripts/others.ts';
 import { buildHttp } from './http/server.ts';
 import type { AiPort } from './ports/ai.ts';
 import { loadAi, loadSandboxPayPal } from './ports/load.ts';
@@ -34,7 +34,7 @@ export interface HmsServer {
   close(): Promise<void>;
 }
 
-export const DEMO_SCRIPTS = [heroScript, localErrandScript, renewalScript];
+export const DEMO_SCRIPTS = [heroScript, localErrandScript, renewalScript, feeAgentScript];
 
 export async function createServer(config: ServerConfig, opts: CreateOptions = {}): Promise<HmsServer> {
   const log = opts.log ?? ((line: string) => console.log(`[holdmyspot] ${line}`));

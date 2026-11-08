@@ -140,6 +140,8 @@ export interface AgentRunResult {
   decision: { kind: AgentActionKind; fromFeeCents: Cents | null; toFeeCents: Cents | null; qty: number | null; reason: string };
   toolCalls: { name: string; input: unknown; output: unknown }[];
   refused: string[];
+  /** The fee a refused action asked for, when it was above what the hold covers (D-158). */
+  refusedFeeCents?: Cents | null;
   ceilingCents: Cents;
   /** When to run again; null stops the agent. */
   nextRunAt: MarketMs | null;

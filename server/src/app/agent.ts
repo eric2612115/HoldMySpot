@@ -92,6 +92,7 @@ export async function applyAgentResult(app: App, bidId: string, result: AgentRun
   let reason = result?.decision.reason ?? `The agent could not run (${failure ?? 'no result'}); the max fee stays ${formatUsd(bid.maxFeeCents, { exact: true })}.`;
   let fromFee: number | null = result?.decision.fromFeeCents ?? null;
   let toFee: number | null = result?.decision.toFeeCents ?? null;
+  let refusedFee: number | null = result?.refusedFeeCents ?? null;
   if (result && LIVE.includes(bid.status)) {
     try {
       const d = result.decision;
@@ -105,12 +106,13 @@ export async function applyAgentResult(app: App, bidId: string, result: AgentRun
       }
     } catch (err) {
       kind = 'note';
+      if (err instanceof ContractError && err.code === 'OVER_LIMIT' && result.decision.toFeeCents !== null) refusedFee = result.decision.toFeeCents;
       toFee = null;
       reason = `The server refused the agent's change (${err instanceof ContractError ? err.code : 'error'}): ${err instanceof Error ? err.message : ''}`.trim();
     }
   }
   return app.tx(() => {
-    const action: AgentAction = { id: app.nextId('act'), bidId, at: app.now(), kind, fromFeeCents: fromFee, toFeeCents: toFee, reason, ai: stamp };
+    const action: AgentAction = { id: app.nextId('act'), bidId, at: app.now(), kind, fromFeeCents: fromFee, toFeeCents: toFee, reason, ...(refusedFee !== null ? { refusedFeeCents: refusedFee } : {}), ai: stamp };
     app.store.agentActions.insert(action);
     app.emit('agent.action', action, { users: [bid.requesterId] });
     const b = app.store.bids.must(bidId);

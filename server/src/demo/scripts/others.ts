@@ -1,8 +1,10 @@
-import { DAY_MS, DEMO_TIME_ZONE, HERO, findShop, formatUsd } from '@holdmyspot/shared';
+import { DAY_MS, DEMO_MARKET_START, DEMO_TIME_ZONE, HERO, SCRIPTED_MODEL, findShop, formatUsd } from '@holdmyspot/shared';
+import { applyAgentResult } from '../../app/agent.ts';
 import { checkIn } from '../../app/asks.ts';
 import { authorizeBid, claimBid, createBid, quoteBid } from '../../app/bids.ts';
 import { handover, markBought, submitProof } from '../../app/jobs.ts';
-import type { DemoScript } from '../director.ts';
+import type { AgentRunResult } from '../../ports/ai.ts';
+import type { DemoScript, StepContext } from '../director.ts';
 
 /** Shorter demo scripts: a New York local errand, and a hold renewal on day 4. */
 
@@ -153,6 +155,100 @@ export const renewalScript: DemoScript = {
         if (t > ctx.app.clock.now()) ctx.app.clock.jumpTo(t);
         ctx.cue({ name: 'show_ledger', target: 'leo', text: 'Day 4: the 3-day honor period is over, so the hold is renewed.' });
       },
+    },
+  ],
+};
+
+/**
+ * The bidding agent on the phone, with no key and no model (D-158): Mia holds for a $12 max fee, the
+ * decisions are written here in advance and stamped as scripted, and each one goes through the server's
+ * own check. The last asks for $14: the hold does not cover it, so the server refuses it.
+ */
+function scriptedAgentRun(ctx: StepContext, fromFeeCents: number, toFeeCents: number, reason: string, nextRunAt: number | null): Promise<unknown> {
+  const result: AgentRunResult = {
+    decision: { kind: toFeeCents < fromFeeCents ? 'lower_fee' : 'raise_fee', fromFeeCents, toFeeCents, qty: null, reason },
+    toolCalls: [],
+    refused: [],
+    ceilingCents: 1200,
+    nextRunAt,
+    decidedBy: 'policy',
+    ai: { provider: 'fake', model: SCRIPTED_MODEL, mode: 'fake', latencyMs: 0 },
+  };
+  return applyAgentResult(ctx.app, ctx.ref('miaBid'), result, null);
+}
+
+export const feeAgentScript: DemoScript = {
+  id: 'fee-agent',
+  title: 'The fee agent works inside the hold',
+  description:
+    'Mia holds $63.70 for a plush with a $12 max fee and lets the agent set it. Scripted decisions, no AI: $10, $11, $12, then $14, which the server refuses because PayPal does not hold it. No queuer takes it; nothing is charged.',
+  startsAt: DEMO_MARKET_START,
+  timeZone: DEMO_TIME_ZONE,
+  speed: 60,
+  steps: [
+    {
+      at: '10:31',
+      kind: 'bid.create',
+      label: 'Mia holds for a $12 max fee and turns the agent on',
+      async run(ctx) {
+        const mia = ctx.user(HERO.requesterId);
+        const destination = { mode: 'ship' as const, country: 'US' as const, region: 'NY', city: 'New York', postalCode: '10012' };
+        const quote = await quoteBid(ctx.app, mia, { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination });
+        const created = await createBid(ctx.app, mia, {
+          shopId: HERO.shopId,
+          itemId: HERO.itemId,
+          qty: 1,
+          retailCapCents: quote.suggested.retailCapCents,
+          maxFeeCents: 1200,
+          shippingBudgetCents: quote.suggested.shippingBudgetCents,
+          destination,
+          deadlineAt: ctx.time('10:31') + 2 * DAY_MS,
+          funding: 'paypal',
+          agent: { goal: 'As cheap as I can get it, never above my max fee.' },
+        });
+        ctx.refs.set('miaBid', created.bid.id);
+        // The script decides from here: the scheduler must not run the written policy in between.
+        ctx.app.tx(() => {
+          const b = ctx.app.store.bids.must(created.bid.id);
+          b.agent = { ...b.agent!, nextRunAt: null };
+          ctx.app.store.bids.update(b);
+        });
+        if (created.checkout.next === 'fake_approve') {
+          await ctx.app.fakePayPal.approveOrder(created.checkout.orderId, 'paypal', 'approve');
+          await authorizeBid(ctx.app, { userId: mia.id, ops: false }, created.bid.id, created.checkout.orderId);
+        }
+      },
+    },
+    {
+      at: '10:31',
+      kind: 'wait_for',
+      label: "Mia's hold is authorized",
+      until: (ctx) => ctx.app.store.bids.must(ctx.ref('miaBid')).status !== 'awaiting_approval',
+      async run() {},
+    },
+    {
+      at: '10:33',
+      kind: 'agent.run',
+      label: 'The agent opens at $10',
+      run: (ctx) => scriptedAgentRun(ctx, 1200, 1000, 'No queuer is in line yet, so it opens at $10.00 instead of your whole max.', ctx.time('23:00')).then(() => undefined),
+    },
+    {
+      at: '10:37',
+      kind: 'agent.run',
+      label: 'The agent raises to $11',
+      run: (ctx) => scriptedAgentRun(ctx, 1000, 1100, 'No offer has come near $10.00, so it adds a dollar.', ctx.time('23:00')).then(() => undefined),
+    },
+    {
+      at: '10:41',
+      kind: 'agent.run',
+      label: 'The agent raises to $12',
+      run: (ctx) => scriptedAgentRun(ctx, 1100, 1200, 'Still no offer, so it goes up to your max.', ctx.time('23:00')).then(() => undefined),
+    },
+    {
+      at: '10:45',
+      kind: 'agent.run',
+      label: 'The agent asks for $14 and is refused',
+      run: (ctx) => scriptedAgentRun(ctx, 1200, 1400, 'Tries $14.00 to win a queuer sooner.', null).then(() => undefined),
     },
   ],
 };

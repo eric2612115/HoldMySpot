@@ -659,3 +659,96 @@
   background: #9fcfb9;
   cursor: default;
 }
+
+/* The bidding agent: the toggle on the request form and its log on the held card (D-158). */
+.picker__agent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--mist, #f3f1fd);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.picker__agent input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.agent-log {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--mist, #f3f1fd);
+}
+
+.agent-log__head,
+.agent-log__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agent-log__status {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.65;
+}
+
+.agent-log__now {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agent-log__fee {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-log__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.agent-log__rows li {
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.agent-log__rows p {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+
+.agent-log__rows time {
+  font-size: 12px;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.agent-log__rows .is-refused b {
+  color: #b42318;
+}
+
+.agent-log__who {
+  font-size: 12px !important;
+  opacity: 0.7;
+}
+
+.agent-log__empty {
+  margin: 0;
+  font-size: 13px;
+}

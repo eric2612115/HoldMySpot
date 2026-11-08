@@ -30,6 +30,7 @@ export type StepKind =
   | 'job.proof'
   | 'job.shipment'
   | 'job.handover'
+  | 'agent.run'
   | 'clock.jump'
   | 'cue';
 

@@ -653,6 +653,9 @@ export const AI_MODES = ['live', 'record', 'replay', 'fake'] as const;
 /** live: call the model. record: call and save a fixture. replay: use a saved fixture. fake: rules only. */
 export type AiMode = (typeof AI_MODES)[number];
 
+/** `AiStamp.model` of a decision a demo script wrote in advance: no model and no rule made it, and screens say so (D-158). */
+export const SCRIPTED_MODEL = 'demo-script';
+
 /** Attached to every AI-derived result so screens can say where it came from. */
 export interface AiStamp {
   provider: AiProviderId;
@@ -799,6 +802,8 @@ export interface AgentAction {
   toFeeCents: Cents | null;
   /** One plain sentence. */
   reason: string;
+  /** Set when the agent asked for a fee PayPal's hold does not cover and was refused (D-158). The max fee did not change. */
+  refusedFeeCents?: Cents | null;
   ai: AiStamp;
 }
 

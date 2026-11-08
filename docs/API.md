@@ -191,7 +191,7 @@ The first message is `hello` (`HelloEvent` with `bootId`, the current `seq` and 
 | `queuer.moved` | `QueuerMovedEvent` (synthetic) | everyone (demo mode only) |
 | `bid.updated` | `BidTask` | the requester, ops |
 | `hold.updated` | `Hold` | the requester, ops |
-| `agent.action` | `AgentAction` | the requester, ops |
+| `agent.action` | `AgentAction` (with `refusedFeeCents` when a raise above the hold was refused, D-158) | the requester, ops |
 | `job.updated` | `Job` | the requester (with `handoverCode`), the queuer (with `proofCode`), ops |
 | `proof.updated` | `Proof` | the job's requester and queuer, ops |
 | `ledger.appended` | `LedgerEntry` | the entry's `userId`, ops |

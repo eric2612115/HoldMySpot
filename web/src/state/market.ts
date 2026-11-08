@@ -1,4 +1,4 @@
-import type { CheckoutFunding, FulfilmentMode, LedgerKind, LedgerStatus } from '@holdmyspot/shared';
+import type { AgentAction, CheckoutFunding, FulfilmentMode, LedgerKind, LedgerStatus } from '@holdmyspot/shared';
 import { create } from 'zustand';
 import type { Cents } from '../domain/money';
 import type { TaskPoint } from '../domain/types';
@@ -23,6 +23,14 @@ export type OrderStatus =
   | 'missed' // the offer filled up while PayPal was approving, hold released
   | 'error';
 
+/** The bidding agent on one request, when the requester turned it on (D-158). */
+export interface OrderAgent {
+  status: 'active' | 'paused' | 'done';
+  /** The most it may set: what PayPal's hold covers per unit. */
+  ceilingCents: Cents;
+  actions: AgentAction[];
+}
+
 export interface UserOrder {
   pointId: string;
   /** now: at or above the best offer, fills at once. max: rests below it. */
@@ -44,6 +52,8 @@ export interface UserOrder {
   /** In-browser market: when the queuer's receipt comes in (market clock). */
   receiptAt?: number;
   message?: string;
+  /** Set only when the requester turned the agent on. */
+  agent?: OrderAgent;
 }
 
 /** A task the viewer took as a queuer. */
@@ -120,11 +130,11 @@ export interface PayPalButtons {
 }
 
 /** What a click on PayPal's button asks for: book the best offer now, or rest at a max fee. */
-export type BidChoice = { kind: 'now' } | { kind: 'max'; maxFeeCents: Cents };
+export type BidChoice = { kind: 'now' } | { kind: 'max'; maxFeeCents: Cents; agent?: boolean };
 
 export interface MarketDriver {
   requestNow(pointId: string): Promise<void>;
-  setMax(pointId: string, maxFeeCents: Cents): Promise<void>;
+  setMax(pointId: string, maxFeeCents: Cents, agent?: boolean): Promise<void>;
   cancelMax(pointId: string): Promise<void>;
   take(pointId: string): Promise<void>;
   /** The viewer answered the Simulated PayPal sheet. */
@@ -174,7 +184,7 @@ export interface MarketState {
 
   select(id: string | null): void;
   requestNow(pointId: string): Promise<void>;
-  setMax(pointId: string, maxFeeCents: Cents): Promise<void>;
+  setMax(pointId: string, maxFeeCents: Cents, agent?: boolean): Promise<void>;
   cancelMax(pointId: string): Promise<void>;
   take(pointId: string): Promise<void>;
   approveCheckout(ok: boolean): void;
@@ -235,8 +245,8 @@ export const useMarket = create<MarketState>()((set, get) => ({
   async requestNow(pointId) {
     await get().driver?.requestNow(pointId);
   },
-  async setMax(pointId, maxFeeCents) {
-    await get().driver?.setMax(pointId, maxFeeCents);
+  async setMax(pointId, maxFeeCents, agent) {
+    await get().driver?.setMax(pointId, maxFeeCents, agent);
   },
   async cancelMax(pointId) {
     await get().driver?.cancelMax(pointId);

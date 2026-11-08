@@ -332,7 +332,7 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong.';
 }
 
-async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'max') {
+async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'max', agent = false) {
   const p = get().points.find((x) => x.id === pointId);
   if (!p || !isOpenOrder(get().orders[pointId])) return;
   const destination = destinationFor(p);
@@ -342,7 +342,7 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
   }
   setOrder({ pointId, kind, status: 'approving', mode: destination.mode, maxFeeCents, holdCents: holdFor(p, maxFeeCents, 1, get().shippingFor(pointId)) });
   try {
-    const created = await createRequest(p, destination, maxFeeCents, 'paypal');
+    const created = await createRequest(p, destination, maxFeeCents, 'paypal', agent);
     if (created.checkout.next !== 'fake_approve') {
       patchOrder(pointId, { status: 'error', message: 'This server runs the PayPal sandbox now: reload the page to get PayPal’s own buttons.' });
       return;
@@ -377,8 +377,11 @@ async function holdAndAsk(pointId: string, maxFeeCents: Cents, kind: 'now' | 'ma
   }
 }
 
+/** What the phone tells the bidding agent when the requester turns it on (D-158). */
+const AGENT_GOAL = 'As cheap as possible, never above my max fee.';
+
 /** Quote, then create the request: the server creates the PayPal order (intent AUTHORIZE) for its whole limit. */
-async function createRequest(p: TaskPoint, destination: Destination, maxFeeCents: Cents, funding: CheckoutFunding, live: () => boolean = () => true): Promise<CreateBidResponse> {
+async function createRequest(p: TaskPoint, destination: Destination, maxFeeCents: Cents, funding: CheckoutFunding, agent: boolean, live: () => boolean = () => true): Promise<CreateBidResponse> {
   // Sandbox: the quote was asked for when the sheet opened (its live estimates take seconds while PayPal's window waits).
   const quote = await (checkout ? quoteFor(p, destination) : api('POST /api/bids/quote', {}, { shopId: p.shop.id, itemId: p.id, qty: 1, destination }, { as: requester }));
   const created = await api(
@@ -394,7 +397,7 @@ async function createRequest(p: TaskPoint, destination: Destination, maxFeeCents
       destination,
       deadlineAt: clock.now() + 2 * DAY,
       funding,
-      agent: null,
+      agent: agent ? { goal: AGENT_GOAL } : null,
     },
     { as: requester, idempotencyKey: crypto.randomUUID() },
   );
@@ -497,7 +500,7 @@ function payWithPayPal(pointId: string, choice: BidChoice, funding: CheckoutFund
     funding,
     {
       async createBid(f) {
-        const created = await createRequest(p, destination, maxFeeCents, f, () => !over);
+        const created = await createRequest(p, destination, maxFeeCents, f, choice.kind === 'max' && choice.agent === true, () => !over);
         bidId = created.bid.id;
         if (over) endedHere.add(bidId); // closed before the server answered: the screen keeps its words
         if (created.checkout.next !== 'js_sdk') {
@@ -596,8 +599,8 @@ const driver: MarketDriver = {
     if (!offer) return;
     await holdAndAsk(pointId, askFeeAt(offer, clock.now()), 'now');
   },
-  async setMax(pointId, maxFeeCents) {
-    await holdAndAsk(pointId, maxFeeCents, 'max');
+  async setMax(pointId, maxFeeCents, agent) {
+    await holdAndAsk(pointId, maxFeeCents, 'max', agent === true);
   },
   async cancelMax(pointId) {
     const order = get().orders[pointId];

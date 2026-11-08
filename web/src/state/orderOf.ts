@@ -1,3 +1,4 @@
+import { maxFeeWithinLimitCents } from '@holdmyspot/shared';
 import type { BidDetail } from '@holdmyspot/shared';
 import type { OrderStatus, UserOrder } from './market';
 
@@ -56,5 +57,14 @@ export function orderOf(d: BidDetail, names?: OrderNames): UserOrder {
     chargedCents: hold?.capturedCents,
     releasedCents: hold?.releasedCents,
     ...(message ? { message } : {}),
+    ...(bid.agent
+      ? {
+          agent: {
+            status: bid.agent.status,
+            ceilingCents: maxFeeWithinLimitCents({ qty: bid.qty, retailCapCents: bid.retailCapCents, shippingBudgetCents: bid.shippingBudgetCents }, bid.limitCents, bid.destination.mode) ?? bid.maxFeeCents,
+            actions: d.agentActions ?? [],
+          },
+        }
+      : {}),
   };
 }

@@ -1,6 +1,7 @@
 import { askSchedule, bidDisclosures, fillPriceForMax, nextDropAt, nextPriceAfter, reachesAt } from '@holdmyspot/shared';
 import type { CheckoutFunding, StepDownSchedule } from '@holdmyspot/shared';
 import { useState } from 'react';
+import { AgentLog } from './AgentLog';
 import { bestOffer, holdFor, maxFeeGrid, noOfferNote, offerFeeAt, retailCapFor, supplyLabel } from '../domain/book';
 import { formatUsd, type Cents } from '../domain/money';
 import type { FeeOffer, TaskPoint } from '../domain/types';
@@ -70,6 +71,8 @@ export function OfferCard({ point, blockedReason }: { point: TaskPoint; blockedR
   const cancelApproval = useMarket((s) => s.cancelApproval);
   // A server in sandbox mode: PayPal's own buttons replace the placeholder ones (fake mode keeps the Simulated PayPal sheet).
   const sandbox = useMarket((s) => s.backend === 'server' && s.serverMode === 'sandbox');
+  // The bidding agent lives on the server: the in-browser market has none, so it offers no toggle.
+  const agentOffered = useMarket((s) => s.backend === 'server');
   const [picking, setPicking] = useState(false);
 
   const offer = bestOffer(point, now);
@@ -155,14 +158,15 @@ export function OfferCard({ point, blockedReason }: { point: TaskPoint; blockedR
           offer={offer}
           busy={approvingMax}
           sandbox={sandbox}
+          agentOffered={agentOffered}
           onCancel={() => setPicking(false)}
-          onConfirm={(cents) => {
+          onConfirm={(cents, agent) => {
             setPicking(false);
-            void setMax(point.id, cents);
+            void setMax(point.id, cents, agent);
           }}
-          onPay={(cents, funding) => {
+          onPay={(cents, funding, agent) => {
             setPicking(false);
-            payWith(point.id, { kind: 'max', maxFeeCents: cents }, funding);
+            payWith(point.id, { kind: 'max', maxFeeCents: cents, agent }, funding);
           }}
           onStopWaiting={() => cancelApproval(point.id)}
         />
@@ -311,7 +315,7 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
         <div className="order__row">
           <span className="state-chip is-held">Held</span>
           <strong>{formatUsd(order.holdCents ?? 0, { exact: true })}</strong>
-          <span className="order__muted">your max fee {formatUsd(order.maxFeeCents)}</span>
+          <span className="order__muted">{order.agent ? `fee now ${formatUsd(order.maxFeeCents)}` : `your max fee ${formatUsd(order.maxFeeCents)}`}</span>
         </div>
         <p>
           {fill !== null && offer
@@ -320,6 +324,7 @@ function OrderStatus({ point, order, offer, now, onCancel }: { point: TaskPoint;
           {ahead === null ? '' : ahead === 0 ? 'Yours is the best request in the book.' : `${ahead} ${ahead === 1 ? 'request is' : 'requests are'} ahead of you.`}
           {order.mode === 'ship' ? ' Shipped to you; shipping is charged as the queuer declares it, up to your shipping budget.' : ''}
         </p>
+        {order.agent && <AgentLog agent={order.agent} feeNowCents={order.maxFeeCents} timeZone={point.shop.timezone} />}
         <button type="button" className="text-button" onClick={onCancel}>
           Cancel and release the hold
         </button>
@@ -395,6 +400,7 @@ function MaxPicker({
   offer,
   busy,
   sandbox,
+  agentOffered,
   onCancel,
   onConfirm,
   onPay,
@@ -406,15 +412,18 @@ function MaxPicker({
   busy: boolean;
   /** PayPal's own buttons (server in sandbox mode) instead of the placeholder. */
   sandbox: boolean;
+  /** The server has a bidding agent; the requester may turn it on (off by default, D-158). */
+  agentOffered: boolean;
   onCancel: () => void;
-  onConfirm: (c: Cents) => void;
+  onConfirm: (c: Cents, agent: boolean) => void;
   /** Sandbox: called inside the click on PayPal's button. */
-  onPay: (c: Cents, funding: CheckoutFunding) => void;
+  onPay: (c: Cents, funding: CheckoutFunding, agent: boolean) => void;
   onStopWaiting: () => void;
 }) {
   // One grid for the slider, the buttons and the label (D-132): half dollars, like the book's levels.
   const { unit, lo, hi, initial } = maxFeeGrid(point, offerFee);
   const [value, setValue] = useState(initial);
+  const [agent, setAgent] = useState(false);
   const v = Math.min(hi, Math.max(lo, value));
   const sched = offer ? scheduleOf(offer) : null;
   const at = sched ? reachesAt(sched.schedule, v) : null;
@@ -453,11 +462,17 @@ function MaxPicker({
         {formatUsd(retailCapFor(point.retailCents))}, up to {formatUsd(v)} for the queuer{shipping > 0 ? `, up to ${formatUsd(shipping)} for shipping` : ''} and up to{' '}
         {formatUsd(hold - (retailCapFor(point.retailCents) + v) - shipping, { exact: true })} for processing and payouts at cost.
       </p>
+      {agentOffered && (
+        <label className="picker__agent">
+          <input type="checkbox" checked={agent} disabled={busy} onChange={(e) => setAgent(e.target.checked)} />
+          <span>Let AI adjust my fee, never above my max</span>
+        </label>
+      )}
       <Disclosures lines={disclosuresFor(point, v, shipping)} />
       {sandbox ? (
-        <PayPalSdkButtons lead={`Hold ${formatUsd(hold)} with`} waiting={busy} onPay={(funding) => onPay(v, funding)} onStopWaiting={onStopWaiting} />
+        <PayPalSdkButtons lead={`Hold ${formatUsd(hold)} with`} waiting={busy} onPay={(funding) => onPay(v, funding, agent)} onStopWaiting={onStopWaiting} />
       ) : (
-        <PayPalButton state={busy ? 'waiting' : 'ready'} label={`Hold ${formatUsd(hold)} with PayPal`} onClick={() => onConfirm(v)} />
+        <PayPalButton state={busy ? 'waiting' : 'ready'} label={`Hold ${formatUsd(hold)} with PayPal`} onClick={() => onConfirm(v, agent)} />
       )}
       {busy && !sandbox ? (
         // After a reload or a closed tab no approval sheet comes back: end the request instead of waiting forever.
