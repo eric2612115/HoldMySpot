@@ -82,7 +82,7 @@ const CASES: { appearsAt: MarketMs; row: PeopleCase }[] = [
       kindLabel: 'Receipt to review',
       who: 'Ava for Leo M.',
       what: '1 x Mochi Bunny plush',
-      amountText: '$48.00 if it passes',
+      amountText: '$50.76 if it passes',
       why: 'Listed price: the receipt says $36.00; the plush is listed at $34.00.',
       aiNote: 'Read PAPER MOON TOYS, $36.00. The lines add up and the receipt QR matches the print; the price is above what the shop lists.',
       aiStamp: 'fake/rules-v1/fake (simulated reading, no AI)',

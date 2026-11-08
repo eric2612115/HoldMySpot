@@ -64,7 +64,7 @@ function receiptCase(proof: Proof, job: Job | null): PeopleCase {
   const why = failed.length > 0 ? failed.map((c) => c.detail).join(' ') : 'The AI and the rules could not settle this photo.';
   const r = proof.receipt;
   const read = r && (r.printedName || r.total)
-    ? `Read ${[r.printedName, r.total ? (r.total.currency === 'USD' ? usd(r.total.minor) : `${r.total.currency} ${r.total.minor}`) : null, r.issuedAt?.slice(0, 16).replace('T', ' ')].filter(Boolean).join(', ')}. `
+    ? `Read ${[r.printedName, r.total ? (r.total.currency === 'USD' ? usd(r.total.minor) : `${r.total.currency} ${r.total.minor}`) : null, r.issuedAt?.slice(0, 10)].filter(Boolean).join(', ')}. `
     : '';
   const capture = proof.amounts?.captureCents ?? null;
   const kindLabel = proof.kind === 'check_in' ? 'Line photo to review' : 'Receipt to review';

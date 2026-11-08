@@ -314,7 +314,7 @@ export class ServerBackend implements OpsBackend {
   }
 
   async photoUrl(fileId: string): Promise<string | null> {
-    const res = await fetch(`${this.base}/api/files/${encodeURIComponent(fileId)}`, { headers: this.headers() });
+    const res = await fetch(`${this.base}/api/files/${encodeURIComponent(fileId)}`, { headers: { ...this.headers(), [HEADERS.persona]: 'ops' } });
     if (!res.ok) return null;
     return URL.createObjectURL(await res.blob());
   }
