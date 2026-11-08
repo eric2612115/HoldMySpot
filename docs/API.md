@@ -113,6 +113,8 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `POST /api/jobs/:jobId/handover` * | P0 | per | `{ code }` | `JobMoneyResult` | Queuer types the requester's code (`WRONG_CODE`; after 5 misses in an hour `RATE_LIMITED`, D-56); local mode; job `verified`; one capture and the payout (`PAYPAL_DECLINED` fails the job) |
 | `POST /api/jobs/:jobId/delivered` * | P1 | adm | | `{ job }` | Carrier stand-in for shipped jobs |
 
+`POST /api/jobs/:jobId/refund-request` * (P2, the requester): `{ reason }`, answers `{ job }`. It asks a person for money back and moves nothing (D-160).
+
 ### Money, AI, PayPal
 
 | Endpoint | P | Auth | Request | Response |
@@ -133,11 +135,13 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `GET /api/ops/datasets/:name` | P1 | `fills`, `bids`, `asks`, `jobs`, `holds`, `ledger`, `payouts`, `books` | `OpsDataset` flat rows for AG Studio, built by `opsDatasets` in `shared/src/opsviews.ts` (the console builds the same rows): dollars in `*Usd` fields, times in `at` and `*At`, `shopId` on every table, `slot` as San Francisco "HH:MM" |
 | `GET /api/ops/records` | P1 | | `OpsRecords`: every market record in one read (personas with home positions, crowd names, bids, holds, asks, claims, matches, jobs, proofs, ledger, payouts, agent actions). The ops console draws its board, map and dashboard from it (D-49) |
 | `POST /api/ops/proofs/:proofId/review` * | P1 | `{ decision, note }` | `{ proof, job }` |
-| `POST /api/ops/jobs/:jobId/refund` * | P1 | `{ amountCents, reason }` | `JobMoneyResult` |
+| `POST /api/ops/jobs/:jobId/refund` * | P1 | `{ amountCents, reason }`; refused while a dispute is open on the job (`CONFLICT`, D-160) | `JobMoneyResult` |
+| `POST /api/ops/jobs/:jobId/refund-request/close` * | P2 | `{ note }`: a person closes a refund request without refunding | `{ job }` |
 | `POST /api/ops/holds/:holdId/reauthorize` * | P1 | | `{ hold, ledger }` (day 4 to 29 only) |
 | `POST /api/ops/sweep` | P1 | | `SweepResult` |
 | `GET /api/ops/disputes` | P2 | | `{ disputes }` |
-| `POST /api/ops/disputes/:disputeId/evidence` * | P2 | `{ note, includeTracking }` | `{ dispute }` |
+| `POST /api/ops/disputes/:disputeId/draft` | P2 | none: words the note again (AI words code-supplied facts, or the template, D-161) | `{ dispute }` |
+| `POST /api/ops/disputes/:disputeId/evidence` * | P2 | `{ note, includeTracking }`; the server attaches the proof photos and receipt fields; sent once | `{ dispute }` |
 | `POST /api/ops/disputes/:disputeId/accept` * | P2 | `{ note }` | `{ dispute }` |
 | `POST /api/ops/disputes/:disputeId/adjudicate` * | P2 | `{ outcome }` (sandbox only) | `{ dispute }` |
 | `POST /api/ops/agents/turn` | P1 | `{ agent, instructions, messages, tools, toolChoice }`: the conversation so far and the tools the console runs | `{ say, calls, ai }`: one turn of the ops console's agents (the market desk, the AG Studio agents it delegates to, the rescheduler) from the server's AI port. Live model only, never recorded or replayed; without one `503 AI_UNAVAILABLE` and the console uses its offline planner and rules (D-100, D-103) |
@@ -149,7 +153,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 
 ### Built so far (2026-11-07)
 
-Every endpoint above is registered. Not built yet (they answer `501 NOT_BUILT`): `POST /api/paypal/webhook` (P1; status sync polls instead), `POST /api/ops/disputes/:disputeId/evidence`, `/accept` and `/adjudicate` (P2). `GET /api/ops/disputes` returns an empty list until dispute sync exists. `HMS_SERVE_STATIC` is not built.
+Every endpoint above is registered. Not built yet (it answers `501 NOT_BUILT`): `POST /api/paypal/webhook` (P1; status sync polls instead). `GET /api/ops/disputes` reads what the status sync found on PayPal (D-160). `HMS_SERVE_STATIC` is not built.
 
 Integrated in fake mode (2026-11-07, D-47 to D-52): the PayPal port is the sandbox REST client on the in-process emulator, the AI port is the AI services without a key, and `server/test/e2e.test.ts` runs the hero story over these routes only. Fake-mode failure injection: `HMS_FAKE_FAIL=<op>:<effect>[:<count>|*]`. How the web app switches from its mock: [WEB-INTEGRATION.md](WEB-INTEGRATION.md).
 

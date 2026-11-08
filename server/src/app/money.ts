@@ -189,13 +189,13 @@ function holdOfBid(app: App, bid: BidTask): Hold {
   return app.store.holds.must(bid.holdId, 'hold', 'HOLD_NOT_FOUND');
 }
 
-function moneyError(f: PayPalFailure): ContractError {
+export function moneyError(f: PayPalFailure): ContractError {
   const err = new ContractError(f.code, describeFailure(f), { issue: f.issue, paypalName: f.paypalName, httpStatus: f.httpStatus });
   (err as ContractError & { paypalDebugId?: string }).paypalDebugId = f.debugId ?? undefined;
   return err;
 }
 
-async function send<T>(app: App, adapter: Adapter, call: (port: ReturnType<App['payments']>) => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; failure: PayPalFailure }> {
+export async function send<T>(app: App, adapter: Adapter, call: (port: ReturnType<App['payments']>) => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; failure: PayPalFailure }> {
   try {
     return { ok: true, value: await call(app.payments(adapter)) };
   } catch (err) {
@@ -1094,7 +1094,9 @@ export async function refundJob(app: App, jobId: string, amountCents: number, re
     const refunded = new Map<string, number>();
     for (const e of app.store.ledger.where("job_id = ? AND kind = 'refunded' AND status IN ('succeeded', 'pending')", jobId)) {
       const req = loadRequest(app, e.id);
-      if (req?.op === 'refund') refunded.set(req.captureId, (refunded.get(req.captureId) ?? 0) + e.amount.cents);
+      // A dispute PayPal settled for the buyer has no request, only the capture it returned (D-160).
+      const captureId = req?.op === 'refund' ? req.captureId : e.paypal?.captureId;
+      if (captureId) refunded.set(captureId, (refunded.get(captureId) ?? 0) + e.amount.cents);
     }
     for (const cap of captureEntries(app, jobId).reverse()) {
       const id = cap.paypal?.captureId;

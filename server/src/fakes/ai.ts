@@ -1,4 +1,5 @@
 import {
+  disputeNoteTemplate,
   evaluateCheckIn,
   evaluatePurchase,
   expectedWaitMinutes,
@@ -14,6 +15,8 @@ import type {
   AiPort,
   CheckInPhotoInput,
   CheckInPhotoResult,
+  DisputeNoteInput,
+  DisputeNoteResult,
   FeeEstimateInput,
   PurchaseProofInput,
   PurchaseProofResult,
@@ -102,6 +105,10 @@ export class FakeAi implements AiPort {
       notes: [...SHIPPING_NOTES],
       ai: this.#stamp(),
     };
+  }
+
+  async disputeNote(input: DisputeNoteInput): Promise<DisputeNoteResult> {
+    return { text: disputeNoteTemplate(input.facts), ai: this.#stamp(), template: true, templateReason: 'no_model' };
   }
 
   async reassignNote(input: ReassignNoteInput): Promise<string> {

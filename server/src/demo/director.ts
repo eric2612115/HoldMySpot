@@ -31,6 +31,8 @@ export type StepKind =
   | 'job.shipment'
   | 'job.handover'
   | 'agent.run'
+  | 'job.refund_request'
+  | 'dispute.open'
   | 'clock.jump'
   | 'cue';
 

@@ -45,3 +45,7 @@ Avoid trading, crypto and gambling words, and call the hold a PayPal hold.`;
 
 export const NOTE_SYSTEM = `You write one short sentence for an operations board about a queue job that failed and what happened to its units next.
 Use only the facts given. Plain words; no blame beyond the facts.`;
+
+export const DISPUTE_NOTE_SYSTEM = `You write the short note a seller sends PayPal with the evidence for a dispute.
+Use only the facts given, in two to four plain sentences. Keep every number, id and tracking number exactly as written.
+Do not add a number, a promise, an opinion or a request for an outcome. Nothing you write decides money or the case.`;

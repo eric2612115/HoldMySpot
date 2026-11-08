@@ -7,8 +7,9 @@
 //      Priya's request goes back to the book.
 //   C. A local errand and a sell-out: Lin walks to Sugar Cloud Bakery for Sam's cake
 //      and hands it over with the code on Sam's phone (one capture, one payout); then
-//      Lin reports the ramen sold out and every open ramen hold is released. These
-//      photos are drawn by the script, not rendered fixtures, so fake mode reads them
+//      Lin reports the ramen sold out: one report ends only his own job, and every
+//      ramen request stays open and held until a second checked-in queuer reports too
+//      (D-152). These photos are drawn by the script, not rendered fixtures, so fake mode reads them
 //      with its simulated readings (stamped "fake rules-v1").
 //
 // Needs the server in fake mode with the demo routes (the hero market's pinned codes
@@ -430,14 +431,17 @@ try {
     await page.locator('.sheet.is-open .take-button', { hasText: 'Report sold out' }).click();
     await stage(page, 'sold_out', 30_000);
     await page.waitForTimeout(1500);
-    await shot(page, '24-sold-out-holds-released');
+    await shot(page, '24-sold-out-own-job-ended');
     await ctx.close();
 
     const records = await api('GET', '/api/ops/records', null, 'ops');
     const ramenBids = records.bids.filter((b) => b.itemId === 'ramen-steam-lantern');
     const ramenHolds = records.holds.filter((h) => ramenBids.some((b) => b.holdId === h.id));
-    expect('Sold out: every ramen request closed', ramenBids.length > 0 && ramenBids.every((b) => b.closeReason === 'sold_out' && ['expired', 'closing', 'settled'].includes(b.status)), ramenBids.map((b) => `${b.status}/${b.closeReason}`).join(' '));
-    expect('Sold out: every ramen hold released, nothing captured', ramenHolds.length === ramenBids.length && ramenHolds.every((h) => h.status === 'released' && h.capturedCents === 0), ramenHolds.map((h) => h.status).join(' '));
+    // One queuer's report ends only his own job (D-152): the book stays open, and the request goes back on it, still held.
+    const ramenFailed = records.jobs.filter((j) => j.itemId === 'ramen-steam-lantern' && j.failure?.reason === 'sold_out');
+    expect("Sold out, one report: only Lin's own job ended", ramenFailed.length === 1 && ramenFailed[0].status === 'failed', ramenFailed.map((j) => `${j.queuerId}/${j.status}`).join(' '));
+    expect('Sold out, one report: every ramen request stays open', ramenBids.length > 0 && ramenBids.every((b) => b.status === 'open' && b.closeReason === null), ramenBids.map((b) => `${b.status}/${b.closeReason}`).join(' '));
+    expect('Sold out, one report: every ramen hold still held, nothing captured', ramenHolds.length === ramenBids.length && ramenHolds.every((h) => h.status === 'held' && h.capturedCents === 0), ramenHolds.map((h) => h.status).join(' '));
   }
 } finally {
   await browser.close();

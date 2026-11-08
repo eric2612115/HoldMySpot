@@ -7,7 +7,7 @@ import type { ResolveOptions } from './config.ts';
 import { AiError } from './errors.ts';
 import { estimateEta, feeEstimate, shippingEstimate } from './estimates.ts';
 import { decodeImage } from './image.ts';
-import { reassignNote } from './notes.ts';
+import { disputeNote, reassignNote } from './notes.ts';
 import { dHash } from './phash.ts';
 import { checkInPhoto, confidenceOf, purchaseProof, reasonsOf } from './proof.ts';
 import { lenientJsonFetch, opsTurnProvider, runOpsTurn } from './opsTurn.ts';
@@ -26,6 +26,7 @@ import type { CheckInResult, HmsAiPort, PurchaseResult } from './types.ts';
  * - feeEstimate / shippingEstimate: shared formulas; a model phrases the
  *   explanation outside rules-only mode.
  * - reassignNote: one sentence for the ops board.
+ * - disputeNote: words a dispute note from facts code supplied (D-161).
  * Extras beyond the port:
  * - dHash(bytes, contentType): pass as `saveUpload(..., { dHash: ai.dHash })`
  *   so every upload gets a perceptual hash for duplicate checks;
@@ -134,6 +135,7 @@ export function buildAiPort(opts: BuildAiPortOptions = {}): HmsAiPort {
     feeEstimate: (input) => feeEstimate(input, provider),
     shippingEstimate: (input) => shippingEstimate(input, provider),
     reassignNote: async (input) => (await reassignNote(input, provider)).text,
+    disputeNote: (input) => disputeNote(input, provider),
     dHash: async (bytes) => {
       const pixels = await decodeImage(bytes);
       return pixels ? dHash(pixels) : null;

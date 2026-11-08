@@ -109,7 +109,7 @@ export async function waitFor(what, fn, { timeoutMs = 60_000, everyMs = 1_000 } 
  * Starts the server in sandbox mode on its own port, database and upload folder.
  * `payoutEmail` (from --payout-to) goes to the child's environment only; it is never printed.
  */
-async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
+export async function startServer({ port, tmp, secretsDir, payoutEmail, log }) {
   if (await portInUse(port)) throw new Error(`Port ${port} is already in use; the lifecycle only uses a server it starts itself.`);
   const logFile = path.join(tmp, 'server.log');
   const out = fs.openSync(logFile, 'a');
@@ -299,6 +299,8 @@ export async function runLifecycle({
   waitMinutes = 15,
   local = false,
   log = console.log,
+  // Runs on the same server after the checks, before it stops: { api, result, buyer, paypal, log }.
+  afterRun = null,
 }) {
   const shared = await import(pathToFileURL(path.join(REPO, 'shared', 'src', 'index.ts')).href);
   const { HERO, PAYPAL_PRICING, SEED_USERS, jobSettlement, paypalCaptureFeeCents, platformFeeCents, zonedLocalToEpoch } = shared;
@@ -499,6 +501,7 @@ export async function runLifecycle({
       `processing line ${usd(amounts.processingCents ?? 0)}, PayPal's fees ${usd(paypalFees)} (server ${usd(amounts.paypalFeesCents ?? 0)}); charged ${usd(settled.chargedCents)} - paid out ${usd(settled.paidOutCents)} - PayPal ${usd(paypalFees)} = HoldMySpot ${usd(settled.platformCents)}, 10% of the ${usd(result.server.job.feeCents)} fee is ${usd(keep)}`,
     );
     result.ok = result.checks.every((c) => c.ok);
+    if (afterRun) await afterRun({ api, result, buyer, paypal, log });
     return result;
   } finally {
     if (buyer) await buyer.close().catch(() => {});

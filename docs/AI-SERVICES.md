@@ -97,6 +97,10 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 - **Policy (prompt):** fill before the deadline at the lowest fee; wait when a checked-in clock will step to the current max soon; raise gradually as the deadline nears and nothing is in reach; cancel only when sold out or the goal cannot be met. Every action is logged as an `AgentAction` with one plain sentence, shown on the bid screen and the ops board.
 - **Fake policy:** target = start + (ceiling - start) x f^1.5, where f is the elapsed share of the window from creation to 30 minutes before the deadline, rounded to 50 cents; keep when the best compatible ask (or its next step within 10 minutes) is at or below the current max; cancel when the book is sold out.
 
+### 4.5a Dispute note (ops console, D-161)
+
+`disputeNote` in `server/src/ai/notes.ts`. Code gathers the facts (`shared/src/disputeNote.ts`: the receipt it read, tracking, the ledger) and attaches the photos; the model only words a short note, and a person reviews it before Send. It decides nothing about money or the outcome. No model, a provider error, or a number the facts do not hold: the template writes it, and `templateReason` on the draft says why. Stamped with provider, model and mode.
+
 ### 4.6 Reassign note (ops board)
 
 When a job fails and its quantity is re-offered, one sentence for the board, for example "Rex's receipt failed 4 checks; the plush went back to the book and Lin's offer ($10, ETA 11:30) took it." Fake mode uses a template.

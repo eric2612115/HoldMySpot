@@ -8,10 +8,12 @@ import { clockText, dayText } from './data/time.ts';
 
 // AG Studio is large; it loads only when the market view opens.
 const MarketView = lazy(() => import('./market/MarketView.tsx'));
+const PeopleView = lazy(() => import('./people/PeopleView.tsx'));
 
-type ViewId = 'board' | 'market';
+type ViewId = 'board' | 'market' | 'people';
 
 function viewFromHash(): ViewId {
+  if (location.hash.startsWith('#/people')) return 'people';
   return location.hash.startsWith('#/market') ? 'market' : 'board';
 }
 
@@ -34,11 +36,15 @@ export function App() {
     <div className="shell">
       <TopBar market={market} view={view} brain={brain} />
       <main className="view">
-        {view === 'board' ? (
-          <BoardView market={market} brain={brain} />
-        ) : (
+        {view === 'board' && <BoardView market={market} brain={brain} />}
+        {view === 'market' && (
           <Suspense fallback={<div className="boot">Loading the market dashboard</div>}>
             <MarketView market={market} brain={brain} />
+          </Suspense>
+        )}
+        {view === 'people' && (
+          <Suspense fallback={<div className="boot">Loading the cases</div>}>
+            <PeopleView market={market} />
           </Suspense>
         )}
       </main>
@@ -72,6 +78,13 @@ function TopBar({ market, view, brain }: { market: Market; view: ViewId; brain: 
             <path d="M2.5 13.5v-4M6.2 13.5V5M9.8 13.5V8M13.5 13.5V2.5" />
           </svg>
           Market
+        </a>
+        <a href="#/people" aria-current={view === 'people' ? 'page' : undefined}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <circle cx="8" cy="5" r="2.6" />
+            <path d="M3 14c.5-3 2.4-4.6 5-4.6s4.5 1.6 5 4.6" />
+          </svg>
+          Needs a person
         </a>
       </nav>
       <div className="spacer" />

@@ -268,11 +268,22 @@
   color: var(--ink-3);
 }
 
-/* The top bar's content is 1452px wide at its roomiest. Laptops (1280 to 1536) get a tighter bar
-   instead of a page that scrolls sideways; every control stays. */
+/* The top bar's content is about 1530px wide at its roomiest. Laptops (1280 to 1536) get a tighter bar
+   instead of a page that scrolls sideways; every control stays. The three page tabs lose their icons
+   and keep their words. */
 @media (max-width: 1536px) {
   .topbar {
     gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .views svg {
+    display: none;
+  }
+
+  .views a {
+    padding: 7px 11px;
+    font-size: 13px;
   }
 
   .spacer {

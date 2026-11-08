@@ -1,9 +1,10 @@
-import { JOB_FAILURE_REASONS, findItem, findShop, formatUsd } from '@holdmyspot/shared';
+import { JOB_FAILURE_REASONS, disputeNoteTemplate, findItem, findShop, formatUsd, noteUsesOnlyFacts } from '@holdmyspot/shared';
 import type { AiStamp, ItemKind, JobFailureReason } from '@holdmyspot/shared';
 import type { AiProvider } from '@holdmyspot/shared/ports';
-import type { ReassignNoteInput } from '../ports/ai.ts';
+import type { DisputeNoteInput, DisputeNoteResult, ReassignNoteInput } from '../ports/ai.ts';
+import { AiError } from './errors.ts';
 import { FAKE_MODEL } from './fake.ts';
-import { NOTE_SYSTEM } from './prompts.ts';
+import { DISPUTE_NOTE_SYSTEM, NOTE_SYSTEM } from './prompts.ts';
 import { fixtureKey } from './replay.ts';
 import { SENTENCES_SCHEMA } from './schemas.ts';
 import type { SentencesOutput } from './schemas.ts';
@@ -71,5 +72,36 @@ export async function reassignNote(input: ReassignNoteInput, provider: AiProvide
     return first ? { text: oneSentence(first), ai: res.stamp } : { text, ai: stamp };
   } catch {
     return { text, ai: stamp };
+  }
+}
+
+/**
+ * The dispute note a person reviews before Send (D-161). The model only words
+ * the facts; with no model, on a provider error, or when its note names a number
+ * the facts do not hold, the template writes it and the result says so.
+ */
+export async function disputeNote(input: DisputeNoteInput, provider: AiProvider | null): Promise<DisputeNoteResult> {
+  const text = disputeNoteTemplate(input.facts);
+  const stamp: AiStamp = { provider: 'fake', model: FAKE_MODEL, mode: 'fake', latencyMs: 0 };
+  const template = (reason: 'no_model' | 'provider_error' | 'rejected'): DisputeNoteResult => ({ text, ai: stamp, template: true, templateReason: reason });
+  if (!provider || provider.mode === 'fake') return template('no_model');
+  const prompt = `Facts:\n${JSON.stringify(input.facts, null, 1)}\n\nA plain version of the note:\n${text}\n\nWord this note for PayPal's reviewer, keeping every fact and number.`;
+  try {
+    const res = await provider.json<SentencesOutput>({
+      task: 'dispute_note',
+      system: DISPUTE_NOTE_SYSTEM,
+      prompt,
+      images: [],
+      schemaName: 'sentences',
+      schema: SENTENCES_SCHEMA,
+      effort: 'low',
+      fixtureKey: fixtureKey({ task: 'dispute_note', schemaName: 'sentences', system: DISPUTE_NOTE_SYSTEM, prompt, images: [] }),
+    });
+    const written = res.data.sentences.join(' ').replace(/\s+/g, ' ').trim();
+    if (!written) return template('provider_error');
+    if (!noteUsesOnlyFacts(written, input.facts)) return template('rejected');
+    return { text: written, ai: res.stamp, template: false, templateReason: null };
+  } catch (err) {
+    return template(err instanceof AiError && (err.kind === 'unsupported' || err.kind === 'no_truth') ? 'no_model' : 'provider_error');
   }
 }
