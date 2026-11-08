@@ -64,6 +64,7 @@
   grid-template-columns: 170px 1fr 120px;
   align-items: center;
   gap: 0;
+  box-sizing: border-box;
   width: 100%;
   min-height: 34px;
   padding: 4px 6px;
@@ -566,4 +567,19 @@
 .market-studio-wrap {
   flex: 1;
   min-height: 0;
+}
+
+/* 1280-wide laptops: the dashboard's widgets are at their narrowest, keep every number whole. */
+@media (max-width: 1400px) {
+  .hms-gap-row {
+    grid-template-columns: 170px minmax(0, 1fr) 76px;
+  }
+
+  .hms-gap-scale {
+    margin-right: 100px;
+  }
+
+  .market-studio .ag-studio-multi-kpi-widget-tile-value {
+    font-size: 18px;
+  }
 }

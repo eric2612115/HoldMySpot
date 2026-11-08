@@ -2,6 +2,8 @@
 
 .shell {
   display: grid;
+  /* minmax(0, 1fr): the shell is the window's width, never its widest child's. */
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
   height: 100vh;
   min-height: 640px;
@@ -264,6 +266,45 @@
   font-family: var(--font-play);
   font-size: 18px;
   color: var(--ink-3);
+}
+
+/* The top bar's content is 1452px wide at its roomiest. Laptops (1280 to 1536) get a tighter bar
+   instead of a page that scrolls sideways; every control stays. */
+@media (max-width: 1536px) {
+  .topbar {
+    gap: 10px;
+  }
+
+  .spacer {
+    display: none;
+  }
+
+  .clock {
+    margin-left: auto;
+  }
+
+  .moments button {
+    padding: 6px 7px;
+    font-size: 12px;
+  }
+}
+
+/* 1280: the five moments take two rows inside the clock. */
+@media (max-width: 1400px) {
+  .moments {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: 0 2px;
+  }
+
+  .moments button {
+    padding: 3px 7px;
+    line-height: 1.25;
+  }
+
+  .clock {
+    border-radius: 22px;
+  }
 }
 
 @media (max-width: 1180px) {
