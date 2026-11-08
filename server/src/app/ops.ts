@@ -161,5 +161,6 @@ export function opsRecords(app: App): OpsRecords {
     ledger: app.store.ledger.all(),
     payouts: app.store.payouts.all(),
     agentActions: app.store.agentActions.all(),
+    disputes: app.store.disputes.all(),
   };
 }

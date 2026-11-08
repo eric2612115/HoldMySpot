@@ -194,7 +194,10 @@ export interface PayPalPort {
   cancelUnclaimedPayoutItem(itemId: string): Promise<PayoutBatchResult['items'][number]>;
   listDisputes(sinceMs: number): Promise<DisputeResult[]>;
   getDispute(disputeId: string): Promise<DisputeResult>;
-  provideEvidence(disputeId: string, input: { note: string; files: { name: string; contentType: string; bytes: Uint8Array }[] }): Promise<DisputeResult>;
+  provideEvidence(
+    disputeId: string,
+    input: { note: string; files: { name: string; contentType: string; bytes: Uint8Array }[]; tracking?: { carrierName: string; trackingNumber: string } | null },
+  ): Promise<DisputeResult>;
   acceptClaim(disputeId: string, note: string): Promise<DisputeResult>;
   /** Sandbox only. */
   adjudicate(disputeId: string, outcome: 'BUYER_FAVOR' | 'SELLER_FAVOR'): Promise<DisputeResult>;
@@ -213,6 +216,7 @@ export type AiTask =
   | 'shipping_estimate'
   | 'bidding_agent'
   | 'reassign_note'
+  | 'dispute_note'
   // Ops console agents (D-100): live turns only, never recorded or replayed.
   | 'ops_agent';
 

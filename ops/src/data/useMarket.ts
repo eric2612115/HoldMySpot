@@ -14,6 +14,8 @@ export interface Market {
   /** Applies one option of a rescheduler proposal (its chosen one when `optionId` is null); resolves to what happened. */
   approve(proposal: Proposal, optionId: string | null): Promise<string>;
   move(jobId: string, toQueuerId: string): Promise<string | null>;
+  /** Runs one action on a backend (a "Needs a person" button) and redraws. */
+  act<T>(what: (b: OpsBackend) => Promise<T>): Promise<T>;
   /** Bumps on every applied change so views can animate what moved. */
   revision: number;
 }
@@ -111,8 +113,18 @@ export function useMarket(): Market | { error: string } | null {
     [backend, at, live, snapshot],
   );
 
+  const act = useCallback(
+    async <T,>(what: (b: OpsBackend) => Promise<T>): Promise<T> => {
+      if (!backend) throw new Error('The console is not ready.');
+      const out = await what(backend);
+      setRevision((r) => r + 1);
+      return out;
+    },
+    [backend],
+  );
+
   if (error) return { error };
   if (!backend || !snapshot || at === null) return null;
   // Live: the server's market time and clock state; replay: the console's own.
-  return { backend, snapshot, at: live ? snapshot.at : at, playing: live ? serverRunning : playing, setAt, togglePlay, approve, move, revision };
+  return { backend, snapshot, at: live ? snapshot.at : at, playing: live ? serverRunning : playing, setAt, togglePlay, approve, move, act, revision };
 }

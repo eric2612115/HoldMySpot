@@ -127,7 +127,7 @@ export class FakePayPal implements PaymentsPort, FakePaymentsControls {
   }
 
   /** Simulates the buyer opening a dispute on a capture. Returns the dispute id. */
-  openDispute(captureId: string, opts?: { reason?: string; amountCents?: number }): string {
+  openDispute(captureId: string, opts?: { reason?: string; amountCents?: number; stage?: 'INQUIRY' | 'CHARGEBACK' }): string {
     const id = this.#inner.openDispute(captureId, opts);
     this.#save();
     return id;

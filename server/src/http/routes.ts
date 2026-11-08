@@ -26,7 +26,8 @@ import { cities, itemById, itemOrThrow, shopOrThrow } from '../app/catalog.ts';
 import { canReadFile, readStoredFile, saveUpload } from '../app/files.ts';
 import { addShipment, handover, jobDetail, markBought, markDelivered, reportSoldOut, reviewProof, submitProof } from '../app/jobs.ts';
 import { bookSnapshot, latestLinePhoto } from '../app/market.ts';
-import { refundJob, renewHold } from '../app/money.ts';
+import { acceptDispute, adjudicateDispute, closeRefundRequest, redraftDispute, refundByOps, requestRefund, submitEvidence } from '../app/disputes.ts';
+import { renewHold } from '../app/money.ts';
 import { board, opsDataset, opsRecords } from '../app/ops.ts';
 import { applyOpsMoves, opsAgentTurn } from '../app/opsAgents.ts';
 import { sweepNow } from '../app/scheduler.ts';
@@ -217,6 +218,7 @@ export function buildRoutes({ app, director, resyncAll }: RouteDeps): Partial<Re
     'POST /api/jobs/:jobId/shipment': write((ctx) => addShipment(app, needUser(ctx), ctx.params.jobId!, ctx.body as Parameters<typeof addShipment>[3])),
     'POST /api/jobs/:jobId/handover': write((ctx) => handover(app, needUser(ctx), ctx.params.jobId!, (ctx.body as { code: string }).code)),
     'POST /api/jobs/:jobId/delivered': write((ctx) => markDelivered(app, ctx.params.jobId!)),
+    'POST /api/jobs/:jobId/refund-request': write((ctx) => ({ job: requestRefund(app, needUser(ctx), ctx.params.jobId!, (ctx.body as { reason: string }).reason) })),
 
     // ---- money ---------------------------------------------------------
     'GET /api/holds/:holdId': read((ctx) => ({ hold: holdForViewer(app, ctx.viewer, ctx.params.holdId!) })),
@@ -259,7 +261,7 @@ export function buildRoutes({ app, director, resyncAll }: RouteDeps): Partial<Re
     'POST /api/ops/proofs/:proofId/review': write((ctx) => reviewProof(app, ctx.params.proofId!, ctx.body as { decision: 'pass' | 'fail'; note: string })),
     'POST /api/ops/jobs/:jobId/refund': write(async (ctx) => {
       const body = ctx.body as { amountCents: number; reason: string };
-      const ledger = await refundJob(app, ctx.params.jobId!, body.amountCents, body.reason);
+      const ledger = await refundByOps(app, ctx.params.jobId!, body.amountCents, body.reason);
       return { job: app.store.jobs.must(ctx.params.jobId!), ledger };
     }),
     'POST /api/ops/holds/:holdId/reauthorize': write(async (ctx) => {
@@ -275,7 +277,18 @@ export function buildRoutes({ app, director, resyncAll }: RouteDeps): Partial<Re
       return { hold: out.hold, ledger: out.ledger };
     }),
     'POST /api/ops/sweep': read(() => sweepNow(app)),
+    'POST /api/ops/jobs/:jobId/refund-request/close': write((ctx) => ({ job: closeRefundRequest(app, ctx.params.jobId!, (ctx.body as { note: string }).note) })),
     'GET /api/ops/disputes': read(() => ({ disputes: app.store.disputes.all().reverse() })),
+    // A model turn is a read: it waits on the model, never on the market's queue (D-159).
+    'POST /api/ops/disputes/:disputeId/draft': read(async (ctx) => ({ dispute: await redraftDispute(app, ctx.params.disputeId!) })),
+    'POST /api/ops/disputes/:disputeId/evidence': write(async (ctx) => {
+      const body = ctx.body as { note: string; includeTracking: boolean };
+      return { dispute: await submitEvidence(app, ctx.params.disputeId!, body) };
+    }),
+    'POST /api/ops/disputes/:disputeId/accept': write(async (ctx) => ({ dispute: await acceptDispute(app, ctx.params.disputeId!, (ctx.body as { note: string }).note) })),
+    'POST /api/ops/disputes/:disputeId/adjudicate': write(async (ctx) => ({
+      dispute: await adjudicateDispute(app, ctx.params.disputeId!, (ctx.body as { outcome: 'buyer_favor' | 'seller_favor' }).outcome),
+    })),
     // Ops agents (D-100 to D-102). A model turn is a read: it waits on the model, never on the market's queue.
     'POST /api/ops/agents/turn': read((ctx) => opsAgentTurn(app, ctx.body as OpsAgentTurnRequest)),
     'POST /api/ops/moves': write((ctx) => applyOpsMoves(app, ctx.body as OpsMovesRequest)),

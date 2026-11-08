@@ -71,6 +71,11 @@ export const BODY_SCHEMAS: Partial<Record<ApiKey, z.ZodType>> = {
   'POST /api/estimates/shipping': z.object({ itemId: id, qty, destination }),
   'POST /api/ops/proofs/:proofId/review': z.object({ decision: z.enum(['pass', 'fail']), note: z.string().max(1000).default('') }),
   'POST /api/ops/jobs/:jobId/refund': z.object({ amountCents: cents, reason: z.string().min(1).max(200) }),
+  'POST /api/jobs/:jobId/refund-request': z.object({ reason: z.string().min(1).max(500) }),
+  'POST /api/ops/jobs/:jobId/refund-request/close': z.object({ note: z.string().max(500).default('') }),
+  'POST /api/ops/disputes/:disputeId/evidence': z.object({ note: z.string().min(1).max(1800), includeTracking: z.boolean().default(true) }),
+  'POST /api/ops/disputes/:disputeId/accept': z.object({ note: z.string().min(1).max(1800) }),
+  'POST /api/ops/disputes/:disputeId/adjudicate': z.object({ outcome: z.enum(['buyer_favor', 'seller_favor']) }),
   'POST /api/ops/agents/turn': z.object({
     agent: z.string().min(1).max(64),
     instructions: z.string().max(80_000).default(''),

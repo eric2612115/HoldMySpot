@@ -484,6 +484,8 @@ export interface Job {
   /** When each status was entered. */
   history: { status: JobStatus; at: MarketMs }[];
   disputed: boolean;
+  /** The requester asked a person for money back (D-158). Nothing moves until ops refunds. */
+  refundRequest?: RefundRequestRecord | null;
   createdAt: MarketMs;
   updatedAt: MarketMs;
 }
@@ -608,6 +610,15 @@ export interface Payout {
   updatedAt: MarketMs;
 }
 
+/** A requester's ask for money back; it reaches a person, never moves money by itself (D-158). */
+export interface RefundRequestRecord {
+  reason: string;
+  by: UserId;
+  at: MarketMs;
+  closedAt: MarketMs | null;
+  closedNote: string | null;
+}
+
 export const DISPUTE_STATUSES = ['open', 'waiting_for_seller', 'under_review', 'resolved'] as const;
 export type DisputeStatus = (typeof DISPUTE_STATUSES)[number];
 
@@ -620,8 +631,30 @@ export interface Dispute {
   outcome: 'buyer_favor' | 'seller_favor' | 'other' | null;
   amount: Money;
   evidenceSubmitted: boolean;
+  /** The note a person sent with the evidence (D-159). */
+  evidenceNote?: string | null;
+  /** The draft the person reviews before Send (D-159). */
+  draft?: DisputeDraft | null;
+  /** A person's accept or adjudicate, so a repeat never reaches PayPal twice. */
+  decision?: { kind: 'accepted' | 'adjudicated'; outcome: 'buyer_favor' | 'seller_favor'; at: MarketMs } | null;
   createdAt: MarketMs;
   updatedAt: MarketMs;
+}
+
+/**
+ * A dispute note waiting for a person (D-159). The model only words facts that
+ * code supplies; a template writes it when no model answers, and `template`
+ * says so. Decides nothing about money or outcome.
+ */
+export interface DisputeDraft {
+  text: string;
+  ai: AiStamp;
+  template: boolean;
+  /** Why the template wrote it: no model, a provider error, or a model note that named a number the facts do not have. */
+  templateReason: 'no_model' | 'provider_error' | 'rejected' | null;
+  /** The files and tracking code will attach when the person presses Send. */
+  attachments: string[];
+  at: MarketMs;
 }
 
 // ---------------------------------------------------------------------------
@@ -963,6 +996,8 @@ export interface OpsRecords {
   ledger: LedgerEntry[];
   payouts: Payout[];
   agentActions: AgentAction[];
+  /** Disputes on our captures, for the "Needs a person" page (D-158). */
+  disputes: Dispute[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1549,9 +1584,12 @@ export interface ApiSpec {
   'GET /api/ops/records': Endpoint<NoParams, NoQuery, NoBody, OpsRecords>;
   'POST /api/ops/proofs/:proofId/review': Endpoint<{ proofId: ProofId }, NoQuery, ReviewProofRequest, { proof: Proof; job: Job | null }>;
   'POST /api/ops/jobs/:jobId/refund': Endpoint<{ jobId: JobId }, NoQuery, RefundRequest, JobMoneyResult>;
+  'POST /api/jobs/:jobId/refund-request': Endpoint<{ jobId: JobId }, NoQuery, { reason: string }, { job: Job }>;
+  'POST /api/ops/jobs/:jobId/refund-request/close': Endpoint<{ jobId: JobId }, NoQuery, { note: string }, { job: Job }>;
   'POST /api/ops/holds/:holdId/reauthorize': Endpoint<{ holdId: HoldId }, NoQuery, NoBody, { hold: Hold; ledger: LedgerEntry[] }>;
   'POST /api/ops/sweep': Endpoint<NoParams, NoQuery, NoBody, SweepResult>;
   'GET /api/ops/disputes': Endpoint<NoParams, NoQuery, NoBody, { disputes: Dispute[] }>;
+  'POST /api/ops/disputes/:disputeId/draft': Endpoint<{ disputeId: DisputeId }, NoQuery, NoBody, { dispute: Dispute }>;
   'POST /api/ops/disputes/:disputeId/evidence': Endpoint<{ disputeId: DisputeId }, NoQuery, DisputeEvidenceRequest, { dispute: Dispute }>;
   'POST /api/ops/disputes/:disputeId/accept': Endpoint<{ disputeId: DisputeId }, NoQuery, { note: string }, { dispute: Dispute }>;
   'POST /api/ops/disputes/:disputeId/adjudicate': Endpoint<
@@ -1650,9 +1688,12 @@ export const ENDPOINTS: Readonly<Record<ApiKey, EndpointMeta>> = {
   'GET /api/ops/records': { phase: 'P1', auth: 'admin', idempotent: false, summary: 'Every market record for the operator console in one read.' },
   'POST /api/ops/proofs/:proofId/review': { phase: 'P1', auth: 'admin', idempotent: true, summary: 'Decide a proof that needs review.' },
   'POST /api/ops/jobs/:jobId/refund': { phase: 'P1', auth: 'admin', idempotent: true, summary: 'Refund part or all of a job.' },
+  'POST /api/jobs/:jobId/refund-request': { phase: 'P2', auth: 'persona', idempotent: true, summary: 'The requester asks a person for money back. Moves nothing.' },
+  'POST /api/ops/jobs/:jobId/refund-request/close': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'A person closes a refund request without refunding.' },
   'POST /api/ops/holds/:holdId/reauthorize': { phase: 'P1', auth: 'admin', idempotent: true, summary: 'Reauthorize now (day 4 to 29 only).' },
   'POST /api/ops/sweep': { phase: 'P1', auth: 'admin', idempotent: false, summary: 'Run renewal, lapse and expiry sweeps now.' },
   'GET /api/ops/disputes': { phase: 'P2', auth: 'admin', idempotent: false, summary: 'Disputes on our captures.' },
+  'POST /api/ops/disputes/:disputeId/draft': { phase: 'P2', auth: 'admin', idempotent: false, summary: 'Draft the dispute note again (AI words code-supplied facts, or the template).' },
   'POST /api/ops/disputes/:disputeId/evidence': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'Send proof photos, receipt fields and tracking.' },
   'POST /api/ops/disputes/:disputeId/accept': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'Accept the claim.' },
   'POST /api/ops/disputes/:disputeId/adjudicate': { phase: 'P2', auth: 'admin', idempotent: true, summary: 'Sandbox only: settle a dispute.' },

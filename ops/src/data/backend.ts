@@ -1,5 +1,9 @@
 import { CONTRACT_VERSION, DEFAULT_RULES, HEADERS, SEED_SHOPS, apiPath } from '@holdmyspot/shared';
-import type { ApiErrorBody, ApiSpec, AppConfig, BookSnapshot, MarketMs, OpsDataset, OpsDatasetName, OpsMovesRequest, Shop } from '@holdmyspot/shared';
+import type { ApiErrorBody, ApiSpec, AppConfig, BookSnapshot, MarketMs, OpsDataset, OpsDatasetName, OpsMovesRequest, OpsRecords, Shop } from '@holdmyspot/shared';
+import { casesFromRecords, manualRefundCase, refundablePicks } from '../people/cases.ts';
+import type { PeopleCase, RefundablePick } from '../people/cases.ts';
+import { emptyReplayState, peopleCasesAt, replayRefundablePicks } from './mock/peopleDay.ts';
+import type { PeopleReplayState } from './mock/peopleDay.ts';
 import { actionsFor, proposalsAt } from '../agents/rescheduler.ts';
 import type { Proposal } from '../agents/rescheduler.ts';
 import { boardDay, worldFromRecords } from './serverWorld.ts';
@@ -22,6 +26,9 @@ export interface MarketSnapshot {
   datasets: Record<OpsDatasetName, OpsDataset>;
   proposals: Proposal[];
   shops: Shop[];
+  /** Open cases for the "Needs a person" page. */
+  people: PeopleCase[];
+  refundable: RefundablePick[];
 }
 
 export interface OpsBackend {
@@ -37,6 +44,17 @@ export interface OpsBackend {
   move(jobId: string, toQueuerId: string, at: MarketMs): Promise<string | null>;
   /** Server mode: pause or resume the server's own clock (demo runs). */
   setRunning?(running: boolean): Promise<void>;
+  // ---- "Needs a person" (D-158) ----------------------------------------
+  reviewProof(proofId: string, decision: 'pass' | 'fail', note: string): Promise<string>;
+  refund(jobId: string, amountCents: number, reason: string): Promise<string>;
+  closeRefundRequest(jobId: string, note: string): Promise<string>;
+  sendEvidence(disputeId: string, note: string, includeTracking: boolean): Promise<string>;
+  acceptClaim(disputeId: string, note: string): Promise<string>;
+  adjudicate(disputeId: string, outcome: 'buyer_favor' | 'seller_favor'): Promise<string>;
+  /** A URL for a stored proof photo, or null when it cannot be read. */
+  photoUrl(fileId: string): Promise<string | null>;
+  /** A refund row for a job a person picked, or null when the job is gone. */
+  manualRefund(jobId: string): PeopleCase | null;
 }
 
 function fakeConfig(at: MarketMs): AppConfig {
@@ -75,6 +93,8 @@ export class MockBackend implements OpsBackend {
   /** Moves ops made (approvals and drags), replayed at their times. */
   private actions: OpsAction[];
   private readonly startAt: MarketMs;
+  /** What a person did on the "Needs a person" page, in this browser. */
+  private people: PeopleReplayState = emptyReplayState;
 
   constructor() {
     this.startAt = parseMarketTime(new URLSearchParams(location.search).get('at')) ?? DEFAULT_MOMENT;
@@ -100,7 +120,52 @@ export class MockBackend implements OpsBackend {
       datasets: datasetsAt(w, at),
       proposals: proposalsAt(w, at, actions),
       shops: SEED_SHOPS,
+      people: peopleCasesAt(at, this.people),
+      refundable: replayRefundablePicks,
     };
+  }
+
+  private closePeople(id: string, patch: Partial<PeopleReplayState> = {}): void {
+    this.people = { ...this.people, closed: new Set([...this.people.closed, id]), ...patch };
+  }
+
+  async reviewProof(_proofId: string, decision: 'pass' | 'fail'): Promise<string> {
+    this.closePeople('receipt:replay-receipt');
+    return `${decision === 'pass' ? 'Passed' : 'Failed'} in this replay. No money moved and nothing left this browser.`;
+  }
+
+  async refund(_jobId: string, amountCents: number, reason: string): Promise<string> {
+    if (amountCents > 4947) throw new Error('Only $49.47 of this job can be refunded.');
+    this.closePeople('refund:replay-refund');
+    return `Refunded $${(amountCents / 100).toFixed(2)} in this replay (${reason}). PayPal is not called here.`;
+  }
+
+  async closeRefundRequest(): Promise<string> {
+    this.closePeople('refund:replay-refund');
+    return 'Closed without a refund, in this replay.';
+  }
+
+  async sendEvidence(): Promise<string> {
+    this.people = { ...this.people, sent: new Set([...this.people.sent, 'dispute:replay-dispute']) };
+    return 'Sent in this replay. On a live server this goes to PayPal with the receipt and item photos attached.';
+  }
+
+  async acceptClaim(): Promise<string> {
+    this.closePeople('dispute:replay-dispute');
+    return 'Claim accepted, in this replay. PayPal is not called here.';
+  }
+
+  async adjudicate(_disputeId: string, outcome: 'buyer_favor' | 'seller_favor'): Promise<string> {
+    this.closePeople('dispute:replay-dispute');
+    return `Settled for the ${outcome === 'buyer_favor' ? 'buyer' : 'seller'}, in this replay. PayPal is not called here.`;
+  }
+
+  async photoUrl(): Promise<string | null> {
+    return null;
+  }
+
+  manualRefund(): PeopleCase | null {
+    return null;
   }
 
   async approve(proposal: Proposal, optionId: string | null, at: MarketMs): Promise<string> {
@@ -143,7 +208,7 @@ export class ServerBackend implements OpsBackend {
   readonly kind = 'server' as const;
   readonly moments: { id: string; label: string; at: MarketMs }[] = [];
   private shops: Shop[] | null = null;
-  private last: { sig: string; snapshot: MarketSnapshot; world: World } | null = null;
+  private last: { sig: string; snapshot: MarketSnapshot; world: World; records: OpsRecords } | null = null;
   /** Approvals made from this console, so their cards stay as "approved" after the problem is gone. */
   private approved: OpsAction[] = [];
   constructor(
@@ -190,8 +255,10 @@ export class ServerBackend implements OpsBackend {
       datasets: datasetsAt(w, at, books.books),
       proposals: proposalsAt(w, at, this.approved),
       shops: shops.shops,
+      people: casesFromRecords(records),
+      refundable: refundablePicks(records, casesFromRecords(records)),
     };
-    this.last = { sig, snapshot, world: w };
+    this.last = { sig, snapshot, world: w, records };
     return snapshot;
   }
 
@@ -199,6 +266,62 @@ export class ServerBackend implements OpsBackend {
   async setRunning(running: boolean): Promise<void> {
     const res = await fetch(`${this.base}${apiPath(running ? 'POST /api/demo/resume' : 'POST /api/demo/pause', {})}`, { method: 'POST', headers: this.headers() });
     if (!res.ok) throw new Error(`The server clock is not under demo control (${res.status}).`);
+  }
+
+  /** One "Needs a person" write. A stable key per case makes a double click one action. */
+  private async post<T>(path: string, body: unknown, idemKey: string): Promise<T> {
+    const res = await fetch(`${this.base}${path}`, { method: 'POST', headers: { ...this.headers(true), 'idempotency-key': idemKey }, body: JSON.stringify(body) });
+    if (!res.ok) {
+      let problem = `The server answered ${res.status}.`;
+      try {
+        problem = ((await res.json()) as ApiErrorBody).error.message || problem;
+      } catch {
+        // keep the status line
+      }
+      throw new Error(problem);
+    }
+    return (await res.json()) as T;
+  }
+
+  async reviewProof(proofId: string, decision: 'pass' | 'fail', note: string): Promise<string> {
+    await this.post(`/api/ops/proofs/${encodeURIComponent(proofId)}/review`, { decision, note }, `people-review-${proofId}-${decision}`);
+    return decision === 'pass' ? 'Passed. The money follows the receipt.' : 'Failed. Nothing is charged for it.';
+  }
+
+  async refund(jobId: string, amountCents: number, reason: string): Promise<string> {
+    await this.post(`/api/ops/jobs/${encodeURIComponent(jobId)}/refund`, { amountCents, reason }, `people-refund-${jobId}-${amountCents}-${reason}`);
+    return `Refunded $${(amountCents / 100).toFixed(2)} through PayPal.`;
+  }
+
+  async closeRefundRequest(jobId: string, note: string): Promise<string> {
+    await this.post(`/api/ops/jobs/${encodeURIComponent(jobId)}/refund-request/close`, { note }, `people-close-${jobId}`);
+    return 'Closed without a refund.';
+  }
+
+  async sendEvidence(disputeId: string, note: string, includeTracking: boolean): Promise<string> {
+    await this.post(`/api/ops/disputes/${encodeURIComponent(disputeId)}/evidence`, { note, includeTracking }, `people-evidence-${disputeId}`);
+    return 'Sent to PayPal with the receipt and item photos attached.';
+  }
+
+  async acceptClaim(disputeId: string, note: string): Promise<string> {
+    await this.post(`/api/ops/disputes/${encodeURIComponent(disputeId)}/accept`, { note }, `people-accept-${disputeId}`);
+    return 'Claim accepted on PayPal.';
+  }
+
+  async adjudicate(disputeId: string, outcome: 'buyer_favor' | 'seller_favor'): Promise<string> {
+    await this.post(`/api/ops/disputes/${encodeURIComponent(disputeId)}/adjudicate`, { outcome }, `people-adjudicate-${disputeId}`);
+    return `Sent to PayPal: settle for the ${outcome === 'buyer_favor' ? 'buyer' : 'seller'}.`;
+  }
+
+  async photoUrl(fileId: string): Promise<string | null> {
+    const res = await fetch(`${this.base}/api/files/${encodeURIComponent(fileId)}`, { headers: this.headers() });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  }
+
+  manualRefund(jobId: string): PeopleCase | null {
+    const job = this.last?.records.jobs.find((j) => j.id === jobId);
+    return job ? manualRefundCase(job) : null;
   }
 
   private async postMoves(body: OpsMovesRequest): Promise<{ ok: true; note: string } | { ok: false; problem: string }> {

@@ -12,6 +12,7 @@ import type {
   CheckInVerdict,
   Claim,
   Destination,
+  DisputeNoteFacts,
   FeeEstimate,
   FileId,
   Item,
@@ -147,6 +148,18 @@ export interface AgentRunResult {
   ai: AiStamp;
 }
 
+/** The dispute note job (D-159): the model words code-supplied facts; template and stamp come back together. */
+export interface DisputeNoteInput {
+  facts: DisputeNoteFacts;
+}
+
+export interface DisputeNoteResult {
+  text: string;
+  ai: AiStamp;
+  template: boolean;
+  templateReason: 'no_model' | 'provider_error' | 'rejected' | null;
+}
+
 export interface AiPort {
   readonly info: { provider: AiProviderId; model: string; mode: AiMode };
   checkInPhoto(input: CheckInPhotoInput): Promise<CheckInPhotoResult>;
@@ -154,6 +167,8 @@ export interface AiPort {
   feeEstimate(input: FeeEstimateInput): Promise<FeeEstimate>;
   shippingEstimate(input: ShippingEstimateInput): Promise<ShippingEstimate>;
   reassignNote?(input: ReassignNoteInput): Promise<string>;
+  /** Optional: words a dispute note from facts code supplied; a template answers when no model can (D-159). */
+  disputeNote?(input: DisputeNoteInput): Promise<DisputeNoteResult>;
   /** Optional 64-bit difference hash (16 hex characters) for uploads, used by duplicate-photo checks. */
   dHash?(bytes: Uint8Array, contentType?: string): Promise<string | null>;
   /** Optional: one run of the bidding agent for one bid (docs/AI-SERVICES.md 4.5). The core schedules runs and applies decisions. */

@@ -13,3 +13,4 @@ export * from './seed.ts';
 export * from './estimates.ts';
 export * from './proofs.ts';
 export * from './opsviews.ts';
+export * from './disputeNote.ts';

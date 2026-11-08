@@ -1,4 +1,5 @@
 import type { App } from './app.ts';
+import { syncDisputes } from './disputes.ts';
 import { applyCapture, applyPayout, loadRequest, payoutsAfterCapture } from './money.ts';
 
 /**
@@ -35,5 +36,6 @@ export async function syncPayPal(app: App): Promise<number> {
       app.log(`sync of payout batch ${payout.paypalBatchId} failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
+  changed += await syncDisputes(app);
   return changed;
 }
