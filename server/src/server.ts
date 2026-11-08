@@ -20,6 +20,8 @@ export interface CreateOptions {
   logger?: boolean;
   /** Start the timers (off in tests, which drive the clock by hand). */
   workers?: boolean;
+  /** Hosted markets: the workers run only while this is true. */
+  workersActive?: () => boolean;
   clock?: MarketClock;
   ai?: AiPort;
   sandboxPayPal?: PaymentsPort | null;
@@ -32,6 +34,8 @@ export interface HmsServer {
   director: Director | null;
   /** What the boot found, names and presence only. */
   report: string[];
+  /** Ends every open event stream with a resync (a hosted market about to be evicted). */
+  resyncAll(reason: string): void;
   close(): Promise<void>;
 }
 
@@ -84,13 +88,14 @@ export async function createServer(config: ServerConfig, opts: CreateOptions = {
   const recovered = await app.exec(() => recoverPending(app));
   if (recovered > 0) report.push(`Retried ${recovered} pending money call(s) with their original idempotency keys.`);
 
-  const { fastify } = buildHttp(app, { logger: opts.logger ?? false, director });
-  const stopWorkers = opts.workers === false ? () => undefined : startWorkers(app);
+  const { fastify, resyncAll } = buildHttp(app, { logger: opts.logger ?? false, director });
+  const stopWorkers = opts.workers === false ? () => undefined : startWorkers(app, opts.workersActive);
   return {
     app,
     fastify,
     director,
     report,
+    resyncAll,
     async close() {
       stopWorkers();
       await fastify.close();

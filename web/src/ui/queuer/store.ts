@@ -196,6 +196,8 @@ function onEvent(e: StreamEvent) {
       // A redacted copy never replaces the queuer's own code.
       const merged = before?.checkInCode && !c.checkInCode ? { ...c, checkInCode: before.checkInCode, arrival: c.arrival ?? before.arrival } : c;
       set((st) => ({ claims: upsert(st.claims, [merged], 'claim') }));
+      // On the judge's page the errand opens by itself as soon as there is one, so a click on the other phone shows up here (D-163).
+      if (params.hosted && !s.focusId && c.status !== 'lapsed' && c.status !== 'cancelled') set({ focusId: c.id, sheetOpen: true });
       if (before && before.status !== c.status && c.status === 'lapsed') tell('The arrival window ended before check-in. The request went back to the book.', 'info');
       return;
     }
@@ -239,6 +241,12 @@ function onEvent(e: StreamEvent) {
       return;
     }
   }
+}
+
+/** The judge's page moved the errand on the server: fetch it and open it (D-163). */
+export async function openActiveErrand(): Promise<void> {
+  await loadAll().catch(() => undefined);
+  if (get().focusId) set({ sheetOpen: true });
 }
 
 /** Starts following the queuer persona (once per page load). */

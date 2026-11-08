@@ -21,7 +21,7 @@ Options:
 
 function run(cwd) {
   return new Promise((resolve) => {
-    const child = spawn(npmCommand(), ['ci', '--no-audit', '--no-fund', '--loglevel=error'], { cwd, stdio: ['ignore', 'inherit', 'inherit'], shell: process.platform === 'win32' });
+    const child = spawn(npmCommand(), ['ci', '--include=dev', '--no-audit', '--no-fund', '--loglevel=error'], { cwd, stdio: ['ignore', 'inherit', 'inherit'], shell: process.platform === 'win32' });
     child.on('exit', (code) => resolve(code ?? 1));
     child.on('error', () => resolve(1));
   });

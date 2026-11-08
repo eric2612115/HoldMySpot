@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: { host: '127.0.0.1', port: 5190, strictPort: true, proxy, fs: { allow: [root, shared] } },
     preview: { host: '127.0.0.1', port: 5191, strictPort: true, proxy },
+    // judge.html is the hosted judge's page (D-163); `npm run demo` opens index.html as before.
+    build: { rollupOptions: { input: { main: fileURLToPath(new URL('index.html', import.meta.url)), judge: fileURLToPath(new URL('judge.html', import.meta.url)) } } },
     test: { environment: 'node', include: ['src/**/*.test.ts'] },
   };
 });

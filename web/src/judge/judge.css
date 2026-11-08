@@ -1,0 +1,48 @@
+html, body { height: 100%; }
+body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--font-money); display: flex; flex-direction: column; overflow: hidden; }
+.strip { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 20px; padding: 10px 22px 8px; background: var(--paper); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 8px; font: 600 21px var(--font-play); color: var(--grape-deep); }
+.brand img { border-radius: 8px; }
+.steps { display: flex; justify-content: center; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.steps [hidden] { display: none; }
+.steps button { display: flex; align-items: center; gap: 8px; border: 0; cursor: pointer; padding: 9px 18px 9px 10px; border-radius: 999px; background: var(--grape); color: #fff; font: 500 15.5px var(--font-play); box-shadow: var(--shadow-1); transition: transform 0.15s var(--ease-out), background 0.15s; }
+.steps button:hover:not(:disabled) { background: var(--grape-deep); transform: translateY(-1px); }
+.steps button i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); font-style: normal; font-size: 14px; }
+.steps button:disabled { background: var(--mist); color: var(--ink-3); box-shadow: none; cursor: default; }
+.tools { display: flex; align-items: center; gap: 8px; }
+.tools button, .tools a { border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); padding: 8px 14px; border-radius: 999px; font: 500 14px var(--font-play); cursor: pointer; text-decoration: none; }
+.tools button:hover, .tools a:hover { background: var(--mist); }
+.note { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 12.5px; color: var(--ink-3); }
+.stage { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: stretch; gap: 22px; padding: 12px 22px 14px; }
+.phone { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0; width: 396px; }
+.phone figcaption { font: 500 14px var(--font-play); color: var(--ink-2); }
+.phone figcaption b { color: var(--ink); font-weight: 600; }
+.phone iframe { flex: 1; min-height: 0; width: 100%; border: 8px solid var(--ink); border-radius: 34px; background: var(--ground); box-shadow: var(--shadow-2); }
+.money { width: 196px; align-self: center; display: flex; flex-direction: column; gap: 12px; }
+.money dl { margin: 0; display: grid; gap: 7px; }
+.money dl div { display: flex; justify-content: space-between; align-items: baseline; background: var(--paper); border-radius: 12px; padding: 9px 12px; box-shadow: var(--shadow-1); }
+.money dt { font-size: 13px; color: var(--ink-2); }
+.money dd { margin: 0; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+.is-held { color: var(--held); } .is-captured { color: var(--captured); } .is-released { color: var(--released); } .is-paid { color: var(--paid); }
+.hint { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); min-height: 18px; }
+.ids { margin: 0; padding: 0; list-style: none; font-size: 11px; line-height: 1.5; color: var(--ink-2); word-break: break-all; max-height: 220px; overflow: auto; }
+.sandbox { border: 1px dashed var(--pp); background: transparent; color: var(--pp); border-radius: 10px; padding: 8px 10px; font: 500 13px var(--font-play); cursor: pointer; }
+.gone { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; background: rgba(238, 244, 230, 0.94); font: 500 18px var(--font-play); }
+.gone[hidden] { display: none; }
+.gone button { border: 0; background: var(--grape); color: #fff; padding: 10px 22px; border-radius: 999px; font: 500 16px var(--font-play); cursor: pointer; }
+@media (max-width: 899px) {
+  .strip { grid-template-columns: 1fr auto; padding: 8px 10px 6px; }
+  .brand { font-size: 18px; }
+  .steps { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; overflow-x: auto; gap: 6px; }
+  .steps button { padding: 6px 12px 6px 6px; font-size: 13px; white-space: nowrap; }
+  .steps button i { width: 20px; height: 20px; font-size: 12px; }
+  .tools { gap: 4px; }
+  .tools button, .tools a { padding: 5px 9px; font-size: 12px; white-space: nowrap; }
+  .note { font-size: 11.5px; text-align: left; }
+  .stage { padding: 0; gap: 0; }
+  #wei-phone, .money { display: none; }
+  .phone { width: 100%; }
+  .phone figcaption { display: none; }
+  .phone iframe { border: 0; border-radius: 0; box-shadow: none; }
+  body { min-height: 100%; }
+}

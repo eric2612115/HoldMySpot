@@ -235,22 +235,27 @@ export async function sweepNow(app: App): Promise<SweepResult> {
 }
 
 /** Starts the market timers. Returns a stop function. */
-export function startWorkers(app: App): () => void {
+/** `active`: a hosted server passes this so an idle market costs nothing while it waits for its visitor (D-163). */
+export function startWorkers(app: App, active: () => boolean = () => true): () => void {
   const s = state(app);
   const tickTimer = setInterval(() => {
-    void tick(app);
+    if (active()) void tick(app);
   }, 200);
   const sweepTimer = setInterval(() => {
+    if (!active()) return;
     const result: SweepResult = { renewed: [], renewalRequired: [], lapsedClaims: [], expiredBids: [], voided: [] };
     void realTimeHolds(app, result)
       .then(() => app.exec(() => recoverPending(app)))
       .then(() => housekeeping(app))
       .catch((err: unknown) => app.log(`sweep failed: ${err instanceof Error ? err.message : String(err)}`));
   }, app.config.sweepSeconds * 1000);
-  const clockTimer = setInterval(() => app.saveClock(), 5000);
+  const clockTimer = setInterval(() => {
+    if (active()) app.saveClock();
+  }, 5000);
   // The status poll runs in both modes: fake mode's PayPal is the sandbox client on the
   // in-process emulator, so pending captures and payouts settle the same way.
   const syncTimer = setInterval(() => {
+    if (!active()) return;
     void syncPayPal(app).catch((err: unknown) => app.log(`PayPal sync failed: ${err instanceof Error ? err.message : String(err)}`));
   }, app.config.paypalPollSeconds * 1000);
   const timers = [tickTimer, sweepTimer, clockTimer, syncTimer];

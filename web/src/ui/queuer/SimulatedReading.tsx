@@ -12,6 +12,9 @@ export interface ReadingOption {
   label: string;
 }
 
+/** Hosted site only: no simulated reading, so the server sends the photo to the real model. */
+export const MODEL_READING = 'model';
+
 export const LINE_READINGS: readonly ReadingOption[] = [
   { id: 'line_ok', label: 'Line and code' },
   { id: 'no_code', label: 'No code' },
@@ -36,18 +39,22 @@ export function SimulatedReading({
   value,
   onChange,
   disabled,
+  modelReads = 0,
 }: {
   name: string;
   options: readonly ReadingOption[];
   value: string;
   onChange: (id: string) => void;
   disabled?: boolean;
+  /** Hosted site with a key: real model reads left for this market (0 hides the choice; D-163). */
+  modelReads?: number;
 }) {
+  const shown = modelReads > 0 ? [...options, { id: MODEL_READING, label: 'Real AI read' }] : options;
   return (
     <fieldset className="q-sim" disabled={disabled}>
-      <legend>No AI model in this demo. Read my photo as</legend>
+      <legend>{modelReads > 0 ? 'Read my photo as' : 'No AI model in this demo. Read my photo as'}</legend>
       <div className="q-sim__options">
-        {options.map((o) => (
+        {shown.map((o) => (
           <label key={o.id} className={`q-sim__option${value === o.id ? ' is-on' : ''}`}>
             <input type="radio" name={`sim-${name}`} value={o.id} checked={value === o.id} onChange={() => onChange(o.id)} data-reading={`${name}-${o.id}`} />
             {o.label}

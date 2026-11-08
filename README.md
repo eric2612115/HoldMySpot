@@ -184,6 +184,15 @@ npm run numbers -- --check    # this page against the logs
 
 With the demo running, `(cd ops && OUT_DIR=../.run/ops-shots npm run shots && npm run licence:check)` drives both sponsor screens; it needs `npx playwright@1.56.1 install chromium`.
 
+### One command, one port, your own private market
+
+`npm run hosted` serves the phones side by side, the ops console and the API on `http://127.0.0.1:8796/`; every visitor gets their own in-memory market, no sign-up ([docs/HOSTING.md](docs/HOSTING.md)). An AI reviewer with no cookies takes a token instead:
+
+```sh
+TOKEN=$(curl -s -X POST "$BASE/api/demo/session" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+curl -s -X POST "$BASE/api/demo/start" -H "X-HMS-Market: $TOKEN" -H 'content-type: application/json' -d '{"scriptId":"hero","speed":600}'
+```
+
 ### Your own keys: real PayPal sandbox and live AI
 
 Create a sandbox app at https://developer.paypal.com with **Accept payments** and **Payouts** ticked, and two Personal sandbox accounts (a buyer and a payout receiver). Keys stay in the git-ignored `.secrets/`.
@@ -215,7 +224,7 @@ The most important ones; the [full list](docs/TECHNICAL-DETAILS.md#known-limits)
 - **Shipping is declared by the queuer, capped by the budget.** No postage receipt is read.
 - **A check-in trusts the position the phone reports** (attack row 23). No GPS signal is checked.
 - **All 21 demo photos are synthetic**, and so are the walks on the map. Only Muse Spark has been called live.
-- **No sign-in.** Personas are a header in the demo, and a hosted demo is one shared market.
+- **No sign-in.** Personas are a header in the demo. The hosted site gives each visitor a private in-memory market, cleared when idle.
 
 ## If you want to know X, read Y
 

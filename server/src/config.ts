@@ -89,7 +89,6 @@ export interface ServerConfig {
     fixturesDir: string;
   };
   webOrigins: string[];
-  serveStatic: boolean;
   adminKey: string | null;
   logLevel: string;
 }
@@ -248,7 +247,6 @@ export function loadConfig(env: Env = process.env, overrides: Partial<ServerConf
       fixturesDir: env.HMS_AI_FIXTURES_DIR ?? join(SERVER_ROOT, 'fixtures', 'ai'),
     },
     webOrigins: list(env, 'HMS_WEB_ORIGINS', 'http://127.0.0.1:5190,http://localhost:5190,http://127.0.0.1:5197,http://localhost:5197'),
-    serveStatic: env.HMS_SERVE_STATIC === '1',
     adminKey: env.HMS_ADMIN_KEY || null,
     logLevel: env.HMS_LOG_LEVEL ?? 'info',
     ...overrides,

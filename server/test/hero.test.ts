@@ -120,7 +120,7 @@ describe('hero script', () => {
 
   it('ends with the closing caption built from the ledger', () => {
     const cues = s.app.bus.after(0).filter((e) => e.type === 'demo.cue').map((e) => e.data as DemoCue);
-    assert.equal(cues.at(-1)?.text, 'Held $63.70. Charged $58.26. Fake receipt: $0.');
+    assert.equal(cues.at(-1)?.text, 'Held $63.70. Charged $58.26. Failed receipt: $0.');
   });
 
   it("Wei's visit is done and the plush he bought passed", () => {

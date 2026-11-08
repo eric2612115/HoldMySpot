@@ -11,6 +11,7 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "demo": "node scripts/dev.mjs",
+    "hosted": "node scripts/hosted.mjs",
     "start": "node scripts/dev.mjs",
     "dev:sandbox": "node scripts/dev.mjs --mode sandbox",
     "keys": "node scripts/setup-keys.mjs",

@@ -1,0 +1,36 @@
+# The hosted judge site: one web service, every visitor's market in memory (docs/HOSTING.md, D-163).
+services:
+  - type: web
+    name: holdmyspot
+    runtime: node
+    plan: 1c-2g
+    region: oregon
+    branch: main
+    autoDeploy: false
+    buildCommand: npm run setup && npm run hosted -- --build-only
+    startCommand: node server/src/hosted/main.ts
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.2
+      # Live AI, optional. Without it the site behaves as the zero-key demo.
+      - key: MODEL_API_KEY
+        sync: false
+      # Read at build time, so the ops console shows no AG Studio watermark. Optional.
+      - key: VITE_AG_STUDIO_LICENSE_KEY
+        sync: false
+      # The real PayPal sandbox, optional. Without them the choice does not appear.
+      - key: PAYPAL_ENV
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_MERCHANT_EMAIL
+        sync: false
+      - key: PAYPAL_MERCHANT_ID
+        sync: false
+      - key: PAYPAL_BUYER_EMAIL
+        sync: false
+      - key: PAYPAL_PAYOUT_EMAIL
+        sync: false

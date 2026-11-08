@@ -180,7 +180,11 @@ async function refreshOrder(bidId: string) {
   }
 }
 
+/** Wei's phone beside Mia's on the judge's page follows only his own person: requests are Mia's to read (D-163). */
+let followsRequests = true;
+
 function scheduleRefresh(bidId: string) {
+  if (!followsRequests) return;
   window.clearTimeout(orderTimers.get(bidId));
   orderTimers.set(bidId, window.setTimeout(() => void refreshOrder(bidId), 250));
 }
@@ -658,6 +662,7 @@ export async function bootServerMarket(city: CityConfig, params: AppParams): Pro
   cityId = city.id;
   const defaults = DEFAULT_PERSONAS[city.id];
   requester = params.as ?? defaults.requester;
+  followsRequests = !(params.solo && new URLSearchParams(window.location.search).get('phone') === 'queuer');
   queuer = params.queuer ?? defaults.queuer;
   const config: AppConfig = await api('GET /api/config', {}, null);
   clock.follow(config.clock);

@@ -46,8 +46,20 @@ const MAX_SHIFT_MINUTES = 30;
 const DELEGATE_AGENTS = new Set(['widget', 'page', 'data']);
 const DELEGATE_TURN_MS = 30_000;
 
-let inFlight = 0;
-const recent: number[] = [];
+/** The limiter belongs to one market (a hosted server runs many in one process, D-163). */
+interface TurnLimiter {
+  inFlight: number;
+  recent: number[];
+}
+const limiters = new WeakMap<App, TurnLimiter>();
+function limiter(app: App): TurnLimiter {
+  let l = limiters.get(app);
+  if (!l) {
+    l = { inFlight: 0, recent: [] };
+    limiters.set(app, l);
+  }
+  return l;
+}
 
 export async function opsAgentTurn(app: App, req: OpsAgentTurnRequest): Promise<OpsAgentTurnResponse> {
   const turn = app.ai.opsAgentTurn?.bind(app.ai);
@@ -55,10 +67,11 @@ export async function opsAgentTurn(app: App, req: OpsAgentTurnRequest): Promise<
     throw new ContractError('AI_UNAVAILABLE', `No AI model on this server (${app.ai.info.provider}, ${app.ai.info.mode} mode): the console uses its offline planner and rules.`);
   }
   const now = Date.now();
-  while (recent.length > 0 && recent[0]! < now - WINDOW_MS) recent.shift();
-  if (inFlight >= MAX_IN_FLIGHT || recent.length >= MAX_PER_WINDOW) throw new ContractError('RATE_LIMITED', 'Too many ops agent turns at once; try again in a moment.');
-  inFlight++;
-  recent.push(now);
+  const limit = limiter(app);
+  while (limit.recent.length > 0 && limit.recent[0]! < now - WINDOW_MS) limit.recent.shift();
+  if (limit.inFlight >= MAX_IN_FLIGHT || limit.recent.length >= MAX_PER_WINDOW) throw new ContractError('RATE_LIMITED', 'Too many ops agent turns at once; try again in a moment.');
+  limit.inFlight++;
+  limit.recent.push(now);
   try {
     const out = DELEGATE_AGENTS.has(req.agent)
       ? await withTimeout(turn(req), Math.min(DELEGATE_TURN_MS, app.config.ai.timeoutMs), () => Object.assign(new Error(`Studio's ${req.agent} agent took over ${DELEGATE_TURN_MS / 1000} s for one turn.`), { kind: 'timeout' }))
@@ -72,7 +85,7 @@ export async function opsAgentTurn(app: App, req: OpsAgentTurnRequest): Promise<
     app.log(`ops agent turn failed: ${req.agent}, ${kind}`);
     throw new ContractError('AI_UNAVAILABLE', message, { kind });
   } finally {
-    inFlight--;
+    limit.inFlight--;
   }
 }
 

@@ -1,6 +1,6 @@
 import { DEFAULT_RULES, findShop, formatUsd } from '@holdmyspot/shared';
 import type { Job } from '@holdmyspot/shared';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { distanceText, reachOf, travelText } from '../../domain/earning';
 import type { TaskPoint } from '../../domain/types';
 import type { MapScene } from '../../map/mapScene';
@@ -29,7 +29,9 @@ import {
 } from './logic';
 import { PhotoField } from './PhotoField';
 import type { StampInfo } from './stamp';
-import { LINE_READINGS, RECEIPT_READINGS, SimulatedReading, useSimulatedReadings } from './SimulatedReading';
+import { LINE_READINGS, MODEL_READING, RECEIPT_READINGS, SimulatedReading, useSimulatedReadings } from './SimulatedReading';
+import { samplePhoto, useBreakArmed, useModelReads } from './hosted';
+import { stampPhoto } from './stamp';
 import { queuerActions, useQueuer } from './store';
 
 /** The cards of the errand sheet, one per step (see ErrandSheet.tsx). */
@@ -87,6 +89,7 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
   const [photo, setPhoto] = useState<File | null>(null);
   const simulated = useSimulatedReadings();
   const [reading, setReading] = useState('line_ok');
+  const modelReads = useModelReads();
   const checking = useBusy('Checking in');
   const { claim, ask, jobs, lineProof } = errand;
   const shop = findShop(point.shop.id);
@@ -132,13 +135,13 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
       {failed && <AiCheckCard view={lineCheckView(failed, claim)} kind="line" />}
 
       <PhotoField name="line" label={failed ? 'A new photo of the line' : 'Photo of the line'} hint="The line and the shop front. The app stamps your code on it." file={photo} onFile={setPhoto} disabled={checking} stamp={stampOf(claim.checkInCode, point)} />
-      {simulated && <SimulatedReading name="line" options={LINE_READINGS} value={reading} onChange={setReading} disabled={checking} />}
+      {simulated && <SimulatedReading name="line" options={LINE_READINGS} value={reading} onChange={setReading} disabled={checking} modelReads={modelReads} />}
       <button
         type="button"
         className="take-button"
         disabled={!photo || !fence.inside || checking || left <= 0}
         onClick={() => {
-          if (photo) void queuerActions.checkIn(claim, photo, simulated ? reading : null).then((out) => out && setPhoto(null));
+          if (photo) void queuerActions.checkIn(claim, photo, simulated && reading !== MODEL_READING ? reading : null).then((out) => out && setPhoto(null));
         }}
       >
         {checking ? 'Checking in…' : fence.inside ? 'Check in with this photo' : `Check in within ${shop?.geofenceMeters ?? 80} m of the shop`}
@@ -279,6 +282,19 @@ export function ProofCard({ errand, point }: CardProps) {
   const [item, setItem] = useState<File | null>(null);
   const simulated = useSimulatedReadings();
   const [reading, setReading] = useState('genuine');
+  const modelReads = useModelReads();
+  const armed = useBreakArmed((s) => s.armed);
+  const stamp = stampOf(job.proofCode, point);
+  const fillSamples = async (pick: string | null) => {
+    const [r, i] = await Promise.all([samplePhoto('receipt'), samplePhoto('item')]);
+    setReceipt(r);
+    setItem(stamp ? await stampPhoto(i, stamp) : i);
+    if (pick) setReading(pick);
+  };
+  useEffect(() => {
+    if (armed) void fillSamples('fake_receipt').catch(() => undefined);
+    // Armed once by the judge's page ("Try to break it").
+  }, [armed]);
   return (
     <div className="q-card">
       <JobLine job={job} point={point} />
@@ -287,8 +303,13 @@ export function ProofCard({ errand, point }: CardProps) {
       </p>
       <PhotoField name="receipt" label="The receipt" hint="Flat, the whole receipt, QR included." file={receipt} onFile={setReceipt} disabled={sending} />
       <PhotoField name="item" label={`The ${point.itemShort}`} hint="Just the item. The app stamps your code on it." file={item} onFile={setItem} disabled={sending} stamp={stampOf(job.proofCode, point)} />
-      {simulated && <SimulatedReading name="receipt" options={RECEIPT_READINGS} value={reading} onChange={setReading} disabled={sending} />}
-      <button type="button" className="take-button" disabled={!receipt || !item || sending} onClick={() => receipt && item && void queuerActions.proof(job, receipt, item, simulated ? reading : null)}>
+      {params.hosted && !receipt && (
+        <button type="button" className="q-chipbtn" data-sample="photos" onClick={() => void fillSamples(null).catch(() => undefined)}>
+          Use sample photos
+        </button>
+      )}
+      {simulated && <SimulatedReading name="receipt" options={RECEIPT_READINGS} value={reading} onChange={setReading} disabled={sending} modelReads={modelReads} />}
+      <button type="button" className="take-button" disabled={!receipt || !item || sending} onClick={() => receipt && item && void queuerActions.proof(job, receipt, item, simulated && reading !== MODEL_READING ? reading : null)}>
         {sending ? 'Sending…' : 'Send for checking'}
       </button>
     </div>

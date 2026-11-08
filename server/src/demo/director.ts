@@ -127,6 +127,12 @@ export class Director {
     };
   }
 
+  /** The next step of the script, or null when it is finished (hosted judge page). */
+  peek(): { index: number; kind: StepKind; label: string } | null {
+    const step = this.#script?.steps[this.#index];
+    return step ? { index: this.#index, kind: step.kind, label: step.label } : null;
+  }
+
   #emitState(): void {
     this.#app.emit('demo.state', this.state(), ALL);
   }

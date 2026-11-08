@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#eef4e6" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>HoldMySpot</title>
+    <meta name="description" content="Pay someone near a shop to stand in line for you. PayPal holds the most it could cost, AI reads the proof, rules decide the money." />
+  </head>
+  <body>
+    <header class="strip">
+      <span class="brand"><img src="/favicon.svg" alt="" width="30" height="30" />HoldMySpot</span>
+      <ol class="steps">
+        <li><button type="button" id="hold"><i>1</i><span>Hold on Mia's phone</span></button></li>
+        <li><button type="button" id="run"><i>2</i><span>Run the whole errand</span></button></li>
+        <li id="break-step"><button type="button" id="break"><i>3</i><span>Try to break it</span></button></li>
+      </ol>
+      <div class="tools">
+        <button type="button" id="reset">Start over</button>
+        <a id="ops" href="/ops/" target="_blank" rel="noopener">Open the ops console</a>
+      </div>
+      <p class="note" id="note">Your own private copy. PayPal is simulated.</p>
+    </header>
+    <main class="stage">
+      <figure class="phone"><figcaption><b>Mia</b> pays</figcaption><iframe id="mia" title="Mia's phone"></iframe></figure>
+      <aside class="money" aria-label="What moved">
+        <dl>
+          <div><dt>Held</dt><dd id="held" class="is-held">$0.00</dd></div>
+          <div><dt>Charged</dt><dd id="captured" class="is-captured">$0.00</dd></div>
+          <div><dt>Released</dt><dd id="released" class="is-released">$0.00</dd></div>
+          <div><dt>Wei paid</dt><dd id="paid" class="is-paid">$0.00</dd></div>
+        </dl>
+        <p id="hint" class="hint" role="status"></p>
+        <ol id="ids" class="ids" hidden></ol>
+        <button type="button" id="sandbox" class="sandbox" hidden>Use the real PayPal sandbox</button>
+      </aside>
+      <figure class="phone" id="wei-phone"><figcaption><b>Wei</b> stands in line</figcaption><iframe id="wei" title="Wei's phone"></iframe></figure>
+    </main>
+    <div id="gone" class="gone" hidden>
+      <p>This copy was cleared after sitting idle.</p>
+      <button type="button" id="again">Start a new one</button>
+    </div>
+    <script type="module" src="/src/judge/judge.ts"></script>
+  </body>
+</html>

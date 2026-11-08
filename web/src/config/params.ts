@@ -18,6 +18,10 @@ export interface AppParams {
   queuer: string | null;
   /** `?demo=1`: never ask for the browser's location; the player stays at the fixed demo spot. */
   demo: boolean;
+  /** `?hosted=1`: this phone sits on the hosted judge's page (sample photos, a real AI read when the service has a key). */
+  hosted: boolean;
+  /** `?solo=1`: this phone is one of two side by side on the judge's page, so it has no phone switch. */
+  solo: boolean;
   /** `?view=overview`: open on the top-down overview. */
   overview: boolean;
 }
@@ -42,6 +46,8 @@ export function readParams(search: string = window.location.search): AppParams {
     as: q.get('as'),
     queuer: q.get('queuer'),
     demo,
+    hosted: q.get('hosted') === '1',
+    solo: q.get('solo') === '1',
     overview: q.get('view') === 'overview',
   };
 }

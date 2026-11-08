@@ -48,6 +48,17 @@ export async function detectBrain(backend: 'mock' | 'server'): Promise<Brain> {
   if (backend === 'mock' && wanted !== 'model') {
     return { ...OFFLINE, reason: 'The replay runs its agents offline; add ?agents=model to think on the server\'s AI port.' };
   }
+  // The hosted site (D-163) reports its live allowance on its own: its markets replay photos, so config says replay.
+  if (backend === 'server' && typeof location !== 'undefined' && location.pathname.startsWith('/ops/')) {
+    const hosted = await fetch(`${API}/api/hosted/info`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ ai?: { live: boolean; provider: AiProviderId | null; model: string | null; turnsLeft: number } }>) : null))
+      .catch(() => null);
+    if (hosted?.ai) {
+      const { live, provider, model, turnsLeft } = hosted.ai;
+      if (live && turnsLeft > 0) return { kind: 'model', provider, model, label: `${modelLabel(provider, model)} on the server`, reason: '' };
+      return { ...OFFLINE, reason: live ? 'The live agent turns of this hosted demo are used up for now, so the agents run on rules.' : 'This hosted demo has no model key, so the agents run on rules.' };
+    }
+  }
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 1500);

@@ -153,9 +153,19 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 
 ### Built so far (2026-11-07)
 
-Every endpoint above is registered. Not built yet (it answers `501 NOT_BUILT`): `POST /api/paypal/webhook` (P1; status sync polls instead). `GET /api/ops/disputes` reads what the status sync found on PayPal (D-160). `HMS_SERVE_STATIC` is not built.
+Every endpoint above is registered. Not built yet (it answers `501 NOT_BUILT`): `POST /api/paypal/webhook` (P1; status sync polls instead). `GET /api/ops/disputes` reads what the status sync found on PayPal (D-160).
 
 Integrated in fake mode (2026-11-07, D-47 to D-52): the PayPal port is the sandbox REST client on the in-process emulator, the AI port is the AI services without a key, and `server/test/e2e.test.ts` runs the hero story over these routes only. Fake-mode failure injection: `HMS_FAKE_FAIL=<op>:<effect>[:<count>|*]`. How the web app switches from its mock: [WEB-INTEGRATION.md](WEB-INTEGRATION.md).
+
+### Hosted site only ([HOSTING.md](HOSTING.md), D-163)
+
+Each visitor has their own market, found from the `hms_market` cookie or the `X-HMS-Market` header. Every route above then acts on that market. `GET /api/health` needs none.
+
+- `POST /api/demo/session` `{ mode?: "fake" | "sandbox" }`: a new market; answers `{ token, header, mode, idleMinutes }` and sets the cookie.
+- `GET /api/hosted/info`: whether this visitor's market is alive, what it can do (sandbox, live AI reads left), its demo state and money totals. Builds nothing and does not count as activity.
+- `POST /api/hosted/hold`: runs the script up to Mia's hold. `POST /api/hosted/run`: plays the rest at a watchable speed. `POST /api/hosted/break`: runs up to Wei's receipt.
+- `POST /api/hosted/errand`, `GET /api/hosted/errand`: sandbox markets, Wei's side of the errand on the server, with PayPal's ids.
+- Errors: `401 NO_MARKET`, `410 MARKET_GONE`, `429 CREATE_RATE_LIMITED`, `429 SANDBOX_DAILY_CAP`, `503 MARKET_CAP`.
 
 ## 4. Hero flow as calls
 

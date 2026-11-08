@@ -178,7 +178,7 @@ Hero script (market time, San Francisco, 2026-11-12; amounts from DOMAIN.md sect
 | 11:38 to 11:52 | Wei buys and uploads Mia's receipt: capture $48.69 (shop price $34.00, the $12.00 fee and $2.69 processing at cost: PayPal's $2.19 fee on this capture and $0.25 for each of the job's two payouts), payout $10.80. Lin does the same for Priya: capture $46.62, payout $9.00. |
 | jump to 13:58 | |
 | 14:00 | Wei ships Mia's parcel to New York: tracking added, final capture $9.57 (shipping $8.75 and PayPal's $0.82 fee on this capture, at cost), $5.44 released, payout $42.75 (the shop price and shipping he paid). PayPal's fees on the errand ($3.51) equal the processing line; HoldMySpot keeps $1.20. |
-| 14:01 | Closing cue: "Held $63.70. Charged $58.26. Fake receipt: $0." |
+| 14:01 | Closing cue: "Held $63.70. Charged $58.26. Failed receipt: $0." |
 
 With the jump, the run takes about 3 minutes at speed 60.
 
@@ -230,7 +230,6 @@ With the jump, the run takes about 3 minutes at speed 60.
 | `HMS_FAKE_FAIL` | empty | fake-mode failure injection, `<op>:<effect>[:<count>\|*]` (server/src/paypal/emulator.ts): for example `capture:unavailable:3` (an outage longer than the client's two retries), `payout:unclaimed`, `authorize:decline` |
 | `HMS_AI_PROOF_FIXTURES_DIR` | `server/fixtures/proofs` | rendered demo photos and their truth sidecars (AI services and demo director) |
 | `HMS_WEB_ORIGINS` | `http://127.0.0.1:5190,http://localhost:5190,http://127.0.0.1:5197,http://localhost:5197` | CORS in development |
-| `HMS_SERVE_STATIC` | `0` | `1` serves `web/dist` at `/` and `ops/dist` at `/ops` (one origin for judges) |
 | `HMS_ADMIN_KEY` | empty | required when `HMS_HOST` is not a loopback address |
 | `HMS_LOG_LEVEL` | `info` | |
 
@@ -258,7 +257,7 @@ Stop only the servers you started, by PID or with `npm run demo -- --stop` and t
 - No real sign-in in v1: requests act as a seeded persona through `X-HMS-User`. The server binds to 127.0.0.1; on any other host it refuses to start without `HMS_ADMIN_KEY`, and admin routes require `X-HMS-Admin-Key`.
 - Uploads: JPEG, PNG or WebP, at most 8 MB, served only to the job's participants and ops.
 - Personal data: all personas are fictional; sandbox receiver emails are shown to ops only; no live positions leave the server (demo walks are synthetic).
-- CORS allow-list in development; same origin when `HMS_SERVE_STATIC=1`.
+- CORS allow-list in development; one origin on the hosted site (`npm run hosted`, [HOSTING.md](HOSTING.md)).
 
 ## 13. Testing
 

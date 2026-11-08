@@ -16,7 +16,7 @@ export function PhoneSwitch() {
   const phone = usePhone((s) => s.phone);
   const setPhone = usePhone((s) => s.setPhone);
   const openPicker = usePhone((s) => s.openPicker);
-  if (!persona) return null;
+  if (!persona || params.solo) return null;
   return (
     <div className="q-switch" role="group" aria-label="Whose phone">
       <button type="button" className={`q-switch__side${phone === 'requester' ? ' is-on' : ''}`} aria-pressed={phone === 'requester'} onClick={() => setPhone('requester')}>

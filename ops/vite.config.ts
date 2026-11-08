@@ -90,6 +90,8 @@ export default defineConfig(({ mode }) => {
     `[ops] AG Grid and AG Charts licence: ${licenses.grid ? `from ${licenses.grid.source} (value not shown)` : 'none (not needed: every grid and chart here is drawn by AG Studio)'}`,
   );
   return {
+    // The hosted judge server (D-163) serves the console under /ops/.
+    base: env.HMS_OPS_BASE || '/',
     plugins: [react()],
     define: {
       __HMS_AG_STUDIO_LICENSE__: JSON.stringify(licenses.studio?.key ?? ''),

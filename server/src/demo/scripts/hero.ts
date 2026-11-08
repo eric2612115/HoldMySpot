@@ -214,7 +214,7 @@ export const heroScript: DemoScript = {
         const receipt = await ctx.photo(rex.id, 'receipt', `${PROOF_FIXTURES['priya>rex']}/receipt.png`, `${job.id}-receipt`, 'fake_receipt');
         const photo = await rexOlderItemPhoto(ctx, false, 'fake_receipt');
         submitProof(ctx.app, rex, job.id, { receiptFileId: receipt.id, itemFileId: photo.id });
-        ctx.cue({ name: 'show_receipt', target: job.id, text: "Fake receipt: $0 moved. Priya's request goes back to the book." });
+        ctx.cue({ name: 'show_receipt', target: job.id, text: "The receipt failed the checks: $0 moved. Priya's request goes back to the book." });
       },
     },
     {
@@ -311,7 +311,7 @@ export const heroScript: DemoScript = {
         const bid = ctx.app.store.bids.must(ctx.ref('miaBid'));
         const hold = ctx.app.store.holds.must(bid.holdId!);
         const rexJob = ctx.job('rex', 'priya');
-        const text = `Held ${formatUsd(hold.amount.cents, { exact: true })}. Charged ${formatUsd(hold.capturedCents, { exact: true })}. Fake receipt: ${formatUsd(rexJob.amounts.capturedCents)}.`;
+        const text = `Held ${formatUsd(hold.amount.cents, { exact: true })}. Charged ${formatUsd(hold.capturedCents, { exact: true })}. Failed receipt: ${formatUsd(rexJob.amounts.capturedCents)}.`;
         ctx.cue({ name: 'caption', target: null, text });
       },
     },
