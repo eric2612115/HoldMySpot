@@ -299,6 +299,8 @@ export async function runLifecycle({
   waitMinutes = 15,
   local = false,
   log = console.log,
+  // Runs on the same server after the checks, before it stops: { api, result, buyer, paypal, log }.
+  afterRun = null,
 }) {
   const shared = await import(pathToFileURL(path.join(REPO, 'shared', 'src', 'index.ts')).href);
   const { HERO, PAYPAL_PRICING, SEED_USERS, jobSettlement, paypalCaptureFeeCents, platformFeeCents, zonedLocalToEpoch } = shared;
@@ -499,6 +501,7 @@ export async function runLifecycle({
       `processing line ${usd(amounts.processingCents ?? 0)}, PayPal's fees ${usd(paypalFees)} (server ${usd(amounts.paypalFeesCents ?? 0)}); charged ${usd(settled.chargedCents)} - paid out ${usd(settled.paidOutCents)} - PayPal ${usd(paypalFees)} = HoldMySpot ${usd(settled.platformCents)}, 10% of the ${usd(result.server.job.feeCents)} fee is ${usd(keep)}`,
     );
     result.ok = result.checks.every((c) => c.ok);
+    if (afterRun) await afterRun({ api, result, buyer, paypal, log });
     return result;
   } finally {
     if (buyer) await buyer.close().catch(() => {});

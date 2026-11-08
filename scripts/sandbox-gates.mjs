@@ -15,6 +15,10 @@
 //                                                and compare them with the server's ledger (scripts/lib/sandbox-lifecycle.mjs).
 //                                                --by-hand: you approve PayPal's link yourself; no stored password.
 //                                                --local: the local pickup errand (one capture at the handover code, D-156).
+//   node scripts/sandbox-gates.mjs people         One refund and one buyer-opened dispute through the server's "Needs a person"
+//                                                routes (D-158): a shipped errand, POST .../refund, the buyer opens a dispute,
+//                                                the status sync finds it, POST .../evidence and .../adjudicate; read back on
+//                                                PayPal with GET calls. Takes about 30 minutes (PayPal's review).
 //   node scripts/sandbox-gates.mjs record G4 pass --note "..." [--order <id>]
 //                                                Record a gate checked by hand (Venmo, Pay Later); --order adds PayPal's
 //                                                own answer for that order (GET calls only) to the evidence.
@@ -69,7 +73,7 @@ const GATE_IDS = GATES.map((g) => g[0]);
 
 const USAGE = `HoldMySpot PayPal sandbox gates
 
-  node scripts/sandbox-gates.mjs [plan|run|reauthorize|disputes|status|lifecycle|probe|venmo|record] [options]
+  node scripts/sandbox-gates.mjs [plan|run|reauthorize|disputes|status|lifecycle|probe|venmo|people|record] [options]
 
 Options:
   --fake               Use the in-process fake PayPal (no network, no credentials).
@@ -144,7 +148,7 @@ function secretsDirFrom(args) {
 }
 
 function emptyState() {
-  return { version: 1, app: null, gates: {}, orders: {}, datedHolds: [], payout: null, disputeTarget: null, lifecycle: null, localLifecycle: null, venmoCapture: null, runs: [] };
+  return { version: 1, app: null, gates: {}, orders: {}, datedHolds: [], payout: null, disputeTarget: null, lifecycle: null, localLifecycle: null, venmoCapture: null, peopleRun: null, runs: [] };
 }
 
 function loadState(file) {
@@ -289,6 +293,21 @@ function renderDoc(state, meta) {
       `A local pickup errand (\`lifecycle --local\`, D-156): a \`PICKUP_FROM_PERSON\` order with no shipping, nothing captured at the receipt, one capture when the queuer enters the requester's handover code, one payout. Server on HTTP only (bid, authorize, claim, check-in, bought, proof, handover), AI ${ll.ai ?? '-'}; PayPal read back afterwards.`,
       `bid ${ids.bid ?? '-'}, order ${ids.order ?? '-'}, authorization ${ids.authorization ?? '-'}, job ${ids.job ?? '-'}${ll.payouts?.length ? `, payout batch ${ll.payouts.map((p) => p.batchId ?? '-').join(', ')}` : ''}`,
     );
+  }
+  lines.push('');
+  lines.push('## Needs a person: a refund and a dispute through the server (sandbox)');
+  lines.push('');
+  const pr2 = state.peopleRun;
+  if (!pr2) lines.push('Not run yet: `node scripts/sandbox-gates.mjs people` (D-158).');
+  else {
+    lines.push(`${fmtBoth(pr2.at)}: \`scripts/sandbox-gates.mjs people\`, on the server's own HTTP routes (POST .../refund, .../evidence, .../adjudicate), then read back on PayPal with GET calls. Result: **${pr2.result}**.`);
+    lines.push('');
+    if (pr2.steps.length > 0) {
+      lines.push('| Step | Answer |');
+      lines.push('|---|---|');
+      for (const step of pr2.steps) lines.push(`| ${cell(step.step)} | ${cell(step.detail)} |`);
+    }
+    if (pr2.error) lines.push(`Stopped: ${cell(pr2.error)}`);
   }
   lines.push('');
   lines.push('## Edge cases: what PayPal answered (`probe`)');
@@ -1226,6 +1245,141 @@ async function cmdLifecycle(ctx, args) {
   }
 }
 
+const usdc = (c) => `$${(c / 100).toFixed(2)}`;
+
+/**
+ * `people` (D-158): one shipped errand on the sandbox, then a refund through POST /api/ops/jobs/:id/refund, a buyer's
+ * "item not received" dispute (as gate G7), found by the server's status sync, then evidence and sandbox adjudicate
+ * through the new routes, and everything read back from PayPal with GET calls. A step PayPal refuses is recorded as
+ * refused and the run goes on where it can; nothing is papered over.
+ */
+async function cmdPeople(ctx, args) {
+  const { state } = ctx;
+  const secretsDir = secretsDirFrom(args);
+  const { runLifecycle, waitFor } = await import('./lib/sandbox-lifecycle.mjs');
+  let payoutEmail = ctx.settings.payoutReceiverEmail ?? null;
+  let payoutLabel = ctx.settings.payoutReceiverEmail ? 'the payout receiver in sandbox.env' : null;
+  if (!payoutEmail && args['payout-to']) {
+    const { loadPayoutReceiver } = await import('./lib/sandbox-buyer.mjs');
+    const r = loadPayoutReceiver(secretsDir, args['payout-to']);
+    payoutEmail = r.email;
+    payoutLabel = r.label;
+  }
+  const steps = [];
+  const record = { at: Date.now(), result: 'running', steps, error: null, ids: {} };
+  state.peopleRun = record;
+  const note = (step, detail) => {
+    steps.push({ step, detail, at: Date.now() });
+    console.log(`  ${step}: ${detail}`);
+  };
+  const shotDir = args.shots ? path.resolve(args.shots) : path.join(os.tmpdir(), 'holdmyspot-sandbox-shots');
+  try {
+    await runLifecycle({
+      pp,
+      port: ctx.port,
+      settings: ctx.settings,
+      secretsDir,
+      payoutLabel,
+      payoutEmail,
+      headless: !args.headed,
+      shotDir,
+      serverPort: Number(args.port ?? 8799),
+      local: false,
+      log: (line) => console.log(line),
+      afterRun: async ({ api, result, buyer, paypal, log }) => {
+        const jobId = result.ids.job;
+        const captures = result.server.ledger.filter((e) => e.kind === 'captured');
+        const firstCapture = captures[0];
+        const readJob = async () => (await api('GET', `/api/jobs/${jobId}`, { as: 'mia' })).job;
+        const start = await readJob();
+        const refundable = start.amounts.capturedCents - start.amounts.refundedCents;
+        record.ids = { job: jobId, bid: result.ids.bid, order: result.ids.order };
+        note('Errand on the sandbox', `job ${jobId}, captured ${usdc(start.amounts.capturedCents)}, captures ${captures.map((c) => c.captureId).join(', ')}`);
+
+        // Refund: over the limit is refused, the same key twice is one refund.
+        let over = 'accepted (FAILURE: over the cap)';
+        try {
+          await api('POST', `/api/ops/jobs/${jobId}/refund`, { body: { amountCents: refundable + 1, reason: 'Over the limit' }, idem: `people-over-${record.at}` });
+        } catch (e) {
+          over = `refused: ${e.status} ${e.code}`;
+        }
+        note('Refund over the cap', over);
+        const body = { amountCents: 500, reason: 'Needs a person gate: partial refund' };
+        const key = `people-refund-${record.at}`;
+        const one = await api('POST', `/api/ops/jobs/${jobId}/refund`, { body, idem: key });
+        const refundEntry = one.ledger[0];
+        await api('POST', `/api/ops/jobs/${jobId}/refund`, { body, idem: key });
+        const afterRefund = await readJob();
+        note('Refund through the route', `refunded ${usdc(afterRefund.amounts.refundedCents)} (asked $5.00, sent twice with one key), PayPal refund ${refundEntry?.paypal?.refundId ?? '-'} ${refundEntry?.status ?? '-'}`);
+        record.ids.refund = refundEntry?.paypal?.refundId ?? null;
+        const refundedCapture = await paypal.getCapture(refundEntry.paypal.captureId);
+        note('Refund read back on PayPal', `capture ${refundedCapture.captureId} ${refundedCapture.status} ${usdc(refundedCapture.amountCents)}`);
+        if (afterRefund.amounts.refundedCents !== 500) throw new Error(`Refund: the job shows ${afterRefund.amounts.refundedCents} refunded.`);
+
+        // The buyer opens "item not received", as gate G7 does.
+        const { openSandboxBuyer } = await import('./lib/sandbox-buyer.mjs');
+        const session = buyer ?? (await openSandboxBuyer({ secretsDir, headless: !args.headed, shotDir, log: (line) => console.log(`    ${line}`) }));
+        const opened = await session
+          .openDispute({ amountCents: firstCapture.cents, note: `The parcel never arrived. HoldMySpot needs-a-person gate (job ${jobId}).` })
+          .finally(() => (buyer ? undefined : session.close()));
+        note('Buyer opened a dispute', `${opened.submitted ? 'submitted' : 'already open'}, case ${opened.caseId ?? '-'}, buyer transaction ${opened.transactionId ?? '-'}`);
+        record.ids.case = opened.caseId ?? null;
+
+        const found = await waitFor(
+          "the server's status sync to find the dispute",
+          async () => (await api('GET', '/api/ops/disputes')).disputes.find((d) => d.jobId === jobId) ?? null,
+          { timeoutMs: 20 * 60_000, everyMs: 15_000 },
+        );
+        note('Status sync found it', `${found.id}: ${found.status}, ${found.reason}, ${usdc(found.amount.cents)}, job ${found.jobId}; draft by ${found.draft ? `${found.draft.ai.provider}/${found.draft.ai.model}/${found.draft.ai.mode}${found.draft.template ? ' (template)' : ''}` : 'not yet'}`);
+        record.ids.dispute = found.id;
+
+        const evidence = await (async () => {
+          try {
+            const r = await api('POST', `/api/ops/disputes/${found.id}/evidence`, { body: { note: 'The errand was completed and shipped; the receipt and item photos are attached.', includeTracking: true }, idem: `people-ev-${record.at}` });
+            return `accepted: ${r.dispute.status}`;
+          } catch (e) {
+            return `refused by PayPal: ${e.status} ${e.code} ${String(e.message).slice(0, 200)}`;
+          }
+        })();
+        note('Evidence through the route', evidence);
+
+        let adjudicated = null;
+        const deadline = Date.now() + 40 * 60_000;
+        while (!adjudicated && Date.now() < deadline) {
+          try {
+            adjudicated = await api('POST', `/api/ops/disputes/${found.id}/adjudicate`, { body: { outcome: 'buyer_favor' }, idem: `people-adj-${record.at}` });
+          } catch (e) {
+            log(`  adjudicate not open yet: ${e.status} ${e.code}`);
+            await new Promise((r) => setTimeout(r, 60_000));
+          }
+        }
+        if (!adjudicated) throw new Error('PayPal did not accept adjudicate within 40 minutes.');
+        note('Adjudicate through the route (buyer_favor)', `accepted; dispute now ${adjudicated.dispute.status}`);
+
+        const settled = await waitFor(
+          'the dispute to resolve',
+          async () => (await api('GET', '/api/ops/disputes')).disputes.find((d) => d.id === found.id && d.status === 'resolved') ?? null,
+          { timeoutMs: 15 * 60_000, everyMs: 20_000 },
+        );
+        const read = await paypal.getDispute(found.id);
+        note('Dispute read back on PayPal', `${read.disputeId} ${read.status} ${read.outcome ?? 'no outcome'} ${usdc(read.amountCents)}`);
+        const capture = await paypal.getCapture(firstCapture.captureId);
+        note('Disputed capture read back on PayPal', `${capture.captureId} ${capture.status}`);
+        const final = await readJob();
+        const entries = (await api('GET', `/api/ledger?jobId=${jobId}`, { as: 'mia' })).entries.filter((e) => e.kind === 'refunded');
+        note('Server ledger after the outcome', `outcome ${settled.outcome}; refunded ${usdc(final.amounts.refundedCents)}; ${entries.length} refund lines: ${entries.map((e) => usdc(e.amount.cents)).join(', ')}`);
+        record.result = 'passed';
+      },
+    });
+  } catch (e) {
+    record.error = errText(e);
+    record.result = 'stopped';
+    console.log(`\npeople stopped: ${errText(e)}`);
+  }
+  saveState(ctx.stateFile ?? null, state);
+  console.log(`\npeople: ${record.result}`);
+}
+
 /**
  * `record <gate> <result> --order <id>`: PayPal's own answer for a gate checked by hand, read with GET calls
  * only (the order, then each of its authorizations), as evidence lines: ids, statuses, amounts and the
@@ -1400,7 +1554,7 @@ async function main() {
     console.log(USAGE);
     return 0;
   }
-  if (!['plan', 'run', 'reauthorize', 'disputes', 'status', 'lifecycle', 'probe', 'venmo', 'record'].includes(command)) {
+  if (!['plan', 'run', 'reauthorize', 'disputes', 'status', 'lifecycle', 'probe', 'venmo', 'people', 'record'].includes(command)) {
     console.error(`Unknown command ${command}.\n`);
     console.log(USAGE);
     return 1;
@@ -1467,7 +1621,7 @@ async function main() {
         ? runId
         : `${runId}-${command}${label === 'lifecycle --local' ? '-local' : ''}`
       : null;
-  if ((command === 'lifecycle' || command === 'probe' || command === 'venmo') && args.fake) {
+  if ((command === 'lifecycle' || command === 'probe' || command === 'venmo' || command === 'people') && args.fake) {
     console.error(`${command} runs on the real sandbox only (the offline tests cover fake mode).`);
     return 1;
   }
@@ -1490,6 +1644,7 @@ async function main() {
     else if (command === 'lifecycle') await cmdLifecycle(ctx, args);
     else if (command === 'probe') await cmdProbe(ctx, args, runId);
     else if (command === 'venmo') await venmoGate(ctx, args, runId);
+    else if (command === 'people') await cmdPeople(ctx, args);
   } catch (e) {
     console.error(`\nStopped: ${errText(e)}`);
     state.runs.push({ runId, at: now, mode: conn.mode, command: label, note: `stopped: ${errText(e)}` });

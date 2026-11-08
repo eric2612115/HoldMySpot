@@ -82,7 +82,7 @@ HoldMySpot/
     src/realtime/bus.ts        event outbox (delivered to SSE after commit)
     src/http/                  server.ts (a route for every ENDPOINTS key, idempotency, SSE), routes.ts, schemas.ts
     src/demo/                  director.ts, fixtures.ts (rendered photos and pinned codes, D-48),
-                               scripts/hero.ts, scripts/others.ts (local-errand, renewal)
+                               scripts/hero.ts, scripts/others.ts (local-errand, renewal), scripts/needsPerson.ts
     test/                      node:test suites (engine, money, hero, http, agent, ports, e2e; paypal/ and ai/ for the services)
     fixtures/                  ai/ (replay fixtures: Muse Spark's recorded readings of the demo photos), proofs/ (rendered
                                receipt and line photos with truth sidecars)
