@@ -1,0 +1,593 @@
+{
+  "tool": "node scripts/prior-art-search.mjs",
+  "ranAt": "2026-11-08T02:01:40.123Z",
+  "note": "GitHub code search (public default branches) and repository search (names, descriptions, topics) through gh api; the hackathon gallery is not searched. Every repository each search returned is listed by name (and, for repository search, creation date); descriptions are not copied. The searches run logged in, so this repository itself (private until submission) is left out of the hits and the totals.",
+  "searches": [
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"line sitting\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"line sitter\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"line-sitting\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"wait in line\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"stand in line\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"in line for you\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"queue sitter\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"queuer\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"PayPal AI Hackathon\" \"hold my spot\"",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "code",
+      "query": "\"paypalaihackathon\" \"queue\"",
+      "total": 99,
+      "repositories": [
+        "Aditya-Gadge/TrustCart-AI",
+        "Amrithesh-Kakkoth/recoverly",
+        "Aniket-pd/payproof",
+        "Ankur2606/Ideas-painpal",
+        "Bhav-ikkk/VeriPact",
+        "Brikita/afracanet-input-finance",
+        "BugHunterX2101/AegisPay",
+        "DevDaring/PayPal_Hackatahon",
+        "DevDogsUGA/DevDogsUGA",
+        "DistantMyth/WalPay",
+        "Jaisheesh-2006/Niryat",
+        "Jasonsu22/firstreply",
+        "Khatrigarv24/proofpay",
+        "KingDayveed357/witness",
+        "Metropolia-ai/kassa",
+        "MrNahadi/CounterSign",
+        "NDilanka/acquit",
+        "Prajna0106/PayPal-Seed",
+        "RafalW3bCraft/DealPilotAI",
+        "Ritesh-Root/pulsepay-paypal",
+        "RyanDev1st/settlesight",
+        "SeraphDev6/milestone_disbursment_agent",
+        "Skedare240507/PayResolve-AI",
+        "Smokeybear10/paper-ledger",
+        "TS-mfon/revisionpay",
+        "Tarakshgoyal/proofpilot",
+        "Team-2-HackathonOR/Hackathon-Opportunity-Research",
+        "TheDub-lab/paypal-agentsafe",
+        "aadityabaghel25-netizen/disputedesk",
+        "aaravbodla/PAYPAL-AI-HACKATHON",
+        "abdel-saw/caseweave",
+        "alekst23/habitat-mvp",
+        "andiekobbietks/taskmaster-pro-ultimate-todo-productivity-suite",
+        "anishonly121/dispute-desk",
+        "ayushcody/quorum",
+        "bansalsahadev25-tech/morning-brief",
+        "brianproducedit/trustbroker_ai",
+        "dorakingx/pact-agent-commerce",
+        "edilsonsantos-co-za/owed",
+        "ethan-yi-dev/deflect-paypal",
+        "ewyuen/plateful-demo",
+        "gguip1/creator-milestone",
+        "gujguygfuiyf/refundpilot",
+        "harshkumarsingh12/proof-of-intent",
+        "himanshu748/crashcart",
+        "hourencaosote-cpu/nankuru-banto",
+        "jaydonnnk/envoi",
+        "jeonghwanko/oddbout-starter",
+        "kaseyho/Reclaim",
+        "kmmohaimenulhaque-code/StierDev",
+        "lavkushry/ProofPay",
+        "manvendersingh21/QuarantinePay",
+        "mohitagarwal24/Trove",
+        "mrdzyn/nudgemyinvoice",
+        "msrishav-28/chargebackos",
+        "nobodyme/hackathons-online",
+        "oemeraydemir/paypal-commerce-agent",
+        "rishiguptha54/paypal-hack",
+        "rogerdemello/paypal-hackathon-warrant",
+        "rogerjeasy/hold",
+        "shrey-Bish/allowance",
+        "srios000/dmpact",
+        "suriyaprakash-25/AgentShelf",
+        "tmoody1973/tether",
+        "uttamongithb1/paypal-hackathon",
+        "vivienne1303/Startup_KRZYVV",
+        "vmbarathviswam/recallrelay",
+        "wongywrongy/paypalaihack26",
+        "xkazm04/paypal"
+      ]
+    },
+    {
+      "kind": "repositories",
+      "query": "line sitting paypal",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "repositories",
+      "query": "line sitter",
+      "total": 61,
+      "repositories": [
+        {
+          "name": "maxbrunsfeld/tree-tags",
+          "created": "2018-10-13"
+        },
+        {
+          "name": "VeraTools/vera",
+          "created": "2026-03-22"
+        },
+        {
+          "name": "agentic-research/ley-line-open",
+          "created": "2026-03-30"
+        },
+        {
+          "name": "myumvm/sitter-line-bot",
+          "created": "2026-03-06"
+        },
+        {
+          "name": "andypost/evolver-php",
+          "created": "2026-03-06"
+        },
+        {
+          "name": "helixbass/tree_sitter_grep_filter_before_line_number",
+          "created": "2023-06-07"
+        },
+        {
+          "name": "ccampo133/sitter-receipt",
+          "created": "2025-04-07"
+        },
+        {
+          "name": "fcoury/tree-sitter-rust-function-at-line",
+          "created": "2023-03-14"
+        },
+        {
+          "name": "hieutran512/tree-sitter-ts-highlight-cli",
+          "created": "2026-02-22"
+        },
+        {
+          "name": "includewudi/fast-edit-rs",
+          "created": "2026-03-12"
+        },
+        {
+          "name": "lytex/tsquery",
+          "created": "2022-06-11"
+        },
+        {
+          "name": "rcorrear/tree-sitter-indent.el",
+          "created": "2024-07-08"
+        },
+        {
+          "name": "BhavdeepSinghB/the-app-sitter",
+          "created": "2019-10-15"
+        },
+        {
+          "name": "zaeku/ast-editor",
+          "created": "2026-09-12"
+        },
+        {
+          "name": "laurenrilee7/SkipTheWait",
+          "created": "2025-09-24"
+        },
+        {
+          "name": "pumenis/cst-highlight",
+          "created": "2025-08-28"
+        },
+        {
+          "name": "arjunmahishi/tsq",
+          "created": "2026-01-30"
+        },
+        {
+          "name": "z16166/RustLines",
+          "created": "2026-06-27"
+        },
+        {
+          "name": "Sachinrajawat/codebase-onboarding-assistant",
+          "created": "2026-05-14"
+        },
+        {
+          "name": "dsisnero/chroma",
+          "created": "2026-09-05"
+        },
+        {
+          "name": "anderturing-debug/reviewbot",
+          "created": "2026-02-16"
+        },
+        {
+          "name": "jmfirth/codequery",
+          "created": "2026-03-31"
+        },
+        {
+          "name": "Squirreljetpack/pi-wayfinder",
+          "created": "2026-11-01"
+        },
+        {
+          "name": "swonky/leafpress",
+          "created": "2026-08-26"
+        },
+        {
+          "name": "Owly-dabs/doc-extractor",
+          "created": "2025-08-05"
+        },
+        {
+          "name": "StMalina/ams",
+          "created": "2026-07-04"
+        },
+        {
+          "name": "justinhsu1477/Pet",
+          "created": "2026-01-02"
+        },
+        {
+          "name": "welcomevideogame/semantic-bookmarks",
+          "created": "2026-02-26"
+        },
+        {
+          "name": "sei40kr/zsh-ts-syntax-highlighter",
+          "created": "2026-07-16"
+        },
+        {
+          "name": "pranav-kalra22/CodeSense",
+          "created": "2026-09-13"
+        },
+        {
+          "name": "nhatvu148/pr-review-core",
+          "created": "2026-07-10"
+        },
+        {
+          "name": "gingofthesouth/Stripper",
+          "created": "2025-04-14"
+        },
+        {
+          "name": "Manav250305/codebase-chatter",
+          "created": "2026-10-05"
+        },
+        {
+          "name": "Bhumikams/spelunk",
+          "created": "2026-11-02"
+        },
+        {
+          "name": "shreyakhetan09/Developer-Knowledge-RAG",
+          "created": "2026-03-31"
+        },
+        {
+          "name": "barathsuresh/sift",
+          "created": "2026-07-20"
+        },
+        {
+          "name": "RANJEETJ06/codegraph",
+          "created": "2026-07-30"
+        },
+        {
+          "name": "j-token/agent-librarian",
+          "created": "2026-09-26"
+        },
+        {
+          "name": "shrihan-vijay/codecartographer",
+          "created": "2026-07-14"
+        },
+        {
+          "name": "eltu/idx-lib",
+          "created": "2026-06-04"
+        },
+        {
+          "name": "janhavibodakhe2811-del/AI--Software-Assistant",
+          "created": "2026-09-22"
+        },
+        {
+          "name": "Saurabh2005695/Code_Chat_AI",
+          "created": "2026-09-21"
+        },
+        {
+          "name": "MatissesProjects/better-repo-search",
+          "created": "2026-03-31"
+        },
+        {
+          "name": "Gauthambinoy20/Glyph",
+          "created": "2026-06-04"
+        },
+        {
+          "name": "meteyilmaz01/Code-RAG-CLI",
+          "created": "2026-10-12"
+        },
+        {
+          "name": "salva-sm/sfcc-tools",
+          "created": "2026-09-21"
+        },
+        {
+          "name": "mayank-pillai-99/codebase-copilot",
+          "created": "2026-09-29"
+        },
+        {
+          "name": "aishasurve2007/codebase-agent",
+          "created": "2026-06-24"
+        },
+        {
+          "name": "alexandremourin/needle",
+          "created": "2026-06-03"
+        },
+        {
+          "name": "SivathmikaChowdary/Codemind.ai",
+          "created": "2026-07-23"
+        },
+        {
+          "name": "sumionochi/Self-Healing-Code-Deobfuscation-Program",
+          "created": "2025-04-02"
+        },
+        {
+          "name": "Cod-e-Codes/astvcs",
+          "created": "2026-06-27"
+        },
+        {
+          "name": "jafeeri/codebase-intelligence-copilot",
+          "created": "2026-08-26"
+        },
+        {
+          "name": "prabanjan-ux/Clarion",
+          "created": "2026-07-29"
+        },
+        {
+          "name": "Valentine45-dev/repolens",
+          "created": "2026-10-26"
+        },
+        {
+          "name": "taherfarg/repo-aware-code-assistant",
+          "created": "2026-08-27"
+        },
+        {
+          "name": "Shaurya001-web/code-review-agent-v2",
+          "created": "2026-06-27"
+        },
+        {
+          "name": "riyonp23/Probe",
+          "created": "2026-04-10"
+        },
+        {
+          "name": "whoknowsasaint/Reposcope",
+          "created": "2026-05-12"
+        },
+        {
+          "name": "No-man1234/AstraVul",
+          "created": "2026-09-21"
+        },
+        {
+          "name": "chukxoka4/advanced-troubleshooter",
+          "created": "2026-04-17"
+        }
+      ]
+    },
+    {
+      "kind": "repositories",
+      "query": "line-sitting",
+      "total": 35,
+      "repositories": [
+        {
+          "name": "chadj/rclone-bisync",
+          "created": "2018-09-01"
+        },
+        {
+          "name": "spudster-team/spotato-mobile",
+          "created": "2023-03-25"
+        },
+        {
+          "name": "emeth-/jqplot-draw",
+          "created": "2013-01-05"
+        },
+        {
+          "name": "Faithwinn/How-the-Grid-Interconnection-Backlog-Is-Killing-Clean-Energy",
+          "created": "2026-06-08"
+        },
+        {
+          "name": "3numlabs/atsms-cli",
+          "created": "2026-08-10"
+        },
+        {
+          "name": "amscotti/neonlift",
+          "created": "2024-01-10"
+        },
+        {
+          "name": "julsdym/Kindergarden",
+          "created": "2023-09-12"
+        },
+        {
+          "name": "grakz/proxy_settings",
+          "created": "2026-05-02"
+        },
+        {
+          "name": "ac265640/UdyamSync",
+          "created": "2026-11-06"
+        },
+        {
+          "name": "identity-md-launches/launch-744-pixel-art-pepe-sitting",
+          "created": "2026-10-05"
+        },
+        {
+          "name": "adiuka/kegel-cli",
+          "created": "2026-03-26"
+        },
+        {
+          "name": "yashpandey03/RUKindergarten--java",
+          "created": "2023-04-29"
+        },
+        {
+          "name": "HarpN/Minos",
+          "created": "2026-07-17"
+        },
+        {
+          "name": "Vicman8/SlouchStopper",
+          "created": "2026-02-19"
+        },
+        {
+          "name": "lucabarri/birds_on_wire_model",
+          "created": "2025-04-15"
+        },
+        {
+          "name": "deepakblogger1986/Deep",
+          "created": "2024-12-31"
+        },
+        {
+          "name": "Mohithra-S/Cyber-Threat-Keyword-Monitoring-Tool",
+          "created": "2025-11-28"
+        },
+        {
+          "name": "Charannaik123/charan",
+          "created": "2022-09-22"
+        },
+        {
+          "name": "Charannaik123/cherry",
+          "created": "2022-09-22"
+        },
+        {
+          "name": "Sineen/Hungry-Duck-part1",
+          "created": "2017-09-12"
+        },
+        {
+          "name": "ssakibs04/PadmaBridgeProject",
+          "created": "2022-08-25"
+        },
+        {
+          "name": "flexorolts/Flexorol-Reviews-Benefits-Price-Uses-Working-How-To-Purchase-",
+          "created": "2022-09-17"
+        },
+        {
+          "name": "thehuy2000/CS344-OSI---Assignment-3-Small-Shell",
+          "created": "2021-10-29"
+        },
+        {
+          "name": "Brwacoder/Minecraft-nbt-editor-npc",
+          "created": "2021-05-12"
+        },
+        {
+          "name": "srin91297/senate-voting-application",
+          "created": "2019-09-30"
+        },
+        {
+          "name": "yamasoro/yamasorofamily",
+          "created": "2021-11-27"
+        },
+        {
+          "name": "alexjhidalgo/smallsh",
+          "created": "2021-10-31"
+        },
+        {
+          "name": "JoshBell302/CS344-OSI---Assignment-3-Small-Shell",
+          "created": "2020-10-30"
+        },
+        {
+          "name": "transitaddress/Himachal-Turism",
+          "created": "2017-03-22"
+        },
+        {
+          "name": "qixuanHou/Mapping-My-Break",
+          "created": "2016-01-25"
+        },
+        {
+          "name": "nyaundid/EC2-AWS-AND-SHELL",
+          "created": "2019-03-02"
+        },
+        {
+          "name": "FinTrack/Investment-Property-Australia",
+          "created": "2016-09-12"
+        },
+        {
+          "name": "Muhammad-Anus11/-BEST-GAMING-CHAIR-For-Gamerz-",
+          "created": "2022-08-24"
+        },
+        {
+          "name": "houstoncuj/Educating-for-the-Large-Shop-to-make-Custom-Name-Patches",
+          "created": "2021-04-20"
+        },
+        {
+          "name": "danderfer/Comp_Sci_Sem_2",
+          "created": "2022-06-07"
+        }
+      ]
+    },
+    {
+      "kind": "repositories",
+      "query": "linesitting",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "repositories",
+      "query": "wait in line paypal",
+      "total": 1,
+      "repositories": [
+        {
+          "name": "swati1024/torrents",
+          "created": "2020-02-23"
+        }
+      ]
+    },
+    {
+      "kind": "repositories",
+      "query": "stand in line paypal",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "repositories",
+      "query": "queue errand paypal",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "repositories",
+      "query": "queue paypal hackathon",
+      "total": 1,
+      "repositories": [
+        {
+          "name": "lunaroverlord/deqr",
+          "created": "2015-08-19"
+        }
+      ]
+    },
+    {
+      "kind": "repositories",
+      "query": "queue market paypal",
+      "total": 0,
+      "repositories": []
+    },
+    {
+      "kind": "repositories",
+      "query": "paypal ai hackathon queue",
+      "total": 0,
+      "repositories": []
+    }
+  ]
+}

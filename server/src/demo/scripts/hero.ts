@@ -5,6 +5,7 @@ import { authorizeBid, claimBid, createBid, quoteBid } from '../../app/bids.ts';
 import { saveUpload } from '../../app/files.ts';
 import { addShipment, markBought, submitProof } from '../../app/jobs.ts';
 import { placeholderPng } from '../../util/images.ts';
+import { ATTACK_HANDOVER, ATTACK_RECEIPTS } from '../attack.ts';
 import type { DemoScript, StepContext } from '../director.ts';
 import { pinFixtureCode, stageHistory, uploadFixtureOr, uploadHash } from '../fixtures.ts';
 
@@ -66,6 +67,8 @@ export const heroScript: DemoScript = {
     // The codes the rendered photos show (deterministic demo markets only).
     for (const [queuerId, caseId] of Object.entries(CHECK_IN_FIXTURES)) pinFixtureCode(ctx.app, 'checkin', `${queuerId}@${HERO.shopId}`, caseId);
     for (const [pair, caseId] of Object.entries(PROOF_FIXTURES)) pinFixtureCode(ctx.app, 'proof', `${pair}@${HERO.shopId}`, caseId);
+    // The receipts npm run attack sends, each on a pair this day never forms (D-138).
+    for (const c of [...ATTACK_RECEIPTS, ATTACK_HANDOVER]) if (c.pin) pinFixtureCode(ctx.app, 'proof', `${c.requesterId}>${c.queuerId}@${HERO.shopId}`, c.caseId);
     // Earlier uploads by other queuers, and an item photo Rex uploaded for an older job:
     // his "new" photo will be the same file.
     await stageHistory(ctx.app);

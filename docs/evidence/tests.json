@@ -1,0 +1,198 @@
+{
+  "tool": "npm test",
+  "format": 1,
+  "ok": true,
+  "startedAt": "2026-11-08T03:00:35.128Z",
+  "seconds": 77,
+  "commit": "9b85330",
+  "uncommittedChanges": true,
+  "codeTrees": {
+    "shared": "21c1a27239ea",
+    "server": "4ec86728a3c8",
+    "web": "bd8fe9283b30",
+    "ops": "8d1f2f98af7e",
+    "scripts": "a0bbf06d85c6"
+  },
+  "node": "24.22.2",
+  "npm": "11.19.1",
+  "platform": "darwin arm64",
+  "build": false,
+  "quick": false,
+  "packages": [
+    "shared",
+    "server",
+    "web",
+    "ops"
+  ],
+  "totals": {
+    "steps": 6,
+    "tests": 679,
+    "passed": 679,
+    "failed": 0,
+    "skipped": 0
+  },
+  "steps": [
+    {
+      "pkg": "shared",
+      "label": "type check + tests",
+      "ok": true,
+      "seconds": 1.7,
+      "tests": 102,
+      "passed": 102,
+      "failed": 0,
+      "skipped": 0,
+      "properties": [
+        {
+          "name": "P1 every captured cent goes to the queuer, to PayPal or to HoldMySpot's 10%, each share from its own rule, and the processing line is PayPal's fee",
+          "runs": 2000
+        },
+        {
+          "name": "P2 the captures of any split never pass the hold, receipts and labels above the caps included",
+          "runs": 2000
+        },
+        {
+          "name": "P4 every completed job leaves HoldMySpot exactly floor(10% of the queue fee); a refund after the fee payout costs it that payout and PayPal's fees, no more",
+          "runs": 2000
+        },
+        {
+          "name": "P2 the limit check refuses every capture past 100% of the hold, whatever PayPal's 115% would allow",
+          "runs": 2000
+        },
+        {
+          "name": "P3 every forgery fails its hard check and fails the receipt; soft issues go to a person; a clean receipt passes",
+          "runs": 500
+        },
+        {
+          "name": "P3 known limit: a real receipt reprinted at any price up to the requester's cap, its QR regenerated to match, passes every check; the price charged is the reprint's, never above the cap",
+          "runs": 500
+        },
+        {
+          "name": "P6 the step-down never rises, never goes below its floor or above its opening fee, and drops only by whole steps",
+          "runs": 2000
+        },
+        {
+          "name": "P6 a resting max fills at the first step at or below it, never above it, never below the floor",
+          "runs": 2000
+        },
+        {
+          "name": "P6 before check-in the clock has not started: the fee stays at the opening fee at any time",
+          "runs": 2000
+        },
+        {
+          "name": "P6 every fill is at the ask's clock price now, at or under the bid's max, between compatible orders, within quantities",
+          "runs": 1000
+        },
+        {
+          "name": "P6 price-time priority holds and no trade is left on the table",
+          "runs": 1000
+        },
+        {
+          "name": "P6 the result does not depend on the order the book lists its orders in",
+          "runs": 1000
+        },
+        {
+          "name": "P7 the highest max fee a hold covers fits that hold, and one cent more does not",
+          "runs": 1000
+        },
+        {
+          "name": "P8 each capture nets exactly its base plus its payout fees after PayPal's fee, and one cent less would not",
+          "runs": 5000
+        },
+        {
+          "name": "P8 the gross-up is exact for any percentage below 100% and any fixed fees, not only PayPal's current ones",
+          "runs": 5000
+        }
+      ]
+    },
+    {
+      "pkg": "server",
+      "label": "type check + tests",
+      "ok": true,
+      "seconds": 66.7,
+      "tests": 426,
+      "passed": 426,
+      "failed": 0,
+      "skipped": 0,
+      "properties": [
+        {
+          "name": "P1-P4 P6 P7: any day of requests, offers, receipts and PayPal failures keeps every money and market rule",
+          "runs": 120,
+          "coverage": {
+            "days": 120,
+            "checkIns": 216,
+            "matches": 203,
+            "clockFills": 34,
+            "completed": 41,
+            "rejected": 24,
+            "refunded": 9,
+            "captures": 68,
+            "payouts": 68,
+            "failures": 26,
+            "restarts": 118,
+            "flaggedPayouts": 0,
+            "reassigned": 6,
+            "expiredHolds": 40
+          }
+        },
+        {
+          "name": "P5 the same day with lost, dropped and garbled PayPal answers ends with the same PayPal objects and amounts",
+          "runs": 60,
+          "coverage": {
+            "days": 120,
+            "checkIns": 230,
+            "matches": 228,
+            "clockFills": 36,
+            "completed": 52,
+            "rejected": 16,
+            "refunded": 10,
+            "captures": 86,
+            "payouts": 86,
+            "failures": 25,
+            "restarts": 184,
+            "flaggedPayouts": 0,
+            "reassigned": 12,
+            "expiredHolds": 38
+          }
+        }
+      ]
+    },
+    {
+      "pkg": "web",
+      "label": "type check",
+      "ok": true,
+      "seconds": 3.3
+    },
+    {
+      "pkg": "web",
+      "label": "tests (vitest)",
+      "ok": true,
+      "seconds": 0.8,
+      "tests": 131,
+      "passed": 131,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "pkg": "ops",
+      "label": "type check",
+      "ok": true,
+      "seconds": 3.5
+    },
+    {
+      "pkg": "ops",
+      "label": "tests",
+      "ok": true,
+      "seconds": 0.9,
+      "tests": 20,
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "properties": [
+        {
+          "name": "P7 every option the rescheduler lists is allowed now and keeps each job on its shop and item, inside the offer's room, at or under the max fee and inside the hold",
+          "runs": 2000
+        }
+      ]
+    }
+  ]
+}

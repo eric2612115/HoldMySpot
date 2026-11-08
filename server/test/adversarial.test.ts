@@ -5,6 +5,7 @@ import type { CreateBidRequest } from '@holdmyspot/shared';
 import { APPROVAL_TIMEOUT_MS, amendBid, authorizeBid, cancelBid, claimBid, createBid } from '../src/app/bids.ts';
 import { addShipment, handover, markBought, submitProof } from '../src/app/jobs.ts';
 import { authorizeHold, payoutsAfterCapture, recoverPending, refundJob } from '../src/app/money.ts';
+import { syncPayPal } from '../src/app/sync.ts';
 import { toPayPalError, unexpectedResponse } from '../src/paypal/errors.ts';
 import { PayPalCallError } from '../src/ports/payments.ts';
 import { ITEM, DAY, SHOP, MIN, NY_SHIP, checkInAt, persona, placeBid, postAsk, sum, testServer, upload, type TestServer } from './helpers.ts';
@@ -408,6 +409,57 @@ describe('adversarial: the handover code is the requester consent', () => {
       await s.at(s.app.now() + 61 * MIN);
       const res = await s.app.exec(() => handover(s.app, dana, job.id, job.handoverCode!));
       assert.equal(res.job.status, 'delivered');
+    } finally {
+      await s.done();
+    }
+  });
+
+  it('locks the code for good after ten wrong codes over any number of hours, so at most 10 of the 10,000 codes are ever tried (D-148)', async () => {
+    const s = await testServer({ start: LOCAL_START });
+    try {
+      const { placed, dana, job } = await localVerified(s);
+      const wrong = ['0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999', '1234'].filter((c) => c !== job.handoverCode).slice(0, 10);
+      for (const [i, guess] of wrong.entries()) {
+        // Five per hour, as the hourly window allows; then the next hour.
+        if (i === 5) await s.at(s.app.now() + 61 * MIN);
+        assert.equal(code(await s.app.exec(() => handover(s.app, dana, job.id, guess)).catch((e: unknown) => e)), 'WRONG_CODE', `guess ${i + 1}`);
+      }
+      for (const wait of [61 * MIN, DAY, 10 * DAY]) {
+        await s.at(s.app.now() + wait);
+        const locked = await s.app.exec(() => handover(s.app, dana, job.id, job.handoverCode!)).catch((e: unknown) => e);
+        assert.equal(code(locked), 'RATE_LIMITED', 'the right code no longer works');
+        assert.equal((locked as ContractError).details?.locked, true);
+      }
+      assert.equal(s.app.store.holds.must(placed.bid.holdId!).capturedCents, 0, 'nothing captured');
+      assert.equal(s.app.store.jobs.must(job.id).status, 'verified', 'the job waits for a person');
+    } finally {
+      await s.done();
+    }
+  });
+});
+
+describe('adversarial: payouts wait for a COMPLETED capture', () => {
+  it('sends no payout while PayPal holds the receipt capture PENDING, and pays the fee once the status sync reads it COMPLETED', async () => {
+    const s = await testServer({ env: { HMS_FAKE_FAIL: 'capture:pending' } });
+    try {
+      const { job } = await throughProof(s);
+      const capture = s.app.store.ledger.first("job_id = ? AND kind = 'captured'", job.id)!;
+      assert.equal(capture.status, 'pending', 'PayPal answered PENDING: the capture is not money yet');
+      assert.ok(capture.paypal?.captureId);
+      assert.equal(s.app.store.payouts.count(), 0, 'no payout on a PENDING capture');
+      assert.equal(s.app.store.ledger.where("kind = 'paid_out'").length, 0);
+
+      // The poller reads it again while PayPal still says PENDING: still nothing paid.
+      await syncPayPal(s.app);
+      assert.equal(s.app.store.payouts.count(), 0, 'still no payout while PENDING');
+
+      s.app.fakePayPal.completePendingCapture(capture.paypal!.captureId!);
+      await syncPayPal(s.app);
+      await s.app.idle();
+      assert.equal(s.app.store.ledger.must(capture.id).status, 'succeeded');
+      const payouts = s.app.store.payouts.all();
+      assert.equal(payouts.length, 1, 'the fee payout follows the COMPLETED capture');
+      assert.equal(payouts[0]!.purpose, 'fee');
     } finally {
       await s.done();
     }

@@ -391,14 +391,21 @@ export function evaluatePurchase(reading: PurchaseReading, ctx: PurchaseContext)
     else if (job.twdPerUsd !== null) retailCents = localToUsdCents({ currency, minor: itemMinor }, job.twdPerUsd);
   }
 
-  // within_retail_cap (soft)
-  const capOk = retailCents !== null && retailCents <= job.retailCapCents;
+  // within_retail_cap (soft). A $0 item amount is read as no amount: a person checks it, and a
+  // pass charges the shop price (D-135), so a passed receipt always pays the queuer back.
+  const capOk = retailCents !== null && retailCents > 0 && retailCents <= job.retailCapCents;
   checks.push(
     check(
       'within_retail_cap',
       'soft',
       capOk,
-      retailCents === null ? 'The retail amount could not be read.' : capOk ? 'Retail is within the cap.' : 'Retail is above the cap; only the cap can be charged.',
+      retailCents === null
+        ? 'The retail amount could not be read.'
+        : retailCents <= 0
+          ? 'The receipt shows no price for the item.'
+          : capOk
+            ? 'Retail is within the cap.'
+            : 'Retail is above the cap; only the cap can be charged.',
     ),
   );
 

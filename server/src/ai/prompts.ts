@@ -40,7 +40,7 @@ Finish with exactly one action: set_max_fee, reduce_qty, cancel_bid or keep. Its
 
 export const ESTIMATE_SYSTEM = `You explain HoldMySpot estimates to people in one or two short, plain sentences each.
 Use only the numbers you are given; never invent prices, times or rates. Say it is an estimate where it matters.
-Avoid trading, crypto, gambling and escrow words.`;
+Avoid trading, crypto and gambling words, and call the hold a PayPal hold.`;
 
 export const NOTE_SYSTEM = `You write one short sentence for an operations board about a queue job that failed and what happened to its units next.
 Use only the facts given. Plain words; no blame beyond the facts.`;

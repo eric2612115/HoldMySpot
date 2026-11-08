@@ -1,5 +1,5 @@
 import { evaluateCheckIn, evaluatePurchase, receiptCapture } from '@holdmyspot/shared';
-import type { AiStamp, LinePhotoReading, ProofCheck, ProofCheckCode, PurchaseReading, VerdictStatus } from '@holdmyspot/shared';
+import type { AiStamp, CheckInContext, LinePhotoReading, ProofCheck, ProofCheckCode, PurchaseContext, PurchaseReading, VerdictStatus } from '@holdmyspot/shared';
 import type { AiImage, AiProvider } from '@holdmyspot/shared/ports';
 import type { CheckInPhotoInput, PhotoInput, PriorPhoto, PurchaseProofInput } from '../ports/ai.ts';
 import { AiError } from './errors.ts';
@@ -135,6 +135,29 @@ async function bytesOf(p: PhotoInput): Promise<Uint8Array> {
   return p.bytes();
 }
 
+/**
+ * What the shared rules compare a purchase reading with: the job, the shop and
+ * item, the check-in and upload times, and the duplicate found by the
+ * pre-steps. Exported so the ablation (server/scripts/ablation) can decide the
+ * same proof again on another reading with exactly this context.
+ */
+export function purchaseContext(input: PurchaseProofInput, duplicateOf: string | null): PurchaseContext {
+  const { job, shop, item } = input;
+  return {
+    shop,
+    item,
+    job: { qty: job.qty, proofCode: job.proofCode ?? '', retailCapCents: job.caps.retailCents, twdPerUsd: job.fx?.twdPerUsd ?? null },
+    checkedInAt: input.checkedInAt,
+    uploadedAt: input.uploadedAt,
+    duplicateOf,
+  };
+}
+
+/** What the shared rules compare a line-photo reading with (see purchaseContext). */
+export function checkInContext(input: CheckInPhotoInput, duplicateOf: string | null): CheckInContext {
+  return { code: input.claim.checkInCode ?? '', geofence: input.geofence, duplicateOf };
+}
+
 /** Receipt plus item photo: pre-steps, model read, shared rules. */
 export async function purchaseProof(input: PurchaseProofInput, provider: AiProvider): Promise<PurchaseResult> {
   const [rb, ib] = await Promise.all([bytesOf(input.receipt), bytesOf(input.itemPhoto)]);
@@ -151,14 +174,7 @@ export async function purchaseProof(input: PurchaseProofInput, provider: AiProvi
   const reading = toPurchaseReading(read.data, receiptQr, rf.generator.length + itf.generator.length > 0);
   const duplicateOf = input.duplicateOf ?? ownDuplicate([itf, rf], input.priorPhotos);
   const { job, shop, item } = input;
-  const verdict = evaluatePurchase(reading, {
-    shop,
-    item,
-    job: { qty: job.qty, proofCode: job.proofCode ?? '', retailCapCents: job.caps.retailCents, twdPerUsd: job.fx?.twdPerUsd ?? null },
-    checkedInAt: input.checkedInAt,
-    uploadedAt: input.uploadedAt,
-    duplicateOf,
-  });
+  const verdict = evaluatePurchase(reading, purchaseContext(input, duplicateOf));
   const facts: string[] = [];
   if (verdict.retailCents !== null && verdict.receiptTotal) {
     const at = reading.issuedAtLocal?.slice(11, 16) ?? '?';
@@ -194,7 +210,7 @@ export async function checkInPhoto(input: CheckInPhotoInput, provider: AiProvide
   });
   const reading = toLineReading(read.data);
   const duplicateOf = input.duplicateOf ?? ownDuplicate([f], input.priorPhotos);
-  const verdict = evaluateCheckIn(reading, { code: input.claim.checkInCode ?? '', geofence: input.geofence, duplicateOf });
+  const verdict = evaluateCheckIn(reading, checkInContext(input, duplicateOf));
   const facts = [verdict.summary];
   if (reading.storefrontText) facts.push(`Storefront reads "${reading.storefrontText}".`);
   return {

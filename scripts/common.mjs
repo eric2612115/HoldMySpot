@@ -85,6 +85,40 @@ export function npmCommand() {
   return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
+/** The folders whose code the recorded runs execute; each log records their git trees (D-149). */
+export const CODE_FOLDERS = ['shared', 'server', 'web', 'ops', 'scripts'];
+
+/**
+ * Which code a run used, for the logs in docs/evidence/ (D-149): the commit, whether the working tree
+ * differs from it (untracked files included), and the git tree of each code folder as the files on
+ * disk are now, untracked ones included. A tree is git's own content hash of a folder, so once these
+ * files are committed, `git rev-parse <commit>:server` names the same tree; the logs themselves sit in
+ * docs/, outside these folders, so recording them does not change the hashes.
+ */
+export function gitState(cwd = REPO) {
+  const git = (args, env) => spawnSync('git', args, { cwd, encoding: 'utf8', env: env ?? process.env });
+  const rev = git(['rev-parse', '--short', 'HEAD']);
+  if (rev.status !== 0) return { commit: null, dirty: null, trees: null };
+  const st = git(['status', '--porcelain', '--untracked-files=all']);
+  const dirty = st.status === 0 ? st.stdout.trim().length > 0 : null;
+  // A throwaway index: HEAD's files, then every change and untracked file on disk (.gitignore applies).
+  const index = path.join(os.tmpdir(), `hms-git-index-${process.pid}-${Date.now()}`);
+  const env = { ...process.env, GIT_INDEX_FILE: index };
+  let trees = null;
+  try {
+    if (git(['read-tree', 'HEAD'], env).status === 0 && git(['add', '-A', '--', ...CODE_FOLDERS], env).status === 0) {
+      trees = {};
+      for (const folder of CODE_FOLDERS) {
+        const t = git(['write-tree', `--prefix=${folder}/`], env);
+        trees[folder] = t.status === 0 ? t.stdout.trim().slice(0, 12) : null;
+      }
+    }
+  } finally {
+    fs.rmSync(index, { force: true });
+  }
+  return { commit: rev.stdout.trim(), dirty, trees };
+}
+
 // ---------------------------------------------------------------------------
 // Packages
 // ---------------------------------------------------------------------------

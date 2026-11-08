@@ -1,0 +1,33 @@
+# The sponsor screens checked in headless Chromium on 2026-11-08 00:29 UTC (docs/DECISIONS.md D-144): `npm run demo`
+# with no keys on port offset 300 (simulated PayPal, recorded AI answers, AG trial mode forced with --no-ag-licence and
+# OPS_ALLOWED_HOSTS=ops.holdmyspot.test), then in ops/ with BASE_URL=http://127.0.0.1:5497: `npm run shots` (the Bryntum
+# board at 11:21, the AG Studio dashboard after the market desk's answer at 12:05, the board after both approvals) and
+# `npm run licence:check`, on 127.0.0.1 and on a test host name. Node 24.22.2, Darwin arm64, commit 9b85330
+# with uncommitted changes. Output verbatim below the line of dashes, except that the screenshots' scratch folder is
+# shortened to <out>; the screenshots are not kept.
+# ------------------------------------------------------------------------------------------------------
+$ OUT_DIR=<scratch> npm run shots
+saved <out>/ops-01-queuer-board-1440x900.png
+saved <out>/ops-02-market-dashboard-agent-1440x900.png
+saved <out>/ops-03-queuer-board-approved-1440x900.png
+exit 0
+
+$ npm run licence:check
+AG licence check at http://127.0.0.1:5497 (keys are never shown)
+  Given: AG Studio <- none; AG Grid and AG Charts <- none
+  Drawn by AG Studio: 3 grid(s), 3 chart(s); market desk agent answered
+  Licence banners in the console:
+    AG Studio Pro with AI: License Key Not Found (All AG Studio Pro with AI features are unlocked for trial.)
+  Watermarks: none (AG never draws one on localhost; set HOST_ALIAS to see what a deployed host shows)
+Verdict: not fully licensed. Every feature still works (AG trial mode); an AG Studio Pro with AI key removes the banner and the watermark (ops/README.md, Licences).
+exit 0
+
+$ HOST_ALIAS=ops.holdmyspot.test npm run licence:check
+AG licence check at http://ops.holdmyspot.test:5497 (keys are never shown)
+  Given: AG Studio <- none; AG Grid and AG Charts <- none
+  Drawn by AG Studio: 3 grid(s), 3 chart(s); market desk agent answered
+  Licence banners in the console:
+    AG Studio Pro with AI: License Key Not Found (All AG Studio Pro with AI features are unlocked for trial.)
+  Watermarks: AG Studio "For Trial Use Only"
+Verdict: not fully licensed. Every feature still works (AG trial mode); an AG Studio Pro with AI key removes the banner and the watermark (ops/README.md, Licences).
+exit 0

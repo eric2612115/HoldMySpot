@@ -18,7 +18,10 @@
     "test": "node scripts/test-all.mjs",
     "gates": "node scripts/dev.mjs gates",
     "errand": "node scripts/errand.mjs",
+    "attack": "node scripts/attack.mjs",
     "paypal:check": "node scripts/paypal-check.mjs",
-    "ai:eval": "node scripts/dev.mjs ai-eval"
+    "ai:eval": "node scripts/dev.mjs ai-eval",
+    "ablation": "node scripts/dev.mjs ai-eval --ablate",
+    "numbers": "node scripts/readme-numbers.mjs"
   }
 }

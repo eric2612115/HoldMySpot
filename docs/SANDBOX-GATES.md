@@ -83,7 +83,7 @@ These need PayPal's JS SDK v6 in a browser, so they run from the web app, not fr
 
 - Load `https://www.sandbox.paypal.com/web-sdk/v6/core`, then `paypal.createInstance({ clientId, components: ['paypal-payments', 'venmo-payments'], pageType: 'checkout', testBuyerCountry: 'US' })`.
 - `findEligibleMethods({ currencyCode: 'USD' })`, then `isEligible('venmo')` and `isEligible('paylater')`. Show a button only when it is eligible.
-- Venmo is for US buyers paying in USD to a single US payee (the platform app); in the sandbox it needs `testBuyerCountry: 'US'`. Venmo payouts need a US phone number and are production only.
+- Venmo is for US buyers paying in USD to a single US payee (the platform app); in the sandbox it needs `testBuyerCountry: 'US'`. Venmo payouts are for US recipients only and are production only (PayPal's Venmo payouts page, read 2026-11-08).
 - Pay Later with intent AUTHORIZE is undocumented: keep it off (`HMS_PAYPAL_FUNDING=paypal,venmo`) unless G5 passes.
 - Whether a Venmo-funded hold can be reauthorized is unknown; until proven, the server marks such holds `renewalRequired` instead.
 

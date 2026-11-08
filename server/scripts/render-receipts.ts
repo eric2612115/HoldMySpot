@@ -14,8 +14,14 @@
  * decode to the intended fields, every re-used photo must stay within the
  * duplicate distance of its source, and every fresh photo must stay clear of
  * all others.
+ *
+ *   npm run ai:render -- --only reprint-at-cap
+ *
+ * renders only the named attack cases (ATTACK_CASES, the known limits that
+ * `npm run attack` shows, D-147) into their `_` folders and leaves every other
+ * photo as it is, so the recorded model answers keep matching.
  */
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { chromium } from 'playwright-core';
 import type { Browser, Page } from 'playwright-core';
@@ -24,8 +30,8 @@ import { decodePng, encodePng, insertPngChunks, pngITextChunk, pngTextChunk } fr
 import { DUPLICATE_DISTANCE, dHash, hammingDistance } from '../src/ai/phash.ts';
 import { parseReceiptQr, readQrCodes } from '../src/ai/qr.ts';
 import type { PurchaseExtraction, CheckInExtraction } from '../src/ai/schemas.ts';
-import { CHECK_IN_CASES, HISTORY, PURCHASE_CASES } from './ai-fixtures/cases.ts';
-import type { ItemPhotoSpec, LinePhotoSpec, PhotoSpec, ReceiptSpec, Tweak } from './ai-fixtures/cases.ts';
+import { ATTACK_CASES, CHECK_IN_CASES, HISTORY, PURCHASE_CASES } from './ai-fixtures/cases.ts';
+import type { AttackCase, ItemPhotoSpec, LinePhotoSpec, PhotoSpec, ReceiptSpec, Tweak } from './ai-fixtures/cases.ts';
 import { SIZES, itemHtml, lineHtml, receiptHtml } from './ai-fixtures/html.ts';
 
 const OUT = process.env.HMS_AI_PROOF_FIXTURES_DIR ?? join(SERVER_ROOT, 'fixtures', 'proofs');
@@ -82,6 +88,33 @@ function fresh(dir: string): void {
   mkdirSync(dir, { recursive: true });
 }
 
+/** Checks that a rendered receipt's QR decodes to the fields the case drew into it. */
+async function qrProblem(id: string, receipt: Uint8Array, want: ReceiptSpec['qr']): Promise<string | null> {
+  if (!want) return null;
+  const qr = await readQrCodes(decodePng(receipt));
+  const e = parseReceiptQr(qr.texts);
+  if (!e) return `${id}: the receipt QR did not decode (${qr.texts.length} codes read).`;
+  if (e.invoiceNumber !== want.invoiceNumber || e.sellerTaxId !== want.sellerTaxId || e.totalAmount !== want.total || e.issuedDate !== want.issuedDate) {
+    return `${id}: the receipt QR decoded to other fields (${JSON.stringify(e)}).`;
+  }
+  return null;
+}
+
+/** An attack-only case (D-147): its receipt rendered, its item photo copied from the case it names. */
+async function renderAttackCase(page: Page, c: AttackCase): Promise<{ problems: string[]; receiptHash: string }> {
+  const dir = join(OUT, c.folder);
+  fresh(dir);
+  const receipt = await render(page, c.receipt);
+  const item = readFileSync(join(OUT, c.item.sameAs, 'item.png'));
+  writeFileSync(join(dir, 'receipt.png'), receipt);
+  writeFileSync(join(dir, 'item.png'), item);
+  writeFileSync(join(dir, 'truth.json'), json({ images: ['receipt.png', 'item.png'], outputs: { purchase_proof: purchaseTruth(c.receipt, c.item.code, c.item.units) } }));
+  const { receipt: _r, item: _i, folder: _f, ...rest } = c;
+  writeFileSync(join(dir, 'case.json'), json({ ...rest, files: { receipt: 'receipt.png', item: 'item.png' }, itemSameAs: c.item.sameAs, reusedPhoto: null }));
+  const problem = await qrProblem(c.id, receipt, c.receipt.qr);
+  return { problems: problem ? [problem] : [], receiptHash: dHash(decodePng(receipt)) };
+}
+
 interface Shot {
   label: string;
   hash: string;
@@ -89,6 +122,29 @@ interface Shot {
 }
 
 async function main(): Promise<void> {
+  const at = process.argv.indexOf('--only');
+  const only = at >= 0 ? (process.argv[at + 1] ?? '').split(',').map((x) => x.trim()).filter(Boolean) : null;
+  if (only) {
+    const unknown = only.filter((id) => !ATTACK_CASES.some((c) => c.id === id));
+    if (unknown.length > 0 || only.length === 0) {
+      console.error(`--only takes attack cases (${ATTACK_CASES.map((c) => c.id).join(', ')}); the eval photos are rendered together, so their recorded answers keep matching. Unknown: ${unknown.join(', ') || '(none given)'}.`);
+      process.exitCode = 2;
+      return;
+    }
+    const browser = await launch();
+    const page = await browser.newPage({ deviceScaleFactor: 1 });
+    const problems: string[] = [];
+    for (const c of ATTACK_CASES.filter((x) => only.includes(x.id))) {
+      const out = await renderAttackCase(page, c);
+      problems.push(...out.problems);
+      console.log(`  ${out.receiptHash}  ${c.folder}/receipt  (item photo: ${c.item.sameAs}/item.png)`);
+    }
+    await browser.close();
+    console.log(`Rendered ${only.length} attack case(s) into ${OUT}; every other photo is unchanged.`);
+    for (const p of problems) console.error(`  - ${p}`);
+    if (problems.length > 0) process.exitCode = 1;
+    return;
+  }
   const browser = await launch();
   const page = await browser.newPage({ deviceScaleFactor: 1 });
   const problems: string[] = [];
@@ -151,15 +207,8 @@ async function main(): Promise<void> {
     const reused = 'recycledFrom' in c.item ? c.item.recycledFrom : null;
     writeFileSync(join(dir, 'case.json'), json({ ...rest, files: { receipt: 'receipt.png', item: 'item.png' }, reusedPhoto: reused ? { file: 'item.png', from: reused } : null }));
 
-    if (c.receipt.qr) {
-      const qr = await readQrCodes(decodePng(receipt));
-      const e = parseReceiptQr(qr.texts);
-      const want = c.receipt.qr;
-      if (!e) problems.push(`${c.id}: the receipt QR did not decode (${qr.texts.length} codes read).`);
-      else if (e.invoiceNumber !== want.invoiceNumber || e.sellerTaxId !== want.sellerTaxId || e.totalAmount !== want.total || e.issuedDate !== want.issuedDate) {
-        problems.push(`${c.id}: the receipt QR decoded to other fields (${JSON.stringify(e)}).`);
-      }
-    }
+    const qrIssue = await qrProblem(c.id, receipt, c.receipt.qr);
+    if (qrIssue) problems.push(qrIssue);
   }
 
   for (const c of CHECK_IN_CASES) {
@@ -183,6 +232,8 @@ async function main(): Promise<void> {
     const reused = 'recycledFrom' in c.photo ? c.photo.recycledFrom : null;
     writeFileSync(join(dir, 'case.json'), json({ ...rest, files: { line: 'line.png' }, reusedPhoto: reused ? { file: 'line.png', from: reused } : null }));
   }
+  // The attack-only known limits (D-147), after the cases whose item photos they copy.
+  for (const c of ATTACK_CASES) problems.push(...(await renderAttackCase(page, c)).problems);
   await browser.close();
 
   // Every fresh photo must stay clear of the earlier uploads (the eval compares

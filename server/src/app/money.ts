@@ -1192,6 +1192,29 @@ export async function reconcileBid(app: App, bidId: string): Promise<void> {
 // ---- recovery -------------------------------------------------------------------------
 
 /**
+ * A handover or shipping capture that only the recovery sweep completed (the queuer's command met
+ * an outage and was not tried again): the job moves on as that command would have moved it, so the
+ * request settles and the rest of the hold is released now, not when PayPal lets the authorization
+ * lapse on day 29 (found by the property tests, D-136).
+ */
+async function advanceRecoveredJob(app: App, req: Extract<MoneyRequest, { op: 'capture' }>): Promise<void> {
+  if (req.part === 'receipt') return;
+  const bidId = app.tx(() => {
+    const job = app.store.jobs.must(req.jobId);
+    if (job.status !== 'verified') return null;
+    if (req.part === 'handover') {
+      setJobStatus(app, job, 'delivered');
+      return job.bidId;
+    }
+    if (!job.shipment) return null;
+    job.amounts = { ...job.amounts, shippingCents: req.parts.shippingCents };
+    setJobStatus(app, job, 'shipped');
+    return job.bidId;
+  });
+  if (bidId) await reconcileBid(app, bidId);
+}
+
+/**
  * Retries money calls left `pending` by a crash or an outage, with the same
  * idempotency keys (PayPal answers a repeat with the first result), and
  * finishes what each one implies: a request whose authorization landed joins
@@ -1214,7 +1237,10 @@ export async function recoverPending(app: App): Promise<number> {
     try {
       if (req.op === 'capture') {
         const out = await finishCapture(app, entry.id, req);
-        if (out.completed) await payoutsAfterCapture(app, req.jobId, req.part, req.parts);
+        if (out.completed) {
+          await payoutsAfterCapture(app, req.jobId, req.part, req.parts);
+          await advanceRecoveredJob(app, req);
+        }
       } else if (req.op === 'payout') await finishPayout(app, entry.id, req);
       else if (req.op === 'void') {
         await finishVoid(app, entry.id, req);

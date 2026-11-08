@@ -279,7 +279,7 @@ Stop only the servers you started, by PID or with `npm run demo -- --stop` and t
 | `TaskPoint.queue` (`QueueInfo`) | `BookSnapshot.queue`, same field names |
 | `TaskPoint.bids` (all-in cents per bid) | `BookSnapshot.bids` (fee per unit, depth levels); single bids stay private |
 | `TaskPoint.offers` (`FeeOffer`) | best `AskQuote` (`feeCents` + `clock`), priced with `askFeeAt` / `askSchedule` |
-| in-hand resale of a bought item | removed from the web app too (decision D-07) |
+| selling on an item already bought | removed from the web app too (decision D-07) |
 | `TaskPoint.closesAt` (rolling rounds) | each bid's `deadlineAt` and the shop's hours |
 | the fee clock (step-down) | `shared/src/stepdown.ts`, imported by the web app |
 | `domain/money.ts` | `shared/src/money.ts` (same `usd`, `money`, `formatUsd`, `toPayPalValue`) |

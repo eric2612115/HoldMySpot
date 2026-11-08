@@ -1,0 +1,22 @@
+# The web app's Venmo check on the real PayPal sandbox, 2026-11-07 08:36 UTC (16:36 Taipei), from the Playwright
+# script that checked PayPal's v6 buttons before web/scripts/sandbox-walk.mjs existed (docs/WEB-INTEGRATION.md
+# section 5; docs/DECISIONS.md D-144). Mia's phone pressed PayPal's Venmo button; on the Venmo sandbox page the
+# script chose "Pay with PayPal" and signed in as a sandbox personal account labelled person-2, then approved.
+# "server:" is the server's own record of that request after the approval: "funding" is the button used, and the
+# hold is authorized. It shows a hold approved through the Venmo button, not that a Venmo balance paid it, and no
+# capture was tried. Output kept verbatim below the line of dashes; only these comment lines were added.
+# ------------------------------------------------------------------------------------------------------
+  window -> www.sandbox.paypal.com/checkoutnow
+  window -> www.sandbox.paypal.com/signin/
+pressed "Pay with PayPal" on the Venmo sandbox page
+typed the person-2 email
+  window -> www.sandbox.paypal.com/webapps/hermes/
+signed in as person-2
+  review shot at www.sandbox.paypal.com/webapps/hermes/
+pressed PayPal's continue button (1)
+pressed PayPal's continue button (2)
+window closed after 20 s; presses 2
+app: Queue fee No queuer has offered yet. Set your max fee: the first offer that reaches it takes your request. Held $56.00 your max fee $10 You are booked automatically when an offer reaches your max fee. Shipped to you; shipping is charged at cost. Cancel and rel
+money chip: PayPal sandbox: no real money $104.00 held
+server: {"bid":"bid_0070","bidStatus":"open","closeReason":null,"hold":"hold_0070","holdStatus":"held","amount":5600,"funding":"venmo","order":"03979024TL691052W","authorization":"7RB884471X718305E","renewalRequired":false}
+page logs: []

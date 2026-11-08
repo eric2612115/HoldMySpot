@@ -44,11 +44,19 @@ const declined = (out: CaptureOutcome) => !out.completed && out.entry.status ===
 /** Wrong handover codes allowed per job in one window, so the 4-digit code cannot be guessed through the API. */
 export const HANDOVER_MAX_MISSES = 5;
 export const HANDOVER_LOCK_MS = 60 * 60_000;
+/**
+ * Wrong handover codes allowed per job in all, whatever the windows (D-148). After that the code no
+ * longer works and the handover waits for a person, so a queuer holding the item can try at most 10
+ * of the 10,000 codes: a 0.1% chance, against about 120 codes a day with the hourly window alone.
+ */
+export const HANDOVER_MAX_TOTAL_MISSES = 10;
 
-function handoverMisses(app: App, jobId: string): number[] {
+/** Every wrong code's time for this job (`all`) and those inside the current window (`recent`). */
+function handoverMisses(app: App, jobId: string): { all: number[]; recent: number[] } {
   const raw = app.db.getMeta(`handover-misses:${jobId}`);
+  const all = raw ? (JSON.parse(raw) as number[]) : [];
   const since = app.now() - HANDOVER_LOCK_MS;
-  return raw ? (JSON.parse(raw) as number[]).filter((t) => t > since) : [];
+  return { all, recent: all.filter((t) => t > since) };
 }
 
 /**
@@ -387,15 +395,24 @@ export async function handover(app: App, u: User, jobId: string, code: string): 
   const job = ownJobAsQueuer(app, u, jobId);
   if (job.mode !== 'local') throw new ContractError('MODE_NOT_ALLOWED', 'This job ships; add tracking instead.');
   if (job.status !== 'verified') throw new ContractError('INVALID_TRANSITION', `The job is ${job.status}; hand over after the receipt is verified.`);
-  // The code is the requester's consent to the charge: after a few misses even the right code waits.
+  // The code is the requester's consent to the charge: after a few misses even the right code waits,
+  // and after HANDOVER_MAX_TOTAL_MISSES in all it never works again (a person finishes the handover).
   const misses = handoverMisses(app, job.id);
-  if (misses.length >= HANDOVER_MAX_MISSES) {
-    const retryAt = misses[0]! + HANDOVER_LOCK_MS;
+  if (misses.all.length >= HANDOVER_MAX_TOTAL_MISSES) {
+    throw new ContractError(
+      'RATE_LIMITED',
+      `${HANDOVER_MAX_TOTAL_MISSES} wrong handover codes: the code is locked for this job, and a person at HoldMySpot has to confirm the handover with the requester.`,
+      { retryAt: null, locked: true },
+    );
+  }
+  if (misses.recent.length >= HANDOVER_MAX_MISSES) {
+    const retryAt = misses.recent[0]! + HANDOVER_LOCK_MS;
     throw new ContractError('RATE_LIMITED', 'Too many wrong handover codes; ask the requester again later.', { retryAt });
   }
   if (!job.handoverCode || digitsOnly(code) !== job.handoverCode) {
-    app.db.setMeta(`handover-misses:${job.id}`, JSON.stringify([...misses, app.now()]));
-    throw new ContractError('WRONG_CODE', 'That is not the requester\'s handover code.', { attemptsLeft: Math.max(0, HANDOVER_MAX_MISSES - misses.length - 1) });
+    app.db.setMeta(`handover-misses:${job.id}`, JSON.stringify([...misses.all, app.now()]));
+    const left = Math.min(HANDOVER_MAX_MISSES - misses.recent.length, HANDOVER_MAX_TOTAL_MISSES - misses.all.length) - 1;
+    throw new ContractError('WRONG_CODE', 'That is not the requester\'s handover code.', { attemptsLeft: Math.max(0, left) });
   }
   const cap = receiptCapture(job.caps, job.amounts.retailCents ?? 0, job.mode);
   const parts = { retailCents: cap.retailCents, feeCents: cap.feeCents, shippingCents: 0, processingCents: cap.processingCents, captureFeeCents: cap.captureFeeCents, payoutFeesCents: cap.payoutFeesCents };
@@ -504,6 +521,8 @@ export async function reviewProof(app: App, proofId: string, req: ReviewProofReq
     const job = app.store.jobs.must(proof.jobId!);
     const { item } = itemById(job.itemId);
     const fallbackRetail = item.retail.currency === 'USD' ? item.retail.minor * job.qty : item.retailCents * job.qty;
+    // An amount read as $0 counts as unread, like null: a pass charges the shop price (D-135).
+    const read = proof.amounts?.retailCents ?? null;
     await decidePurchase(
       app,
       proof.id,
@@ -512,7 +531,7 @@ export async function reviewProof(app: App, proofId: string, req: ReviewProofReq
         checks: note,
         receipt: proof.receipt ?? { printedName: null, sellerTaxId: null, invoiceNumber: null, issuedAt: null, currency: null, lines: [], total: null, qr: null, codeSeen: null },
         receiptTotal: proof.amounts?.receiptTotal ?? null,
-        retailCents: proof.amounts?.retailCents ?? fallbackRetail,
+        retailCents: read !== null && read > 0 ? read : fallbackRetail,
         summary,
         ai: proof.ai,
       },

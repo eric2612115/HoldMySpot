@@ -1,0 +1,33 @@
+{
+  "kind": "purchase",
+  "id": "reprint-at-cap",
+  "description": "Known limit: Wei's real receipt for Mia's plush ($34.00), reprinted at her $36.00 cap with a receipt QR regenerated to match. Every check passes, and the capture uses the reprinted price, never more than the cap.",
+  "shopId": "paper-moon-toys",
+  "itemId": "plush-paper-moon",
+  "job": {
+    "id": "job-mia",
+    "qty": 1,
+    "proofCode": "K7MX4",
+    "feeCents": 1200,
+    "retailCapCentsPerUnit": 3600,
+    "shippingCents": 1200,
+    "mode": "ship"
+  },
+  "queuer": "Wei",
+  "requester": "Mia R.",
+  "checkedInAt": "2026-11-12T10:50:00-08:00",
+  "uploadedAt": "2026-11-12T11:42:00-08:00",
+  "expect": {
+    "status": "passed",
+    "hard": [],
+    "soft": [],
+    "retailCents": 3600,
+    "captureCents": 4800
+  },
+  "files": {
+    "receipt": "receipt.png",
+    "item": "item.png"
+  },
+  "itemSameAs": "paper-moon-mia-genuine",
+  "reusedPhoto": null
+}

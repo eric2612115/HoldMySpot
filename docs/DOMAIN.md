@@ -60,7 +60,7 @@ One book = one shop item. The server runs `matchBook(bids, asks, { shopCityId, n
 
 ### Fee clock (`shared/src/stepdown.ts`)
 
-`fee(t) = max(floor, open - step * floor((t - startsAt) / interval))`; the web app imports the same functions. The clock's `startsAt` is null until the claim checks in, so nobody can run a falling fee from home; before check-in the ask sells at its opening fee. Example: open $15, step $1 every 5 minutes, floor $8; checked in at 10:50, the fee is $14 at 10:55, $13 at 11:00, $12 at 11:05 and $8 from 11:25. The clock lives on the queuer's fee only: a bought item is never put up for sale again (D-07).
+`fee(t) = max(floor, open - step * floor((t - startsAt) / interval))`; the web app imports the same functions. The clock's `startsAt` is null until the claim's check-in passes (the position the phone reports inside the geofence and a line photo with the visit's code), so before check-in the ask sells at its opening fee; a phone that reports a false position is a known limit (README). Example: open $15, step $1 every 5 minutes, floor $8; checked in at 10:50, the fee is $14 at 10:55, $13 at 11:00, $12 at 11:05 and $8 from 11:25. The clock lives on the queuer's fee only: a bought item is never put up for sale again (D-07).
 
 ## 5. Location rules (`shared/src/geo.ts`)
 
@@ -227,7 +227,7 @@ HoldMySpot's margin by job type (`server/test/processing.test.ts`): a shipped or
 - **Catalog only.** Bids name a seeded shop item (`shared/src/seed.ts`); there is no free-form item in v1.
 - **Store limits.** Bid qty and ask capacity are capped by the item's per-person limit; one job = one purchase for one named requester.
 - **Deadlines.** At most `maxBidDays` (10) ahead. Shipped jobs must get tracking within `shipWithinDays` (5) of verification.
-- **Excluded.** Event tickets; medical, government and free public queues; resale of perishable food (cakes and ramen are local errands only); in-hand resale of bought items (removed, see D-07); random assignment of any kind. Items are a limited cake or pastry, a one-per-customer plush drop and a famous ramen line. 18+ only.
+- **Excluded.** Event tickets; medical, government and free public queues; perishable food bought to sell on (cakes and ramen are local errands only); selling on items already bought (removed, see D-07); random assignment of any kind. Items are a limited cake or pastry, a one-per-customer plush drop and a famous ramen line. 18+ only.
 
 ## 9. Words on screen
 
@@ -239,4 +239,4 @@ Required disclosures (exact numbers filled in):
 - Every screen in sandbox or fake mode: a mode banner ("PayPal sandbox: no real money" or "Simulated PayPal").
 - AI results: "Checked by AI and rules" plus the provider stamp; a photo no model and no recording read says "Simulated reading, no AI" with the reading it got (D-128); estimates are labelled as estimates.
 
-Avoid on screen and in the pitch (from the 11-07 policy check): NFT, mint, token, floor price, flip, trading, liquidity, spread; loot box, gacha, chase, jackpot, break; scalp, resell for profit, skip the line, bots, hype; escrow, wallet, credits, cash out; "PayPal protects every trade"; any real brand. Internal names (bid, ask, book) stay in code; screen copy is presentation and can say "requests" and "offers".
+Avoid on screen and in the pitch (from the 11-07 policy check): crypto and exchange words (NFT, mint, token, floor price, trading, liquidity, spread); gambling words (loot box, gacha, chase, jackpot, break); ticket-tout and line-jumping words (selling on for profit, skipping the line, bots, hype); payment words for services PayPal regulates separately (wallet, credits, cash out, or any name for the hold other than a PayPal hold); "PayPal protects every trade"; any real brand. Internal names (bid, ask, book) stay in code; screen copy is presentation and can say "requests" and "offers".

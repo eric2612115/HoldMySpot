@@ -108,6 +108,15 @@ export class FakePayPal implements PaymentsPort, FakePaymentsControls {
     return true;
   }
 
+  /** Simulates PayPal finishing a PENDING capture (HMS_FAKE_FAIL capture:pending). True when it was pending. */
+  completePendingCapture(captureId: string): boolean {
+    const capture = this.#inner.exportState().captures[captureId];
+    if (!capture || capture.status !== 'PENDING') return false;
+    this.#inner.completePendingCapture(captureId);
+    this.#save();
+    return true;
+  }
+
   /** Simulates the buyer opening a dispute on a capture. Returns the dispute id. */
   openDispute(captureId: string, opts?: { reason?: string; amountCents?: number }): string {
     const id = this.#inner.openDispute(captureId, opts);

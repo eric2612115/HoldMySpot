@@ -645,3 +645,39 @@ export const CHECK_IN_CASES: CheckInCase[] = [
 ];
 
 export const ALL_CASES: FixtureCase[] = [...PURCHASE_CASES, ...CHECK_IN_CASES];
+
+// ---------------------------------------------------------------------------
+// Known limits, rendered for `npm run attack` only
+// ---------------------------------------------------------------------------
+
+/**
+ * A forgery the rules cannot see, kept to show its real outcome (docs/DECISIONS.md D-147). Its
+ * folder starts with `_`, so `npm run ai:eval`, the ablation and the fixture tests leave it out
+ * (they list cases with `listCases`) while the rules-only reader still finds its truth.json. No
+ * model reading is recorded for it: in the zero-key demo it is read from that truth sidecar.
+ */
+export interface AttackCase extends Omit<PurchaseCase, 'item'> {
+  /** Folder under server/fixtures/proofs. */
+  folder: string;
+  /** The item photo is another case's, byte for byte (the forger really bought the item). */
+  item: { sameAs: string; code: string; units: number };
+}
+
+export const ATTACK_CASES: AttackCase[] = [
+  {
+    kind: 'purchase',
+    id: 'reprint-at-cap',
+    folder: '_reprint-at-cap',
+    description:
+      "Known limit: Wei's real receipt for Mia's plush ($34.00), reprinted at her $36.00 cap with a receipt QR regenerated to match. Every check passes, and the capture uses the reprinted price, never more than the cap.",
+    ...PM,
+    job: shipJob('job-mia', 'K7MX4', 1200),
+    queuer: 'Wei',
+    requester: 'Mia R.',
+    checkedInAt: sf('10:50:00'),
+    uploadedAt: sf('11:42:00'),
+    receipt: moonReceipt({ invoice: 'PM-1112-0412', time: '11:41:07', lines: [{ name: BUNNY_LINE, qty: 1, unit: 3600 }], look: { background: 'wood', rotate: -2.5, tiltX: 7, x: -10, y: 5, scale: 1, light: 1, lightFrom: 'left' } }),
+    item: { sameAs: 'paper-moon-mia-genuine', code: 'K7MX4', units: 1 },
+    expect: { status: 'passed', hard: [], soft: [], retailCents: 3600, captureCents: 4800 },
+  },
+];

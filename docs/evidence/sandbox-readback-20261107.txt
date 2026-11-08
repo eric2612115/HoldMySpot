@@ -1,0 +1,28 @@
+# GET-only read-back of the two hero errands on the real PayPal sandbox (docs/DECISIONS.md D-126, D-144).
+# Run 2026-11-07 13:33 UTC (21:33 Taipei) with `node --version && node readback.mjs`: the server's sandbox
+# PayPal client (server/src/paypal) with the sandbox app of both runs, GET calls only (authorization, order,
+# each capture, each payout batch). Each line below is PayPal's own answer, printed as ids, statuses and
+# amounts; no request body, key, email address or name. "schedule" is shared/src/money.ts's fee for that
+# amount. The output is kept verbatim below the line of dashes; only these comment lines were added.
+# Repeat it for orders your own app made: npm run paypal:check -- --order <id> (scripts/paypal-check.mjs).
+# The last line of each section (captured, released, paid out, PayPal fees, left with HoldMySpot) is computed by
+# the read-back script from the lines above it; it is not a PayPal field. That script ran in the 11-07 build session
+# and is not in this repository (these three comment lines were added on 2026-11-08, D-149).
+# ------------------------------------------------------------------------------------------------------
+v24.15.0
+== lifecycle 20261107-2047
+authorization 5XK23595W1944882C $63.70 CAPTURED order 6EG92708FG4945307
+order 6EG92708FG4945307 COMPLETED; trackers: HPG-2611-55706958 SHIPPED
+capture 24U26127PB091713A $48.69 COMPLETED fee $2.19 schedule $2.19
+capture 01D83946MR897871E $9.57 COMPLETED fee $0.82 schedule $0.82
+payout batch 5MVTE5WFTZD24 SUCCESS item FQCNEBP9F6PWG $10.80 SUCCESS fee $0.25
+payout batch GS8Q7QS46SBDS SUCCESS item V36YMC8FRVWTW $42.75 SUCCESS fee $0.25
+captured $58.26, released $5.44, paid out $53.55, PayPal fees $3.51, left with HoldMySpot $1.20
+== web app run (D-121)
+authorization 88232929HR885933A $63.70 CAPTURED order 0LK56938DW451581H
+order 0LK56938DW451581H COMPLETED; trackers: HPG-2611-57842795 SHIPPED
+capture 54N68839TA957213Y $48.69 COMPLETED fee $2.19 schedule $2.19
+capture 4U786596DF2537313 $9.57 COMPLETED fee $0.82 schedule $0.82
+payout batch 88H3RUEBP9L4W SUCCESS item N34PKLKNPJEHQ $10.80 SUCCESS fee $0.25
+payout batch 32VC3V9YGQ78C SUCCESS item QFPFX9CYX3LHN $42.75 SUCCESS fee $0.25
+captured $58.26, released $5.44, paid out $53.55, PayPal fees $3.51, left with HoldMySpot $1.20

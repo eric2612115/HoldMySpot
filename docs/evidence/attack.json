@@ -1,0 +1,725 @@
+{
+  "tool": "npm run attack",
+  "format": 1,
+  "ok": true,
+  "startedAt": "2026-11-08T03:00:22.294Z",
+  "commit": "9b85330",
+  "uncommittedChanges": true,
+  "codeTrees": {
+    "shared": "21c1a27239ea",
+    "server": "4ec86728a3c8",
+    "web": "bd8fe9283b30",
+    "ops": "8d1f2f98af7e",
+    "scripts": "a0bbf06d85c6"
+  },
+  "node": "24.22.2",
+  "platform": "darwin arm64",
+  "server": {
+    "url": "http://127.0.0.1:51947",
+    "startedHere": true,
+    "mode": "fake",
+    "ai": {
+      "provider": "fake",
+      "model": "rules-v1",
+      "mode": "replay"
+    }
+  },
+  "parts": [
+    "receipts",
+    "money",
+    "limits",
+    "paypal"
+  ],
+  "photos": {
+    "provider": "muse",
+    "model": "muse-spark-1.3",
+    "mode": "replay",
+    "latencyMs": 0
+  },
+  "rows": [
+    {
+      "n": 1,
+      "id": "genuine",
+      "attempt": "Genuine receipt and item photo (control: should pass)",
+      "stoppedBy": "-",
+      "answer": "passed",
+      "code": "passed",
+      "detail": "Receipt matches Paper Moon Toys at 11:41.",
+      "refused": false,
+      "moved": {
+        "captured": 4869,
+        "refunded": 0,
+        "paidOut": 1080,
+        "held": 0
+      },
+      "expected": {
+        "captured": 4869,
+        "refunded": 0,
+        "paidOut": 1080,
+        "held": 0
+      },
+      "outcome": "intended",
+      "intended": true,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 2,
+      "id": "paper-moon-recycled-photo",
+      "attempt": "Item photo recycled from Lin's job on 11-11",
+      "stoppedBy": "rules",
+      "answer": "duplicate_photo",
+      "code": "duplicate_photo",
+      "detail": "Receipt failed 1 check: recycled photo. The item photo matches an older upload.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 3,
+      "id": "paper-moon-qr-wrong-store",
+      "attempt": "Receipt whose QR carries another store's ID",
+      "stoppedBy": "rules",
+      "answer": "shop_match",
+      "code": "shop_match",
+      "detail": "Receipt failed 1 check: shop. Store ID 41500085 is not Paper Moon Toys's.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 4,
+      "id": "paper-moon-time-before-checkin",
+      "attempt": "Receipt printed at 10:31, before the check-in",
+      "stoppedBy": "AI + rules",
+      "answer": "time_window",
+      "code": "time_window",
+      "detail": "Receipt failed 1 check: printed time. Printed at 10:31, before the queuer checked in.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 5,
+      "id": "paper-moon-totals-off",
+      "attempt": "Receipt whose line does not add up to its total",
+      "stoppedBy": "AI + rules",
+      "answer": "totals_add_up",
+      "code": "totals_add_up",
+      "detail": "Receipt failed 1 check: totals. The lines add up to 3400, but the total says 3600.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 6,
+      "id": "paper-moon-wrong-code",
+      "attempt": "Item photo showing another job's code",
+      "stoppedBy": "AI + rules",
+      "answer": "code_visible",
+      "code": "code_visible",
+      "detail": "Receipt failed 1 check: one-time code. The job code was not found next to the item.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 7,
+      "id": "paper-moon-generator-metadata",
+      "attempt": "Receipt file made by an image generator",
+      "stoppedBy": "sent to a person",
+      "answer": "generator_metadata (to a person)",
+      "code": "generator_metadata",
+      "detail": "Receipt needs a person to check 1 check: image metadata. Image-generator metadata was found.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "to_a_person",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 8,
+      "id": "raise-max-fee",
+      "attempt": "Raise the max fee to $40.00 after PayPal held $63.70",
+      "stoppedBy": "rules",
+      "answer": "OVER_LIMIT",
+      "code": "OVER_LIMIT",
+      "detail": "That would need $92.71, more than the $63.70 PayPal holds.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 9,
+      "id": "no-check-in",
+      "attempt": "Buy and send a receipt without checking in",
+      "stoppedBy": "state machine",
+      "answer": "INVALID_TRANSITION",
+      "code": "INVALID_TRANSITION",
+      "detail": "Bought: The job is claimed; buy once you are in the line (checked in). Receipt: The job is claimed.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 10,
+      "id": "check-in-from-home",
+      "attempt": "Check in from home, 3.1 km from the shop",
+      "stoppedBy": "rules",
+      "answer": "OUTSIDE_GEOFENCE",
+      "code": "OUTSIDE_GEOFENCE",
+      "detail": "You are 3066 m from Paper Moon Toys; check in within 80 m.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 11,
+      "id": "claim-released",
+      "attempt": "Take a request whose hold was released",
+      "stoppedBy": "state machine",
+      "answer": "CONFLICT",
+      "code": "CONFLICT",
+      "detail": "This request is not open.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 12,
+      "id": "inflate-shipping",
+      "attempt": "Claim $500.00 shipping on a $12.00 budget",
+      "stoppedBy": "rules",
+      "answer": "capped: over-claims up to the budget are paid",
+      "code": "capped",
+      "detail": "Shipping charged at $12.00 of the $500.00 claimed, plus PayPal's fee on it at cost; the payout repays the $34.00 shop price and that $12.00. Nothing checks the postage itself, so a claim up to the budget is paid as reported.",
+      "refused": false,
+      "moved": {
+        "captured": 1294,
+        "refunded": 0,
+        "paidOut": 4600,
+        "held": 0
+      },
+      "expected": {
+        "captured": 1294,
+        "refunded": 0,
+        "paidOut": 4600,
+        "held": 0
+      },
+      "outcome": "capped",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 13,
+      "id": "replay-tracking",
+      "attempt": "Replay that tracking call (same Idempotency-Key)",
+      "stoppedBy": "state machine",
+      "answer": "first answer replayed",
+      "code": "REPLAYED",
+      "detail": "The server answered with its first response (Idempotent-Replay: true) and called PayPal for nothing.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 14,
+      "id": "capture-after-final",
+      "attempt": "Add tracking again to capture after the final one",
+      "stoppedBy": "state machine",
+      "answer": "INVALID_TRANSITION",
+      "code": "INVALID_TRANSITION",
+      "detail": "The job is shipped; add tracking after the receipt is verified.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 15,
+      "id": "second-fee-payout",
+      "attempt": "Send the receipt again for a second fee payout",
+      "stoppedBy": "state machine",
+      "answer": "INVALID_TRANSITION",
+      "code": "INVALID_TRANSITION",
+      "detail": "The job is shipped.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 16,
+      "id": "approve-after-sell-out",
+      "attempt": "Approve a hold after the item sold out",
+      "stoppedBy": "state machine",
+      "answer": "SOLD_OUT",
+      "code": "SOLD_OUT",
+      "detail": "Mochi Bunny plush sold out at Paper Moon Toys while PayPal was approving; nothing was held or charged.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 17,
+      "id": "guess-handover-code",
+      "attempt": "Guess the 4-digit handover code for two hours, then right",
+      "stoppedBy": "rules",
+      "answer": "locked after 10 wrong codes",
+      "code": "RATE_LIMITED",
+      "detail": "11:50: five wrong codes, then the right one answered RATE_LIMITED; 12:52: five more wrong codes; 13:30: the right code answered RATE_LIMITED: 10 wrong handover codes: the code is locked for this job, and a person at HoldMySpot has to confirm the handover with the requester.",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 18,
+      "id": "paypal-over-115",
+      "attempt": "Capture $73.26 of a $63.70 hold, straight at PayPal",
+      "stoppedBy": "PayPal emulator",
+      "answer": "MAX_CAPTURE_AMOUNT_EXCEEDED",
+      "code": "MAX_CAPTURE_AMOUNT_EXCEEDED",
+      "detail": "HTTP 422: UNPROCESSABLE_ENTITY/MAX_CAPTURE_AMOUNT_EXCEEDED (the answer the real sandbox gave, copied by the emulator)",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 19,
+      "id": "paypal-after-final",
+      "attempt": "Capture again after the final capture, straight at PayPal",
+      "stoppedBy": "PayPal emulator",
+      "answer": "AUTHORIZATION_ALREADY_CAPTURED",
+      "code": "AUTHORIZATION_ALREADY_CAPTURED",
+      "detail": "HTTP 422: UNPROCESSABLE_ENTITY/AUTHORIZATION_ALREADY_CAPTURED (the answer the real sandbox gave, copied by the emulator)",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 20,
+      "id": "paypal-payout-again",
+      "attempt": "Send the same payout batch again, straight at PayPal",
+      "stoppedBy": "PayPal emulator",
+      "answer": "USER_BUSINESS_ERROR",
+      "code": "USER_BUSINESS_ERROR",
+      "detail": "HTTP 400: USER_BUSINESS_ERROR/Batch with given sender_batch_id already exists (the answer the real sandbox gave, copied by the emulator)",
+      "refused": true,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "refused",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 21,
+      "id": "reprint-at-cap",
+      "attempt": "Reprint the $34.00 receipt at the $36.00 cap, QR to match",
+      "stoppedBy": "not stopped",
+      "answer": "passed: shop price read as $36.00",
+      "code": "passed",
+      "detail": "Receipt matches Paper Moon Toys at 11:41. The reprint matches itself (lines, total and QR) and stays under the cap, so every check passes: $2.07 more is captured than the real receipt would ($2.00 of shop price and PayPal's fee on it), and never more than the cap.",
+      "refused": false,
+      "moved": {
+        "captured": 5076,
+        "refunded": 0,
+        "paidOut": 1080,
+        "held": 0
+      },
+      "expected": {
+        "captured": 5076,
+        "refunded": 0,
+        "paidOut": 1080,
+        "held": 0
+      },
+      "outcome": "known_limit",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    },
+    {
+      "n": 22,
+      "id": "spoofed-check-in",
+      "attempt": "Check in from home, the phone reporting the shop's position",
+      "stoppedBy": "not stopped",
+      "answer": "checked in; fee fell to $11.00 and filled",
+      "code": "checked_in",
+      "detail": "The server takes the position the phone reports, and the line photo shows the visit's code, so the check-in passed at 10:42 and the fee clock started, 3.1 km from the shop. From home, his fee fell from $15.00 and matched Priya K. at $11.00 at 11:02. No money moves until a receipt passes.",
+      "refused": false,
+      "moved": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "expected": {
+        "captured": 0,
+        "refunded": 0,
+        "paidOut": 0,
+        "held": 0
+      },
+      "outcome": "known_limit",
+      "intended": false,
+      "ok": true,
+      "asExpected": true,
+      "notes": []
+    }
+  ],
+  "markets": [
+    {
+      "market": "fake receipt paper-moon-recycled-photo",
+      "holds": 0,
+      "holdsInMarket": 65,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "fake receipt paper-moon-qr-wrong-store",
+      "holds": 0,
+      "holdsInMarket": 65,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "fake receipt paper-moon-time-before-checkin",
+      "holds": 0,
+      "holdsInMarket": 65,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "fake receipt paper-moon-totals-off",
+      "holds": 0,
+      "holdsInMarket": 65,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "fake receipt paper-moon-wrong-code",
+      "holds": 0,
+      "holdsInMarket": 64,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "fake receipt paper-moon-generator-metadata",
+      "holds": 0,
+      "holdsInMarket": 65,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "handover code",
+      "holds": 0,
+      "holdsInMarket": 65,
+      "jobs": 1,
+      "violations": []
+    },
+    {
+      "market": "money tricks",
+      "holds": 1,
+      "holdsInMarket": 67,
+      "jobs": 2,
+      "violations": []
+    },
+    {
+      "market": "known limits",
+      "holds": 1,
+      "holdsInMarket": 65,
+      "jobs": 2,
+      "violations": []
+    }
+  ],
+  "table": [
+    " #  Attempt                                                      Stopped by        Answer                                         Moved",
+    " 1  Genuine receipt and item photo (control: should pass)        -                 passed                                         $48.69 charged, $10.80 paid out (intended)",
+    " 2  Item photo recycled from Lin's job on 11-11                  rules             duplicate_photo                                $0.00",
+    " 3  Receipt whose QR carries another store's ID                  rules             shop_match                                     $0.00",
+    " 4  Receipt printed at 10:31, before the check-in                AI + rules        time_window                                    $0.00",
+    " 5  Receipt whose line does not add up to its total              AI + rules        totals_add_up                                  $0.00",
+    " 6  Item photo showing another job's code                        AI + rules        code_visible                                   $0.00",
+    " 7  Receipt file made by an image generator                      sent to a person  generator_metadata (to a person)               $0.00",
+    " 8  Raise the max fee to $40.00 after PayPal held $63.70         rules             OVER_LIMIT                                     $0.00",
+    " 9  Buy and send a receipt without checking in                   state machine     INVALID_TRANSITION                             $0.00",
+    "10  Check in from home, 3.1 km from the shop                     rules             OUTSIDE_GEOFENCE                               $0.00",
+    "11  Take a request whose hold was released                       state machine     CONFLICT                                       $0.00",
+    "12  Claim $500.00 shipping on a $12.00 budget                    rules             capped: over-claims up to the budget are paid  $12.94 charged, $46.00 paid out (capped)",
+    "13  Replay that tracking call (same Idempotency-Key)             state machine     first answer replayed                          $0.00",
+    "14  Add tracking again to capture after the final one            state machine     INVALID_TRANSITION                             $0.00",
+    "15  Send the receipt again for a second fee payout               state machine     INVALID_TRANSITION                             $0.00",
+    "16  Approve a hold after the item sold out                       state machine     SOLD_OUT                                       $0.00",
+    "17  Guess the 4-digit handover code for two hours, then right    rules             locked after 10 wrong codes                    $0.00",
+    "18  Capture $73.26 of a $63.70 hold, straight at PayPal          PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED                    $0.00",
+    "19  Capture again after the final capture, straight at PayPal    PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED                 $0.00",
+    "20  Send the same payout batch again, straight at PayPal         PayPal emulator   USER_BUSINESS_ERROR                            $0.00",
+    "21  Reprint the $34.00 receipt at the $36.00 cap, QR to match    not stopped       passed: shop price read as $36.00              $50.76 charged, $10.80 paid out (known limit)",
+    "22  Check in from home, the phone reporting the shop's position  not stopped       checked in; fee fell to $11.00 and filled      $0.00 (known limit)"
+  ]
+}

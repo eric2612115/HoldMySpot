@@ -1,0 +1,1027 @@
+{
+  "format": 1,
+  "generatedBy": "npm run numbers (scripts/readme-numbers.mjs)",
+  "note": "Derived from the files in \"sources\"; do not edit. server/test/readme-numbers.test.ts fails when this file or README.md disagrees with them.",
+  "sources": {
+    "tests": "docs/evidence/tests.json",
+    "aiEval": "docs/evidence/ai-eval.json",
+    "attack": "docs/evidence/attack.json",
+    "smoke": "docs/evidence/smoke.json",
+    "runs": "docs/evidence/runs.json",
+    "ablation": "docs/evidence/ablation.json",
+    "gates": "docs/SANDBOX-GATES.md",
+    "serverRun": "server/test/paypal/fixtures/recorded/20261107-2047-lifecycle",
+    "firstRun": "server/test/paypal/fixtures/recorded/20261107-1642-lifecycle",
+    "readback": "docs/evidence/sandbox-readback-20261107.txt",
+    "webRun": "docs/evidence/web-run-20261107.txt",
+    "venmo": "docs/evidence/venmo-hold-20261107.txt",
+    "aiAnswers": "server/fixtures/ai",
+    "rules": "shared/src/money.ts"
+  },
+  "tests": {
+    "steps": 6,
+    "tests": 679,
+    "passed": 679,
+    "failed": 0,
+    "skipped": 0,
+    "byPackage": {
+      "shared": 102,
+      "server": 426,
+      "web": 131,
+      "ops": 20
+    },
+    "seconds": 77,
+    "aboutSeconds": 80,
+    "os": "macOS",
+    "platform": "darwin arm64",
+    "node": "24.22.2",
+    "npm": "11.19.1",
+    "commit": "9b85330",
+    "recordedOn": "2026-11-08",
+    "properties": {
+      "tests": 18,
+      "runs": 31180,
+      "runsByPackage": {
+        "shared": 29000,
+        "server": 180,
+        "ops": 2000
+      },
+      "covers": [
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "P6",
+        "P7",
+        "P8"
+      ],
+      "list": [
+        {
+          "pkg": "shared",
+          "name": "P1 every captured cent goes to the queuer, to PayPal or to HoldMySpot's 10%, each share from its own rule, and the processing line is PayPal's fee",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P2 the captures of any split never pass the hold, receipts and labels above the caps included",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P4 every completed job leaves HoldMySpot exactly floor(10% of the queue fee); a refund after the fee payout costs it that payout and PayPal's fees, no more",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P2 the limit check refuses every capture past 100% of the hold, whatever PayPal's 115% would allow",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P3 every forgery fails its hard check and fails the receipt; soft issues go to a person; a clean receipt passes",
+          "runs": 500
+        },
+        {
+          "pkg": "shared",
+          "name": "P3 known limit: a real receipt reprinted at any price up to the requester's cap, its QR regenerated to match, passes every check; the price charged is the reprint's, never above the cap",
+          "runs": 500
+        },
+        {
+          "pkg": "shared",
+          "name": "P6 the step-down never rises, never goes below its floor or above its opening fee, and drops only by whole steps",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P6 a resting max fills at the first step at or below it, never above it, never below the floor",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P6 before check-in the clock has not started: the fee stays at the opening fee at any time",
+          "runs": 2000
+        },
+        {
+          "pkg": "shared",
+          "name": "P6 every fill is at the ask's clock price now, at or under the bid's max, between compatible orders, within quantities",
+          "runs": 1000
+        },
+        {
+          "pkg": "shared",
+          "name": "P6 price-time priority holds and no trade is left on the table",
+          "runs": 1000
+        },
+        {
+          "pkg": "shared",
+          "name": "P6 the result does not depend on the order the book lists its orders in",
+          "runs": 1000
+        },
+        {
+          "pkg": "shared",
+          "name": "P7 the highest max fee a hold covers fits that hold, and one cent more does not",
+          "runs": 1000
+        },
+        {
+          "pkg": "shared",
+          "name": "P8 each capture nets exactly its base plus its payout fees after PayPal's fee, and one cent less would not",
+          "runs": 5000
+        },
+        {
+          "pkg": "shared",
+          "name": "P8 the gross-up is exact for any percentage below 100% and any fixed fees, not only PayPal's current ones",
+          "runs": 5000
+        },
+        {
+          "pkg": "server",
+          "name": "P1-P4 P6 P7: any day of requests, offers, receipts and PayPal failures keeps every money and market rule",
+          "runs": 120
+        },
+        {
+          "pkg": "server",
+          "name": "P5 the same day with lost, dropped and garbled PayPal answers ends with the same PayPal objects and amounts",
+          "runs": 60
+        },
+        {
+          "pkg": "ops",
+          "name": "P7 every option the rescheduler lists is allowed now and keeps each job on its shop and item, inside the offer's room, at or under the max fee and inside the hold",
+          "runs": 2000
+        }
+      ],
+      "serverDays": [
+        {
+          "name": "P1-P4 P6 P7: any day of requests, offers, receipts and PayPal failures keeps every money and market rule",
+          "runs": 120,
+          "coverage": {
+            "days": 120,
+            "checkIns": 216,
+            "matches": 203,
+            "clockFills": 34,
+            "completed": 41,
+            "rejected": 24,
+            "refunded": 9,
+            "captures": 68,
+            "payouts": 68,
+            "failures": 26,
+            "restarts": 118,
+            "flaggedPayouts": 0,
+            "reassigned": 6,
+            "expiredHolds": 40
+          }
+        },
+        {
+          "name": "P5 the same day with lost, dropped and garbled PayPal answers ends with the same PayPal objects and amounts",
+          "runs": 60,
+          "coverage": {
+            "days": 120,
+            "checkIns": 230,
+            "matches": 228,
+            "clockFills": 36,
+            "completed": 52,
+            "rejected": 16,
+            "refunded": 10,
+            "captures": 86,
+            "payouts": 86,
+            "failures": 25,
+            "restarts": 184,
+            "flaggedPayouts": 0,
+            "reassigned": 12,
+            "expiredHolds": 38
+          }
+        }
+      ]
+    }
+  },
+  "workedExample": {
+    "inputs": {
+      "retailCapCents": 3600,
+      "maxFeeCents": 1200,
+      "shippingBudgetCents": 1200,
+      "receiptCents": 3400,
+      "labelCents": 875
+    },
+    "pricing": {
+      "captureBps": 349,
+      "captureFixedCents": 49,
+      "payoutItemCents": 25
+    },
+    "processingReserveCents": 370,
+    "heldCents": 6370,
+    "receiptCapture": {
+      "amountCents": 4869,
+      "retailCents": 3400,
+      "feeCents": 1200,
+      "processingCents": 269,
+      "paypalFeeCents": 219,
+      "payoutFeesCents": 50
+    },
+    "shippingCapture": {
+      "amountCents": 957,
+      "shippingCents": 875,
+      "processingCents": 82,
+      "paypalFeeCents": 82
+    },
+    "capturedCents": 5826,
+    "releasedCents": 544,
+    "payouts": [
+      {
+        "purpose": "fee",
+        "amountCents": 1080
+      },
+      {
+        "purpose": "reimbursement",
+        "amountCents": 4275
+      }
+    ],
+    "paidOutCents": 5355,
+    "processingCents": 351,
+    "paypalFeesCents": 351,
+    "platformCents": 120
+  },
+  "sandbox": {
+    "serverRun": {
+      "run": "20261107-2047",
+      "fixtures": "server/test/paypal/fixtures/recorded/20261107-2047-lifecycle",
+      "order": "6EG92708FG4945307",
+      "authorization": {
+        "id": "5XK23595W1944882C",
+        "status": "CAPTURED",
+        "amountCents": 6370
+      },
+      "captures": [
+        {
+          "id": "24U26127PB091713A",
+          "status": "COMPLETED",
+          "amountCents": 4869,
+          "paypalFeeCents": 219,
+          "final": true
+        },
+        {
+          "id": "01D83946MR897871E",
+          "status": "COMPLETED",
+          "amountCents": 957,
+          "paypalFeeCents": 82,
+          "final": true
+        }
+      ],
+      "capturedCents": 5826,
+      "releasedCents": 544,
+      "tracking": {
+        "number": "HPG-2611-55706958",
+        "status": "SHIPPED"
+      },
+      "payouts": [
+        {
+          "batch": "5MVTE5WFTZD24",
+          "purpose": "fee",
+          "status": "SUCCESS",
+          "amountCents": 1080,
+          "paypalFeeCents": 25
+        },
+        {
+          "batch": "GS8Q7QS46SBDS",
+          "purpose": "reimbursement",
+          "status": "SUCCESS",
+          "amountCents": 4275,
+          "paypalFeeCents": 25
+        }
+      ],
+      "paidOutCents": 5355,
+      "paypalFeesCents": 351,
+      "platformCents": 120,
+      "matchesWorkedExample": true,
+      "readBackAgain": "2026-11-07 13:33 UTC"
+    },
+    "webRun": {
+      "readBackAt": "2026-11-07 13:33 UTC",
+      "order": "0LK56938DW451581H",
+      "orderStatus": "COMPLETED",
+      "authorization": {
+        "id": "88232929HR885933A",
+        "status": "CAPTURED",
+        "amountCents": 6370
+      },
+      "captures": [
+        {
+          "id": "54N68839TA957213Y",
+          "status": "COMPLETED",
+          "amountCents": 4869,
+          "paypalFeeCents": 219
+        },
+        {
+          "id": "4U786596DF2537313",
+          "status": "COMPLETED",
+          "amountCents": 957,
+          "paypalFeeCents": 82
+        }
+      ],
+      "releasedCents": 544,
+      "tracking": {
+        "number": "HPG-2611-57842795",
+        "status": "SHIPPED"
+      },
+      "payouts": [
+        {
+          "purpose": "fee",
+          "batch": "88H3RUEBP9L4W",
+          "item": "N34PKLKNPJEHQ",
+          "status": "SUCCESS",
+          "amountCents": 1080,
+          "paypalFeeCents": 25
+        },
+        {
+          "purpose": "reimbursement",
+          "batch": "32VC3V9YGQ78C",
+          "item": "QFPFX9CYX3LHN",
+          "status": "SUCCESS",
+          "amountCents": 4275,
+          "paypalFeeCents": 25
+        }
+      ],
+      "paypalFeesCents": 351,
+      "platformCents": 120,
+      "walkChecks": {
+        "passed": 9,
+        "of": 9
+      },
+      "liveModel": true,
+      "matchesWorkedExample": true,
+      "matchesLedger": true
+    },
+    "firstRun": {
+      "run": "20261107-1642",
+      "fixtures": "server/test/paypal/fixtures/recorded/20261107-1642-lifecycle",
+      "order": "37U93450B4252724X",
+      "authorization": {
+        "id": "1E796973JR5822318",
+        "status": "CAPTURED",
+        "amountCents": 6000
+      },
+      "captures": [
+        {
+          "id": "7RU11396ML001835N",
+          "status": "COMPLETED",
+          "amountCents": 4600,
+          "paypalFeeCents": 210,
+          "final": true
+        },
+        {
+          "id": "7LS50944XC7820028",
+          "status": "COMPLETED",
+          "amountCents": 875,
+          "paypalFeeCents": 80,
+          "final": true
+        }
+      ],
+      "capturedCents": 5475,
+      "releasedCents": 525,
+      "tracking": {
+        "number": "HPG-2611-40974582",
+        "status": "SHIPPED"
+      },
+      "payouts": [
+        {
+          "batch": "J3793PVGQALCJ",
+          "purpose": "fee",
+          "status": "SUCCESS",
+          "amountCents": 1080,
+          "paypalFeeCents": 25
+        },
+        {
+          "batch": "ZYK8RLDKRPUE8",
+          "purpose": "reimbursement",
+          "status": "PROCESSING",
+          "amountCents": 4275,
+          "paypalFeeCents": 25
+        }
+      ],
+      "paidOutCents": 5355,
+      "paypalFeesCents": 340,
+      "platformCents": -220
+    },
+    "venmo": {
+      "authorization": "7RB884471X718305E",
+      "order": "03979024TL691052W",
+      "amountCents": 5600,
+      "button": "venmo",
+      "holdStatus": "held",
+      "takenAt": "2026-11-07 08:36 UTC"
+    },
+    "gates": {
+      "page": "docs/SANDBOX-GATES.md",
+      "lastUpdate": "2026-11-07 20:48 Taipei",
+      "pass": [
+        "G0",
+        "G1",
+        "G2",
+        "G3",
+        "G6",
+        "G7",
+        "G8",
+        "G9",
+        "G11"
+      ],
+      "waiting": [
+        "G10"
+      ],
+      "notRun": [
+        "G4",
+        "G5"
+      ],
+      "serverRun": {
+        "run": "20261107-2047",
+        "passed": true,
+        "checks": 10,
+        "matches": 10,
+        "ids": "bid bid_0001, order 6EG92708FG4945307, authorization 5XK23595W1944882C, job job_0001, tracking HPG-2611-55706958."
+      },
+      "probeRun": "20261107-1644",
+      "edges": [
+        {
+          "call": "void a CAPTURED authorization (B)",
+          "answer": "refused: HOLD_CLOSED UNPROCESSABLE_ENTITY/PREVIOUSLY_CAPTURED (HTTP 422)"
+        },
+        {
+          "call": "capture on a VOIDED authorization (C)",
+          "answer": "refused: HOLD_CLOSED UNPROCESSABLE_ENTITY/AUTHORIZATION_VOIDED (HTTP 422)"
+        },
+        {
+          "call": "authorize an order a second time (A, new request id; PayPal answers 422 ORDER_ALREADY_AUTHORIZED and the client reads the order)",
+          "answer": "OK the existing authorization 6XU521559L222120V"
+        },
+        {
+          "call": "refund more than is left on a capture (B, $12.01 of $12.00)",
+          "answer": "refused: PAYPAL_ERROR UNPROCESSABLE_ENTITY/REFUND_AMOUNT_EXCEEDED (HTTP 422)"
+        },
+        {
+          "call": "add the same tracker again (A, new request id)",
+          "answer": "OK accepted again with HTTP 200 (no second tracker)"
+        },
+        {
+          "call": "tracking with another order's capture (A with B's capture)",
+          "answer": "refused: PAYPAL_ERROR UNPROCESSABLE_ENTITY/CAPTURE_ID_NOT_FOUND (HTTP 422)"
+        },
+        {
+          "call": "cancel a payout item that is SUCCESS (G6)",
+          "answer": "refused: PAYPAL_ERROR ITEM_INCORRECT_STATUS (HTTP 400)"
+        },
+        {
+          "call": "send the G6 payout again an hour later (same sender_batch_id, same request id)",
+          "answer": "refused: PAYPAL_ERROR USER_BUSINESS_ERROR/Batch with given sender_batch_id already exists (HTTP 400); no second payout"
+        },
+        {
+          "call": "reauthorize on day 1 (inside the honor period)",
+          "answer": "refused: PAYPAL_ERROR UNPROCESSABLE_ENTITY/REAUTHORIZATION_TOO_SOON (HTTP 422)"
+        },
+        {
+          "call": "capture $11.51 of $10.00 (115.1%)",
+          "answer": "refused: OVER_CAPTURE UNPROCESSABLE_ENTITY/MAX_CAPTURE_AMOUNT_EXCEEDED (HTTP 422)"
+        },
+        {
+          "call": "capture $5.00 (not final)",
+          "answer": "OK 303642684U346750F COMPLETED"
+        },
+        {
+          "call": "same PayPal-Request-Id again",
+          "answer": "OK 303642684U346750F (the first capture)"
+        },
+        {
+          "call": "reuse the captured invoice id under a new request id ($1.00)",
+          "answer": "refused: PAYPAL_ERROR UNPROCESSABLE_ENTITY/DUPLICATE_TRANSACTION (HTTP 422)"
+        },
+        {
+          "call": "capture $6.51 more (total over 115%)",
+          "answer": "refused: OVER_CAPTURE UNPROCESSABLE_ENTITY/MAX_CAPTURE_AMOUNT_EXCEEDED (HTTP 422)"
+        },
+        {
+          "call": "final capture up to exactly 115% ($11.50 in all)",
+          "answer": "OK 86R52090W2917222K $6.50 COMPLETED; authorization was PARTIALLY_CAPTURED"
+        },
+        {
+          "call": "authorization after the final capture",
+          "answer": "OK CAPTURED"
+        },
+        {
+          "call": "void after the final capture",
+          "answer": "refused: HOLD_CLOSED UNPROCESSABLE_ENTITY/PREVIOUSLY_CAPTURED (HTTP 422)"
+        }
+      ]
+    }
+  },
+  "aiEval": {
+    "cases": 21,
+    "purchaseProofs": 16,
+    "linePhotos": 5,
+    "expected": {
+      "failed": 10,
+      "passed": 7,
+      "needsReview": 4
+    },
+    "stamp": "muse/muse-spark-1.3",
+    "replayed": 21,
+    "modelCalls": 0,
+    "verdicts": 21,
+    "exactCheckSets": 21,
+    "money": {
+      "ok": 8,
+      "of": 8
+    },
+    "fields": {
+      "ok": 161,
+      "of": 164
+    },
+    "badProofsCaught": {
+      "caught": 10,
+      "of": 10
+    },
+    "genuineWronglyFailed": {
+      "failed": 0,
+      "of": 7
+    },
+    "recorded": {
+      "recordings": 21,
+      "models": [
+        "muse/muse-spark-1.3"
+      ],
+      "recordedOn": [
+        "2026-11-07"
+      ],
+      "medianMs": 8045,
+      "medianSeconds": 8,
+      "maxMs": 11724
+    }
+  },
+  "ablation": {
+    "page": "docs/ABLATION.md",
+    "cases": {
+      "total": 21,
+      "fake": 10,
+      "genuine": 7,
+      "review": 4
+    },
+    "modelCalls": 0,
+    "rulesAndAi": {
+      "fakesStopped": 10,
+      "genuinePassed": 7,
+      "reviewStopped": 4,
+      "rightOutcome": 21,
+      "exactVerdicts": 21
+    },
+    "rulesOnly": {
+      "fakesStopped": 10,
+      "genuinePassed": 7,
+      "reviewStopped": 4,
+      "rightOutcome": 21,
+      "exactVerdicts": 21
+    },
+    "aiOnly": {
+      "fakesStopped": 3,
+      "genuinePassed": 7,
+      "reviewStopped": 1,
+      "rightOutcome": 11,
+      "exactVerdicts": null
+    },
+    "codeAlone": 4,
+    "readingOnly": 6
+  },
+  "attack": {
+    "attempts": 22,
+    "movedNothing": 19,
+    "refused": 17,
+    "toPerson": [
+      7
+    ],
+    "intended": [
+      {
+        "n": 1,
+        "id": "genuine",
+        "capturedCents": 4869,
+        "paidOutCents": 1080
+      }
+    ],
+    "capped": [
+      {
+        "n": 12,
+        "id": "inflate-shipping",
+        "capturedCents": 1294,
+        "paidOutCents": 4600
+      }
+    ],
+    "knownLimits": [
+      {
+        "n": 21,
+        "id": "reprint-at-cap",
+        "capturedCents": 5076,
+        "paidOutCents": 1080
+      },
+      {
+        "n": 22,
+        "id": "spoofed-check-in",
+        "capturedCents": 0,
+        "paidOutCents": 0
+      }
+    ],
+    "stoppedBy": {
+      "rules": 5,
+      "AI + rules": 3,
+      "state machine": 6,
+      "PayPal emulator": 3
+    },
+    "markets": 9,
+    "holdsChecked": 2,
+    "jobsChecked": 11,
+    "violations": 0,
+    "rows": [
+      {
+        "n": 1,
+        "id": "genuine",
+        "stoppedBy": "-",
+        "code": "passed",
+        "outcome": "intended",
+        "moved": {
+          "captured": 4869,
+          "refunded": 0,
+          "paidOut": 1080,
+          "held": 0
+        }
+      },
+      {
+        "n": 2,
+        "id": "paper-moon-recycled-photo",
+        "stoppedBy": "rules",
+        "code": "duplicate_photo",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 3,
+        "id": "paper-moon-qr-wrong-store",
+        "stoppedBy": "rules",
+        "code": "shop_match",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 4,
+        "id": "paper-moon-time-before-checkin",
+        "stoppedBy": "AI + rules",
+        "code": "time_window",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 5,
+        "id": "paper-moon-totals-off",
+        "stoppedBy": "AI + rules",
+        "code": "totals_add_up",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 6,
+        "id": "paper-moon-wrong-code",
+        "stoppedBy": "AI + rules",
+        "code": "code_visible",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 7,
+        "id": "paper-moon-generator-metadata",
+        "stoppedBy": "sent to a person",
+        "code": "generator_metadata",
+        "outcome": "to_a_person",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 8,
+        "id": "raise-max-fee",
+        "stoppedBy": "rules",
+        "code": "OVER_LIMIT",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 9,
+        "id": "no-check-in",
+        "stoppedBy": "state machine",
+        "code": "INVALID_TRANSITION",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 10,
+        "id": "check-in-from-home",
+        "stoppedBy": "rules",
+        "code": "OUTSIDE_GEOFENCE",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 11,
+        "id": "claim-released",
+        "stoppedBy": "state machine",
+        "code": "CONFLICT",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 12,
+        "id": "inflate-shipping",
+        "stoppedBy": "rules",
+        "code": "capped",
+        "outcome": "capped",
+        "moved": {
+          "captured": 1294,
+          "refunded": 0,
+          "paidOut": 4600,
+          "held": 0
+        }
+      },
+      {
+        "n": 13,
+        "id": "replay-tracking",
+        "stoppedBy": "state machine",
+        "code": "REPLAYED",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 14,
+        "id": "capture-after-final",
+        "stoppedBy": "state machine",
+        "code": "INVALID_TRANSITION",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 15,
+        "id": "second-fee-payout",
+        "stoppedBy": "state machine",
+        "code": "INVALID_TRANSITION",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 16,
+        "id": "approve-after-sell-out",
+        "stoppedBy": "state machine",
+        "code": "SOLD_OUT",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 17,
+        "id": "guess-handover-code",
+        "stoppedBy": "rules",
+        "code": "RATE_LIMITED",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 18,
+        "id": "paypal-over-115",
+        "stoppedBy": "PayPal emulator",
+        "code": "MAX_CAPTURE_AMOUNT_EXCEEDED",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 19,
+        "id": "paypal-after-final",
+        "stoppedBy": "PayPal emulator",
+        "code": "AUTHORIZATION_ALREADY_CAPTURED",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 20,
+        "id": "paypal-payout-again",
+        "stoppedBy": "PayPal emulator",
+        "code": "USER_BUSINESS_ERROR",
+        "outcome": "refused",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      },
+      {
+        "n": 21,
+        "id": "reprint-at-cap",
+        "stoppedBy": "not stopped",
+        "code": "passed",
+        "outcome": "known_limit",
+        "moved": {
+          "captured": 5076,
+          "refunded": 0,
+          "paidOut": 1080,
+          "held": 0
+        }
+      },
+      {
+        "n": 22,
+        "id": "spoofed-check-in",
+        "stoppedBy": "not stopped",
+        "code": "checked_in",
+        "outcome": "known_limit",
+        "moved": {
+          "captured": 0,
+          "refunded": 0,
+          "paidOut": 0,
+          "held": 0
+        }
+      }
+    ],
+    "serverStartedHere": true,
+    "recordedOn": "2026-11-08"
+  },
+  "smoke": {
+    "answered": [
+      "server",
+      "web",
+      "ops"
+    ],
+    "readySeconds": 1.3,
+    "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
+    "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
+    "os": "macOS",
+    "node": "24.22.2",
+    "recordedOn": "2026-11-08"
+  },
+  "runs": {
+    "recordedOn": "2026-11-08",
+    "attackSeconds": 10.9,
+    "attackDuration": "under a minute",
+    "aiEvalSeconds": 5.9,
+    "commands": [
+      "npm run ai:eval",
+      "npm run attack",
+      "npm run demo -- --smoke",
+      "npm test"
+    ]
+  },
+  "logs": [
+    {
+      "file": "tests.json",
+      "path": "docs/evidence/tests.json",
+      "tool": "npm test -- --json",
+      "at": "2026-11-08 03:00",
+      "commit": "9b85330",
+      "uncommittedChanges": true,
+      "codeTrees": {
+        "shared": "21c1a27239ea",
+        "server": "4ec86728a3c8",
+        "web": "bd8fe9283b30",
+        "ops": "8d1f2f98af7e",
+        "scripts": "a0bbf06d85c6"
+      }
+    },
+    {
+      "file": "ai-eval.json",
+      "path": "docs/evidence/ai-eval.json",
+      "tool": "npm run ai:eval -- --json",
+      "at": "2026-11-08 03:00",
+      "commit": "9b85330",
+      "uncommittedChanges": true,
+      "codeTrees": {
+        "shared": "21c1a27239ea",
+        "server": "4ec86728a3c8",
+        "web": "bd8fe9283b30",
+        "ops": "8d1f2f98af7e",
+        "scripts": "a0bbf06d85c6"
+      }
+    },
+    {
+      "file": "attack.json",
+      "path": "docs/evidence/attack.json",
+      "tool": "npm run attack -- --json",
+      "at": "2026-11-08 03:00",
+      "commit": "9b85330",
+      "uncommittedChanges": true,
+      "codeTrees": {
+        "shared": "21c1a27239ea",
+        "server": "4ec86728a3c8",
+        "web": "bd8fe9283b30",
+        "ops": "8d1f2f98af7e",
+        "scripts": "a0bbf06d85c6"
+      }
+    },
+    {
+      "file": "smoke.json",
+      "path": "docs/evidence/smoke.json",
+      "tool": "npm run demo -- --smoke",
+      "at": "2026-11-08 03:00",
+      "commit": "9b85330",
+      "uncommittedChanges": true,
+      "codeTrees": {
+        "shared": "21c1a27239ea",
+        "server": "4ec86728a3c8",
+        "web": "bd8fe9283b30",
+        "ops": "8d1f2f98af7e",
+        "scripts": "a0bbf06d85c6"
+      }
+    },
+    {
+      "file": "runs.json",
+      "path": "docs/evidence/runs.json",
+      "tool": "npm run numbers -- --record",
+      "at": "2026-11-08 03:00",
+      "commit": "9b85330",
+      "uncommittedChanges": true,
+      "codeTrees": {
+        "shared": "21c1a27239ea",
+        "server": "4ec86728a3c8",
+        "web": "bd8fe9283b30",
+        "ops": "8d1f2f98af7e",
+        "scripts": "a0bbf06d85c6"
+      }
+    }
+  ]
+}

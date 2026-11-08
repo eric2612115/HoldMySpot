@@ -67,7 +67,7 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 | `duplicate_photo` | hard | No earlier upload from another job within Hamming distance 6 |
 | `qty_within_limit` | hard | Units on the receipt for this item equal the job's qty, within the per-person limit |
 | `item_match` | soft | Lines match the item's `receiptAliases`; no unrelated lines |
-| `within_retail_cap` | soft | Retail in USD at the job's locked rate is within the job's retail cap |
+| `within_retail_cap` | soft | Retail in USD at the job's locked rate is above $0 and within the job's retail cap (a $0 reading goes to a person, whose pass charges the shop price, D-135) |
 | `generator_metadata` | soft | No image-generator metadata (C2PA or EXIF software) |
 
   Any hard failure: `failed`. Any soft failure: `needs_review` (ops decides). Otherwise `passed`.
@@ -184,4 +184,6 @@ Muse Spark (`muse-spark-1.3`, owner approved), live, on the receipts re-rendered
 
 The three misses: the people-ahead count on two line photos was more than 20% low (28 for 38, 30 for 46; an estimate only, never a pass condition), and one store ID digit was misread (41580017 for 41500017) on a receipt whose QR already identifies the shop. An earlier live run on the previous renders (same day) got 21/21 verdicts and 160/164 fields.
 
-`npm test` in `server/` runs them with the rules only, plus the hero on the recorded answers (no network). `npm run ai:eval` replays them and its summary says where the answers came from, counted from each case's stamp: without a key, "Answers: 21 replayed from recorded muse/muse-spark-1.3 answers. No model was called in this run." (a photo without a recording would be counted as read by the rules-only reader). `npm run ai:eval -- --live` runs them live against the configured provider (`--provider auto|anthropic|muse|openai|fake`) and prints the pass rate, and `--record` also saves the answers; both spend model credits, so they run only when the owner says so. The money column checks the full capture: the fixture's shop price plus fee, grossed up for processing at cost (D-105).
+`npm test` in `server/` runs them with the rules only, plus the hero and (in `server/test/ablation.test.ts`) all 21 photos on the recorded answers (no network). `npm run ai:eval` replays them and its summary says where the answers came from, counted from each case's stamp: without a key, "Answers: 21 replayed from recorded muse/muse-spark-1.3 answers. No model was called in this run." (a photo without a recording would be counted as read by the rules-only reader). `npm run ai:eval -- --live` runs them live against the configured provider (`--provider auto|anthropic|muse|openai|fake`) and prints the pass rate, and `--record` also saves the answers; both spend model credits, so they run only when the owner says so. The money column checks the full capture: the fixture's shop price plus fee, grossed up for processing at cost (D-105).
+
+Which layer stops which bad proof: [ABLATION.md](ABLATION.md) decides the same 21 photos three ways (Rules + AI, Rules only with the truth sidecar as the reading, AI only with no rule) on the same recorded answers. `npm run ablation` writes it and `docs/evidence/ablation.json`; a test fails when either is out of date (D-140 to D-142).

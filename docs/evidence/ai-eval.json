@@ -1,0 +1,1660 @@
+{
+  "at": "2026-11-08T03:00:22.058Z",
+  "commit": "9b85330",
+  "uncommittedChanges": true,
+  "codeTrees": {
+    "shared": "21c1a27239ea",
+    "server": "4ec86728a3c8",
+    "web": "bd8fe9283b30",
+    "ops": "8d1f2f98af7e",
+    "scripts": "a0bbf06d85c6"
+  },
+  "node": "24.22.2",
+  "platform": "darwin arm64",
+  "ai": {
+    "provider": "fake",
+    "model": "rules-v1",
+    "mode": "replay"
+  },
+  "answers": {
+    "muse/muse-spark-1.3/replay": 21
+  },
+  "cases": 21,
+  "verdictAccuracy": 1,
+  "exactCheckSets": 1,
+  "moneyAccuracy": 1,
+  "fieldAccuracy": 0.9817073170731707,
+  "badProofsCaught": "10/10",
+  "genuineWronglyFailed": "0/7",
+  "reports": [
+    {
+      "id": "checkin-no-code",
+      "kind": "check_in",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "code_visible"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "lineVisible",
+          "ok": true,
+          "got": true,
+          "want": true
+        },
+        {
+          "name": "peopleAhead (within 20%)",
+          "ok": false,
+          "got": 28,
+          "want": 38
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": null,
+          "want": null
+        },
+        {
+          "name": "storefrontText",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        }
+      ],
+      "confidence": 0.8,
+      "latencyMs": 29,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Line photo failed 1 check: one-time code."
+    },
+    {
+      "id": "checkin-no-line",
+      "kind": "check_in",
+      "expected": "needs_review",
+      "got": "needs_review",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [],
+      "failedSoft": [
+        "line_visible"
+      ],
+      "fields": [
+        {
+          "name": "lineVisible",
+          "ok": true,
+          "got": false,
+          "want": false
+        },
+        {
+          "name": "peopleAhead (within 20%)",
+          "ok": true,
+          "got": null,
+          "want": null
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "H7AW3",
+          "want": "H7AW3"
+        },
+        {
+          "name": "storefrontText",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        }
+      ],
+      "confidence": 0.6,
+      "latencyMs": 28,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Line photo needs a person to check 1 check: line."
+    },
+    {
+      "id": "checkin-paper-moon-rex",
+      "kind": "check_in",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "lineVisible",
+          "ok": true,
+          "got": true,
+          "want": true
+        },
+        {
+          "name": "peopleAhead (within 20%)",
+          "ok": false,
+          "got": 30,
+          "want": 46
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "F2KX9",
+          "want": "F2KX9"
+        },
+        {
+          "name": "storefrontText",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 33,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Line photo shows the code and about 30 people ahead."
+    },
+    {
+      "id": "checkin-paper-moon-wei",
+      "kind": "check_in",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "lineVisible",
+          "ok": true,
+          "got": true,
+          "want": true
+        },
+        {
+          "name": "peopleAhead (within 20%)",
+          "ok": true,
+          "got": 33,
+          "want": 40
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "M4RT7",
+          "want": "M4RT7"
+        },
+        {
+          "name": "storefrontText",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 28,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Line photo shows the code and about 33 people ahead."
+    },
+    {
+      "id": "checkin-recycled",
+      "kind": "check_in",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "duplicate_photo"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "lineVisible",
+          "ok": true,
+          "got": true,
+          "want": true
+        },
+        {
+          "name": "peopleAhead (within 20%)",
+          "ok": true,
+          "got": 28,
+          "want": 35
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "P8EM2",
+          "want": "P8EM2"
+        },
+        {
+          "name": "storefrontText",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        }
+      ],
+      "confidence": 0.99,
+      "latencyMs": 28,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Line photo failed 1 check: recycled photo."
+    },
+    {
+      "id": "little-lantern-2plush-genuine",
+      "kind": "purchase",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "LITTLE LANTERN TOYS",
+          "want": "LITTLE LANTERN TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500028",
+          "want": "41500028"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "LL-1112-0883",
+          "want": "LL-1112-0883"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 11:32",
+          "want": "2026-11-12 11:32"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "LUCKY CAT PLUSH",
+              "qty": 2,
+              "totalMinor": 5200,
+              "unitMinor": 2600
+            }
+          ],
+          "want": [
+            {
+              "name": "LUCKY CAT PLUSH",
+              "qty": 2,
+              "unitMinor": 2600,
+              "totalMinor": 5200
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 5200,
+          "want": 5200
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "A9HT6",
+          "want": "A9HT6"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 2,
+          "want": 2
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 244,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt matches Little Lantern Toys at 11:32."
+    },
+    {
+      "id": "little-lantern-qty-short",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "qty_within_limit"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "LITTLE LANTERN TOYS",
+          "want": "LITTLE LANTERN TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500028",
+          "want": "41500028"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "LL-1112-0907",
+          "want": "LL-1112-0907"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 12:17",
+          "want": "2026-11-12 12:17"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "LUCKY CAT PLUSH",
+              "qty": 1,
+              "totalMinor": 2600,
+              "unitMinor": 2600
+            }
+          ],
+          "want": [
+            {
+              "name": "LUCKY CAT PLUSH",
+              "qty": 1,
+              "unitMinor": 2600,
+              "totalMinor": 2600
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 2600,
+          "want": 2600
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "A7PN3",
+          "want": "A7PN3"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.8,
+      "latencyMs": 268,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: quantity."
+    },
+    {
+      "id": "paper-moon-generator-metadata",
+      "kind": "purchase",
+      "expected": "needs_review",
+      "got": "needs_review",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [
+        "generator_metadata"
+      ],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0471",
+          "want": "PM-1112-0471"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 12:28",
+          "want": "2026-11-12 12:28"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "E6WK8",
+          "want": "E6WK8"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.9,
+      "latencyMs": 229,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt needs a person to check 1 check: image metadata."
+    },
+    {
+      "id": "paper-moon-mia-genuine",
+      "kind": "purchase",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0412",
+          "want": "PM-1112-0412"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 11:41",
+          "want": "2026-11-12 11:41"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "K7MX4",
+          "want": "K7MX4"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 224,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt matches Paper Moon Toys at 11:41."
+    },
+    {
+      "id": "paper-moon-over-cap",
+      "kind": "purchase",
+      "expected": "needs_review",
+      "got": "needs_review",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [
+        "within_retail_cap"
+      ],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0452",
+          "want": "PM-1112-0452"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 12:02",
+          "want": "2026-11-12 12:02"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3800,
+              "unitMinor": 3800
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3800,
+              "totalMinor": 3800
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3800,
+          "want": 3800
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "F9RM6",
+          "want": "F9RM6"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.9,
+      "latencyMs": 247,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt needs a person to check 1 check: retail cap."
+    },
+    {
+      "id": "paper-moon-priya-genuine",
+      "kind": "purchase",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0431",
+          "want": "PM-1112-0431"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 11:50",
+          "want": "2026-11-12 11:50"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "T3HW8",
+          "want": "T3HW8"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 241,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt matches Paper Moon Toys at 11:50."
+    },
+    {
+      "id": "paper-moon-qr-print-mismatch",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "qr_matches_print"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0444",
+          "want": "PM-1112-0444"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 12:12",
+          "want": "2026-11-12 12:12"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "M5XC6",
+          "want": "M5XC6"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.8,
+      "latencyMs": 255,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: QR versus print."
+    },
+    {
+      "id": "paper-moon-qr-wrong-store",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "shop_match"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0429",
+          "want": "PM-1112-0429"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 11:47",
+          "want": "2026-11-12 11:47"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "H4NP7",
+          "want": "H4NP7"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.99,
+      "latencyMs": 232,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: shop."
+    },
+    {
+      "id": "paper-moon-recycled-photo",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "duplicate_photo"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0441",
+          "want": "PM-1112-0441"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 11:55",
+          "want": "2026-11-12 11:55"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "N6TY4",
+          "want": "N6TY4"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.99,
+      "latencyMs": 272,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: recycled photo."
+    },
+    {
+      "id": "paper-moon-rex-fake",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "shop_match",
+        "time_window",
+        "totals_add_up",
+        "duplicate_photo"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0384",
+          "want": "PM-1112-0384"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 10:41",
+          "want": "2026-11-12 10:41"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3600,
+          "want": 3600
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "C8MR2",
+          "want": "C8MR2"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.99,
+      "latencyMs": 229,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 4 checks: shop, printed time, totals, recycled photo."
+    },
+    {
+      "id": "paper-moon-time-before-checkin",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "time_window"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": false,
+          "got": "41580017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0398",
+          "want": "PM-1112-0398"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 10:31",
+          "want": "2026-11-12 10:31"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "R8EF2",
+          "want": "R8EF2"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.8,
+      "latencyMs": 261,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: printed time."
+    },
+    {
+      "id": "paper-moon-totals-off",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "totals_add_up"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0436",
+          "want": "PM-1112-0436"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 11:52",
+          "want": "2026-11-12 11:52"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3600,
+          "want": 3600
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "W2CK9",
+          "want": "W2CK9"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.8,
+      "latencyMs": 264,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: totals."
+    },
+    {
+      "id": "paper-moon-wrong-code",
+      "kind": "purchase",
+      "expected": "failed",
+      "got": "failed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": null,
+      "failedHard": [
+        "code_visible"
+      ],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PAPER MOON TOYS",
+          "want": "PAPER MOON TOYS"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": "41500017",
+          "want": "41500017"
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "PM-1112-0460",
+          "want": "PM-1112-0460"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 12:08",
+          "want": "2026-11-12 12:08"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "totalMinor": 3400,
+              "unitMinor": 3400
+            }
+          ],
+          "want": [
+            {
+              "name": "MOCHI BUNNY PLUSH SAKURA",
+              "qty": 1,
+              "unitMinor": 3400,
+              "totalMinor": 3400
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3400,
+          "want": 3400
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "E2PW5",
+          "want": "E2PW5"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.8,
+      "latencyMs": 232,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt failed 1 check: one-time code."
+    },
+    {
+      "id": "petal-crumb-shortcake-usd",
+      "kind": "purchase",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "PETAL & CRUMB BAKERY",
+          "want": "PETAL & CRUMB BAKERY"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": null,
+          "want": null
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "4417",
+          "want": "#4417"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-11 15:12",
+          "want": "2026-11-11 15:12"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "STRAWBERRY SHORTCAKE",
+              "qty": 1,
+              "totalMinor": 3800,
+              "unitMinor": 3800
+            }
+          ],
+          "want": [
+            {
+              "name": "STRAWBERRY SHORTCAKE",
+              "qty": 1,
+              "unitMinor": 3800,
+              "totalMinor": 3800
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3800,
+          "want": 3800
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "X4KE7",
+          "want": "X4KE7"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 178,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt matches Petal & Crumb Bakery at 15:12."
+    },
+    {
+      "id": "steam-lantern-extra-line",
+      "kind": "purchase",
+      "expected": "needs_review",
+      "got": "needs_review",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [
+        "item_match"
+      ],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "STEAM LANTERN RAMEN",
+          "want": "STEAM LANTERN RAMEN"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": null,
+          "want": null
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "2291",
+          "want": "#2291"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 12:05",
+          "want": "2026-11-12 12:05"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "BLACK GARLIC TONKOTSU TO GO",
+              "qty": 2,
+              "totalMinor": 3800,
+              "unitMinor": 1900
+            },
+            {
+              "name": "ICED BARLEY TEA",
+              "qty": 1,
+              "totalMinor": 350,
+              "unitMinor": 350
+            }
+          ],
+          "want": [
+            {
+              "name": "BLACK GARLIC TONKOTSU TO GO",
+              "qty": 2,
+              "unitMinor": 1900,
+              "totalMinor": 3800
+            },
+            {
+              "name": "ICED BARLEY TEA",
+              "qty": 1,
+              "unitMinor": 350,
+              "totalMinor": 350
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 4150,
+          "want": 4150
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "Y5NC3",
+          "want": "Y5NC3"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 2,
+          "want": 2
+        }
+      ],
+      "confidence": 0.6,
+      "latencyMs": 194,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt needs a person to check 1 check: item lines."
+    },
+    {
+      "id": "sugar-cloud-cake-genuine",
+      "kind": "purchase",
+      "expected": "passed",
+      "got": "passed",
+      "verdictOk": true,
+      "checksOk": true,
+      "moneyOk": true,
+      "failedHard": [],
+      "failedSoft": [],
+      "fields": [
+        {
+          "name": "printedName",
+          "ok": true,
+          "got": "SUGAR CLOUD BAKERY",
+          "want": "SUGAR CLOUD BAKERY"
+        },
+        {
+          "name": "sellerTaxId",
+          "ok": true,
+          "got": null,
+          "want": null
+        },
+        {
+          "name": "invoiceNumber",
+          "ok": true,
+          "got": "1180",
+          "want": "#1180"
+        },
+        {
+          "name": "issuedAtLocal",
+          "ok": true,
+          "got": "2026-11-12 10:21",
+          "want": "2026-11-12 10:21"
+        },
+        {
+          "name": "currency",
+          "ok": true,
+          "got": "USD",
+          "want": "USD"
+        },
+        {
+          "name": "lines",
+          "ok": true,
+          "got": [
+            {
+              "name": "STRAWBERRY CLOUD CAKE",
+              "qty": 1,
+              "totalMinor": 3800,
+              "unitMinor": 3800
+            }
+          ],
+          "want": [
+            {
+              "name": "STRAWBERRY CLOUD CAKE",
+              "qty": 1,
+              "unitMinor": 3800,
+              "totalMinor": 3800
+            }
+          ]
+        },
+        {
+          "name": "totalMinor",
+          "ok": true,
+          "got": 3800,
+          "want": 3800
+        },
+        {
+          "name": "codeSeen",
+          "ok": true,
+          "got": "P3WN7",
+          "want": "P3WN7"
+        },
+        {
+          "name": "unitsVisible",
+          "ok": true,
+          "got": 1,
+          "want": 1
+        }
+      ],
+      "confidence": 0.97,
+      "latencyMs": 182,
+      "stamp": "muse/muse-spark-1.3/replay",
+      "error": null,
+      "summary": "Receipt matches Sugar Cloud Bakery at 10:21."
+    }
+  ]
+}

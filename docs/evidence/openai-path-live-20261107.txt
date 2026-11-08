@@ -1,0 +1,16 @@
+# The OpenAI-compatible provider called live, 2026-11-07 08:36 UTC (16:36 Taipei; docs/DECISIONS.md D-144): in server/,
+# `node scripts/ai-eval.ts --live --provider openai --only checkin-paper-moon-wei` with HMS_AI_PROVIDER=openai,
+# HMS_AI_BASE_URL=https://api.meta.ai/v1, HMS_AI_MODEL=muse-spark-1.3 and Meta's key read from a key file (names only below,
+# never a value). One line photo, one model call through the openai provider's Chat Completions code path, against Meta's
+# endpoint, not OpenAI's. Output verbatim below the line of dashes (ExperimentalWarning lines filtered at the time).
+# ------------------------------------------------------------------------------------------------------
+AI: anthropic key absent, muse key present (.env), openai key present (.env, MODEL_API_KEY for Meta's host); using openai muse-spark-1.3 at api.meta.ai, mode live
+ok   checkin-paper-moon-wei             want passed       got passed       checks ok   money -    fields 4/4  conf 0.97  6463 ms  openai/muse-spark-1.3/live
+
+Cases: 1 (0 purchase proofs, 1 line photos); AI openai/muse-spark-1.3, mode live
+Verdict accuracy:         1/1 = 100.0%
+Exact failed-check sets:  1/1 = 100.0%
+Money (retail, capture):  0/0 = n/a
+Fields read correctly:    4/4 = 100.0%
+Bad proofs caught:        0/0; genuine proofs wrongly failed: 0/1
+Latency: median 6463 ms, max 6463 ms

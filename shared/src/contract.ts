@@ -172,7 +172,7 @@ export interface Item {
   perPersonLimit: number;
   modes: FulfilmentMode[];
   shippable: boolean;
-  /** Perishable items are errands only: bought for one named requester, never resold. */
+  /** Perishable items are errands only: bought for one named requester, never sold on. */
   perishable: boolean;
   /** Packed weight per unit, for the shipping estimate. */
   weightGrams: number;

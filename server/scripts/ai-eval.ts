@@ -8,6 +8,7 @@
  *   npm run ai:eval -- --provider muse    pick a provider (auto, anthropic, muse, openai, fake)
  *   npm run ai:eval -- --only paper-moon-rex-fake,checkin-no-code
  *   npm run ai:eval -- --json /path/report.json --min 0.9
+ *   npm run ai:eval -- --ablate           the ablation (npm run ablation, docs/ABLATION.md): scripts/ablation/cli.ts
  *
  * Scores per case: the verdict (passed, failed, needs review), the exact set
  * of failed checks, the money (retail and capture), and how many fields the
@@ -20,9 +21,13 @@
  * The `openai` provider is any OpenAI-compatible Chat Completions endpoint
  * (OPENAI_API_KEY, HMS_AI_BASE_URL, HMS_AI_MODEL).
  */
-import { writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { grossUpCapture, normalizeCode, payoutItemsCovered, receiptCapture } from '@holdmyspot/shared';
 import type { AiMode, AiProviderId } from '@holdmyspot/shared';
+import { SERVER_ROOT } from '../src/ai/config.ts';
 import { buildAiPort } from '../src/ai/index.ts';
 import { loadLocalEnv } from '../src/localenv.ts';
 import type { CheckInExtraction, PurchaseExtraction } from '../src/ai/schemas.ts';
@@ -54,10 +59,60 @@ function parseArgs(argv: string[]): Args {
     else if (v === '--min') a.min = Number(argv[++i]);
     else if (v === '--help' || v === '-h') {
       console.log('Usage: node scripts/ai-eval.ts [--live | --record] [--provider auto|anthropic|muse|openai|fake] [--only ids] [--json file] [--min 0..1]');
+      console.log('       node scripts/ai-eval.ts --ablate [--check | --live] [-h]   (the ablation, docs/ABLATION.md)');
       process.exit(0);
     }
   }
   return a;
+}
+
+/**
+ * The code this run checked, as `npm run attack` and `npm test -- --json` record it (docs/DECISIONS.md
+ * D-143, D-149; `gitState` in scripts/common.mjs): the commit, whether the files differ from it
+ * (untracked ones included), and the git tree of each code folder as the files are on disk.
+ */
+function gitInfo(): { commit: string | null; dirty: boolean | null; trees: Record<string, string | null> | null } {
+  const repo = join(SERVER_ROOT, '..');
+  const git = (a: string[], env?: NodeJS.ProcessEnv) => spawnSync('git', a, { cwd: repo, encoding: 'utf8', env: env ?? process.env });
+  const rev = git(['rev-parse', '--short', 'HEAD']);
+  if (rev.status !== 0) return { commit: null, dirty: null, trees: null };
+  const st = git(['status', '--porcelain', '--untracked-files=all']);
+  const folders = ['shared', 'server', 'web', 'ops', 'scripts'];
+  const index = join(tmpdir(), `hms-git-index-${process.pid}-${Date.now()}`);
+  const env = { ...process.env, GIT_INDEX_FILE: index };
+  let trees: Record<string, string | null> | null = null;
+  try {
+    if (git(['read-tree', 'HEAD'], env).status === 0 && git(['add', '-A', '--', ...folders], env).status === 0) {
+      trees = {};
+      for (const f of folders) {
+        const t = git(['write-tree', `--prefix=${f}/`], env);
+        trees[f] = t.status === 0 ? t.stdout.trim().slice(0, 12) : null;
+      }
+    }
+  } finally {
+    rmSync(index, { force: true });
+  }
+  return { commit: rev.stdout.trim(), dirty: st.status === 0 ? st.stdout.trim().length > 0 : null, trees };
+}
+
+/**
+ * A replay needs no key (claims.md T9, D-149): the key variables, the key files HMS_AI_KEY_FILES
+ * names (from the environment or server/.env.local) and the secrets folder are ignored, so a
+ * machine with keys gives the same run as a judge's clone. Returns what was set and is now ignored.
+ */
+function ignoreKeys(): string[] {
+  const ignored: string[] = [];
+  for (const name of ['ANTHROPIC_API_KEY', 'MODEL_API_KEY', 'OPENAI_API_KEY']) {
+    if (process.env[name]) ignored.push(name);
+    delete process.env[name];
+  }
+  if (process.env.HMS_AI_KEY_FILES) ignored.push('HMS_AI_KEY_FILES');
+  process.env.HMS_AI_KEY_FILES = '';
+  if (process.env.HMS_SECRETS_DIR) ignored.push('HMS_SECRETS_DIR');
+  const empty = mkdtempSync(join(tmpdir(), 'hms-eval-no-keys-'));
+  process.env.HMS_SECRETS_DIR = empty;
+  process.on('exit', () => rmSync(empty, { recursive: true, force: true }));
+  return ignored;
 }
 
 interface FieldScore {
@@ -222,9 +277,19 @@ function answerSources(reports: readonly CaseReport[]): string {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes('--ablate')) {
+    // npm run ablation: every fixture photo decided three ways (Rules + AI, Rules only, AI only).
+    const { ablationCli } = await import('./ablation/cli.ts');
+    process.exitCode = await ablationCli(process.argv.slice(2).filter((a) => a !== '--ablate'));
+    return;
+  }
   const args = parseArgs(process.argv.slice(2));
   loadLocalEnv();
   const mode: AiMode = args.record ? 'record' : args.live ? 'live' : ((process.env.HMS_AI_MODE as AiMode | undefined) ?? 'replay');
+  if (mode !== 'live' && mode !== 'record') {
+    const ignored = ignoreKeys();
+    console.log(`No model call in this mode, so no key is read${ignored.length ? ` (ignored: ${ignored.join(', ')})` : ''}.`);
+  }
   const port = buildAiPort({ runtimeMode: 'fake', aiMode: mode, ...(args.provider ? { aiProvider: args.provider } : {}) });
   console.log(port.bootLine);
   if ((args.live || args.record) && port.info.mode !== mode) {
@@ -273,8 +338,15 @@ async function main(): Promise<void> {
   console.log(`Fields read correctly:    ${fieldsOk}/${fields.length} = ${pct(fieldsOk, fields.length)}`);
   console.log(`Bad proofs caught:        ${caught}/${failCases.length}; genuine proofs wrongly failed: ${wrongly}/${genuine.length}`);
   console.log(`Latency: median ${latency[Math.floor(latency.length / 2)] ?? 0} ms, max ${latency[latency.length - 1] ?? 0} ms`);
+  const git = gitInfo();
+  console.log(`Commit ${git.commit ?? 'unknown'}${git.dirty ? ' with uncommitted changes' : ''}, Node ${process.versions.node}, ${process.platform} ${process.arch}.`);
   const summary = {
     at: new Date().toISOString(),
+    commit: git.commit,
+    uncommittedChanges: git.dirty,
+    codeTrees: git.trees,
+    node: process.versions.node,
+    platform: `${process.platform} ${process.arch}`,
     ai: port.info,
     answers: Object.fromEntries(stampCounts(reports)),
     cases: n,
