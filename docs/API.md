@@ -1,15 +1,15 @@
 # HoldMySpot API
 
-Status: proposed, 2026-11-07. The source of truth is `shared/src/contract.ts` (`ApiSpec`, `ENDPOINTS`, `ServerEventData`); this page explains it. Base URL in development: `http://127.0.0.1:8796` (the web and ops dev servers proxy `/api` to it).
+The source of truth is `shared/src/contract.ts` (`ApiSpec`, `ENDPOINTS`, `ServerEventData`); this page explains it. Base URL in development: `http://127.0.0.1:8796` (the web and ops dev servers proxy `/api` to it).
 
 ## 1. Basics
 
 - **JSON** in and out, UTF-8. Money is integer US cents; times are market-clock epoch milliseconds (`MarketMs`).
-- **Persona.** No real sign-in in v1. Requests act as the seeded user named in `X-HMS-User` (for example `mia`, `wei`). SSE uses `?as=` instead. Ops uses `as=ops` on SSE and needs no persona for admin routes.
+- **Persona.** Requests act as the seeded user named in `X-HMS-User` (for example `mia`, `wei`). SSE uses `?as=` instead. Ops uses `as=ops` on SSE and needs no persona for admin routes.
 - **Admin routes** (`/api/ops/*`, `POST /api/jobs/:id/delivered`) are open while the server listens on a loopback address; otherwise they need `X-HMS-Admin-Key`.
 - **Modes.** `/api/fake/*` works only in fake mode (`FAKE_ONLY` otherwise); `/api/demo/*` only with `HMS_DEMO=1` (`DEMO_ONLY`).
 - **Idempotency.** Endpoints marked idempotent accept `Idempotency-Key`; a repeat with the same key, route and persona returns the first response. A different body under the same key returns `IDEMPOTENCY_CONFLICT`.
-- **Phases.** P0 is the hero loop in fake and sandbox modes; P1 the agent, ops and extras; P2 disputes. Unbuilt routes answer `501 NOT_BUILT`.
+- **Phases.** P0 is the hero loop in fake and sandbox modes; P1 the agent, ops and extras; P2 disputes.
 - **Typed client.** Every app calls the API through the contract types:
 
 ```ts
@@ -122,7 +122,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `GET /api/holds/:holdId` | P0 | per | | `{ hold }` |
 | `GET /api/ledger` | P0 | per | `?mine=1&bidId=&jobId=` | `{ entries }` newest first |
 | `GET /api/payouts` | P0 | per | `?mine=1` | `{ payouts }` newest first |
-| `POST /api/paypal/webhook` | P1 | pp | PayPal event | `{ ok: true }` after signature verification |
+| `POST /api/paypal/webhook` | P1 | pp | PayPal event | Reserved for PayPal webhooks on a public URL (production path, section "Status sync" below) |
 | `POST /api/estimates/fee` | P1 | per | `FeeEstimateRequest` | `FeeEstimate` |
 | `POST /api/estimates/shipping` | P1 | per | `ShippingEstimateRequest` | `ShippingEstimate` |
 | `POST /api/fake/paypal/orders/:orderId/approve` * | P0 | fake | `{ funding, outcome }` | `{ orderId, status }` |
@@ -151,9 +151,11 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 
 `GET /api/demo/scripts`, `GET /api/demo/state`, `POST /api/demo/reset { seed, scriptId }`, `POST /api/demo/start { scriptId, speed }`, `POST /api/demo/pause`, `POST /api/demo/resume`, `POST /api/demo/step`, `POST /api/demo/clock { speed?, paused?, jumpTo? }`. All P1, all return `DemoState` except the clock route (`ClockState`). When a script finishes, the market clock pauses on its last moment; `resume` leaves a finished script there, and `clock { paused: false }` runs the market on.
 
-### Built so far (2026-11-07)
+### Status sync
 
-Every endpoint above is registered. Not built yet (it answers `501 NOT_BUILT`): `POST /api/paypal/webhook` (P1; status sync polls instead). `GET /api/ops/disputes` reads what the status sync found on PayPal (D-160).
+Every endpoint above is registered. The status sync polls PayPal for pending captures, payout batches and disputes on our invoices (`HMS_PAYPAL_SYNC=poll`); `GET /api/ops/disputes` reads what it found (D-160). Production path: PayPal webhooks on a public URL through `POST /api/paypal/webhook`, verified with PayPal's `verify-webhook-signature` (the client's `verifyWebhook`, `PAYPAL_WEBHOOK_ID`) and fed to the same status mappers.
+
+### Fake mode
 
 Integrated in fake mode (2026-11-07, D-47 to D-52): the PayPal port is the sandbox REST client on the in-process emulator, the AI port is the AI services without a key, and `server/test/e2e.test.ts` runs the hero story over these routes only. Fake-mode failure injection: `HMS_FAKE_FAIL=<op>:<effect>[:<count>|*]`. How the web app switches from its mock: [WEB-INTEGRATION.md](WEB-INTEGRATION.md).
 
