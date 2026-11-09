@@ -1,0 +1,85 @@
+# The property tests on random seeds, with more cases than npm test runs (docs/DECISIONS.md D-149).
+# Made on 2026-11-09 from 12:13 UTC on macOS (arm64), Node 24.22.2, at commit c67b1cc with the code folders as committed
+# (code trees shared a0db35b235d3, server 80adb51f95c7, web 575640d8fb98, ops 08ff90394d1c, scripts 959179cc338c), by:
+#   (cd shared && HMS_PROPERTY_SEED=random HMS_PROPERTY_RUNS=10000 node --test src/money.property.test.ts)
+#   (cd server && HMS_PROPERTY_SEED=random HMS_PROPERTY_RUNS=600 node --test --test-concurrency=1 test/engine.property.test.ts)
+#   (cd ops && HMS_PROPERTY_SEED=random HMS_PROPERTY_RUNS=10000 node --test src/agents/rescheduler.property.test.ts)
+# Each part prints its seed first; HMS_PROPERTY_SEED=<that seed> repeats it. Each part ends with its exit code. Nothing
+# below was edited.
+
+## shared
+Property seed: 827925623
+▶ P1, P2, P4: one request, any split into jobs, any outcome per job (shared rules)
+  ✔ P1 every captured cent goes to the queuer, to PayPal or to HoldMySpot's 10%, each share from its own rule, and the processing line is PayPal's fee (10000 runs) (120.596542ms)
+  ✔ P2 the captures of any split never pass the hold, receipts and labels above the caps included (10000 runs) (88.855959ms)
+  ✔ P4 every completed job leaves HoldMySpot exactly floor(10% of the queue fee); a refund after the fee payout costs it that payout and PayPal's fees, no more (10000 runs) (95.359292ms)
+  ✔ P2 the limit check refuses every capture past 100% of the hold, whatever PayPal's 115% would allow (10000 runs) (136.867917ms)
+✔ P1, P2, P4: one request, any split into jobs, any outcome per job (shared rules) (442.4245ms)
+▶ P3: the receipt rules (shared/src/proofs.ts)
+  ✔ P3 every forgery fails its hard check and fails the receipt; soft issues go to a person; a clean receipt passes (10000 runs) (950.918792ms)
+  ✔ P3 listed price: a real receipt reprinted above the item's listed price, within the requester's cap and its QR regenerated to match, goes to a person and is never passed (10000 runs) (981.640833ms)
+  ✔ P3 scope: a receipt reprinted at a higher price that stays at or under the listed price (or, for an item with no listed price, under the cap) passes every check; the charge is the reprint's, never above the listing or the cap (10000 runs) (874.379125ms)
+✔ P3: the receipt rules (shared/src/proofs.ts) (2807.161833ms)
+▶ P6: the fee clock (shared/src/stepdown.ts)
+  ✔ P6 the step-down never rises, never goes below its floor or above its opening fee, and drops only by whole steps (10000 runs) (131.10775ms)
+  ✔ P6 a resting max fills at the first step at or below it, never above it, never below the floor (10000 runs) (20.63675ms)
+  ✔ P6 before check-in the clock has not started: the fee stays at the opening fee at any time (10000 runs) (22.621583ms)
+✔ P6: the fee clock (shared/src/stepdown.ts) (174.731334ms)
+▶ P6: the order book (shared/src/matching.ts)
+  ✔ P6 every fill is at the ask's clock price now, at or under the bid's max, between compatible orders, within quantities (10000 runs) (389.008083ms)
+  ℹ 10000 books (shrinking included): 4448 with fills, 7468 fills, 3780 at a clock price below the opening fee
+  ✔ P6 price-time priority holds and no trade is left on the table (10000 runs) (375.912875ms)
+  ✔ P6 the result does not depend on the order the book lists its orders in (10000 runs) (393.819708ms)
+✔ P6: the order book (shared/src/matching.ts) (1158.945417ms)
+▶ P7: the bidding agent ceiling (shared/src/money.ts)
+  ✔ P7 the highest max fee a hold covers fits that hold, and one cent more does not (10000 runs) (189.134542ms)
+✔ P7: the bidding agent ceiling (shared/src/money.ts) (189.256791ms)
+▶ P8: gross-up to the cent (shared/src/money.ts)
+  ✔ P8 each capture nets exactly its base plus its payout fees after PayPal's fee, and one cent less would not (10000 runs) (10.660542ms)
+  ✔ P8 the gross-up is exact for any percentage below 100% and any fixed fees, not only PayPal's current ones (10000 runs) (24.89425ms)
+✔ P8: gross-up to the cent (shared/src/money.ts) (35.702ms)
+ℹ tests 16
+ℹ suites 6
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4951.161916
+exit 0
+
+## server
+Property seed: 136080621
+▶ market days on the PayPal emulator (P1-P4, P6, P7)
+  ✔ P1-P4 P6 P7: any day of requests, offers, receipts and PayPal failures keeps every money and market rule (600 runs) (24754.965917ms)
+  ℹ 600 days: 1011 passed check-ins, 983 matches (174 below the opening fee), 171 completed jobs, 135 receipts failing a hard check, 18 refunded jobs, 280 captures, 281 payouts, 138 PayPal failures injected, 715 restarts, 1 payouts kept for reconciliation, 40 reassignments, 200 holds left to lapse on day 29
+  ℹ coverage {"days":600,"checkIns":1011,"matches":983,"clockFills":174,"completed":171,"rejected":135,"refunded":18,"captures":280,"payouts":281,"failures":138,"restarts":715,"flaggedPayouts":1,"reassigned":40,"expiredHolds":200}
+✔ market days on the PayPal emulator (P1-P4, P6, P7) (24755.862ms)
+▶ PayPal failures change nothing (P5)
+  ✔ P5 the same day with lost, dropped and garbled PayPal answers ends with the same PayPal objects and amounts (600 runs) (60811.375625ms)
+  ℹ both runs of each: 1200 days: 2104 passed check-ins, 2056 matches (374 below the opening fee), 354 completed jobs, 322 receipts failing a hard check, 34 refunded jobs, 566 captures, 570 payouts, 183 PayPal failures injected, 2066 restarts, 3 payouts kept for reconciliation, 84 reassignments, 396 holds left to lapse on day 29
+  ℹ coverage {"days":1200,"checkIns":2104,"matches":2056,"clockFills":374,"completed":354,"rejected":322,"refunded":34,"captures":566,"payouts":570,"failures":183,"restarts":2066,"flaggedPayouts":3,"reassigned":84,"expiredHolds":396}
+✔ PayPal failures change nothing (P5) (60812.216875ms)
+ℹ tests 2
+ℹ suites 2
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 85946.216458
+exit 0
+
+## ops
+Property seed: 1210211170
+✔ P7 every option the rescheduler lists is allowed now and keeps each job on its shop and item, inside the offer's room, at or under the max fee and inside the hold (10000 runs) (1264.263917ms)
+ℹ 10000 mornings (shrinking included): 2617 problems, 3935 options (477 reassignments), 1122 jobs placed by a dry run
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1413.744083
+exit 0

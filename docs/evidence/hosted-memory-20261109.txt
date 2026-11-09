@@ -1,0 +1,15 @@
+# What one hosted market costs (docs/HOSTING.md, D-163): `node --expose-gc server/scripts/hosted-memory.ts 40` from the
+# repo root, 2026-11-09 12:14 UTC, on macOS (Darwin arm64) with Node 24.22.2, at commit c67b1cc with the code folders as
+# committed. The script builds 40 markets in one process with no key and no network (no model, no PayPal call), prints
+# RSS and heap after each batch with garbage collection forced, then runs the whole hero day on every market and measures
+# the CPU the 40 idle markets use. Output verbatim below the line of dashes.
+# ------------------------------------------------------------------------------------------------------
+empty process: RSS 133 MB, heap 17 MB
+  1 markets: RSS 181 MB (47.6 per market), heap 23 MB (5.4 per market), built in 1473 ms each
+  5 markets: RSS 212 MB (15.9 per market), heap 22 MB (0.9 per market), built in 1253 ms each
+ 10 markets: RSS 287 MB (15.4 per market), heap 27 MB (0.9 per market), built in 1051 ms each
+ 20 markets: RSS 392 MB (13.0 per market), heap 35 MB (0.9 per market), built in 749 ms each
+ 40 markets: RSS 440 MB (7.7 per market), heap 51 MB (0.8 per market), built in 620 ms each
+ 40 markets: RSS 440 MB (7.7 per market), heap 51 MB (0.8 per market), built in 620 ms each
+after 40 whole hero days: RSS 524 MB (9.8 per market), heap 56 MB
+40 idle markets use 0.3% of one CPU.
