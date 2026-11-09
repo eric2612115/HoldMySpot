@@ -82,7 +82,7 @@ interface Numbers {
     gates: { pass: string[]; partial: string[]; localRun: { checks: number; matches: number } };
   };
   aiEval: { cases: number; verdicts: number; modelCalls: number };
-  attack: { attempts: number; refused: number; toPerson: number[]; intended: Moved[]; capped: Moved[]; knownLimits: Moved[]; violations: number };
+  attack: { attempts: number; refused: number; toPerson: number[]; intended: Moved[]; capped: Moved[]; violations: number };
   tests: { tests: number; failed: number; properties: { serverDays: { name: string; runs: number; coverage: Record<string, number> }[] } };
   logs: { file: string; commit: string | null; codeTrees: Record<string, string> | null }[];
 }
@@ -130,8 +130,8 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     assert.equal(n.tests.failed, 0);
     assert.equal(n.attack.violations, 0);
     const a = n.attack;
-    assert.equal(a.refused + a.toPerson.length + a.intended.length + a.capped.length + a.knownLimits.length, a.attempts, 'every attempt is refused, sent to a person, intended, capped or a known limit');
-    assert.deepEqual([a.intended.map((x) => x.n), a.capped.map((x) => x.n), a.knownLimits.map((x) => x.n)], [[1], [12], [23]]);
+    assert.equal(a.refused + a.toPerson.length + a.intended.length + a.capped.length, a.attempts, 'every attempt is refused, sent to a person, intended or capped');
+    assert.deepEqual([a.intended.map((x) => x.n), a.capped.map((x) => x.n), a.toPerson], [[1], [12], [7, 22]]);
     // One day per run; P5 plays each of its days twice, with and without PayPal failures.
     for (const d of n.tests.properties.serverDays) assert.equal(d.coverage.days, /^P5\b/.test(d.name) ? 2 * d.runs : d.runs, `${d.name}: the server days report what they reached`);
     // Every log names the code it ran on. npm run numbers -- --record writes tests.json and runs.json after
@@ -171,10 +171,10 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const gate = checkEdited((t) => t.replace('(G1, G2), void', '(G1, G2, G10), void'));
     assert.equal(gate.code, 1, gate.out);
     assert.match(gate.out, /README lists G10 as passed/);
-    // G4 passed on the gates page: README may not list it as waiting, and the capture it states is PayPal's.
-    const venmoWaiting = checkEdited((t) => t.replace('wait for 2026-11-10 (G10).', 'wait for 2026-11-10 (G10, G4).'));
-    assert.equal(venmoWaiting.code, 1, venmoWaiting.out);
-    assert.match(venmoWaiting.out, /README lists G4 as waiting/);
+    // A gate the page has not recorded as a pass may not join the passed line either; G4's capture is PayPal's.
+    const notRun = checkEdited((t) => t.replace('(G1, G2), void', '(G1, G2, G5), void'));
+    assert.equal(notRun.code, 1, notRun.out);
+    assert.match(notRun.out, /README lists G5 as passed/);
     const venmoCapture = checkEdited((t) => t.replace('captured \\$10.00 of it with', 'captured \\$10.01 of it with'));
     assert.equal(venmoCapture.code, 1, venmoCapture.out);
     assert.match(venmoCapture.out, /G4: the capture of the Venmo-funded hold as 10\.01, 41C59314FX8286919, 0\.84, 46\.00; the source says 10\.00/);

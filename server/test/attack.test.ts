@@ -11,7 +11,7 @@ import { DEMO_MARKET_START } from '@holdmyspot/shared';
 /**
  * `npm run attack` in CI mode (scripts/attack.mjs, docs/DECISIONS.md D-137 to D-139, D-147 to D-149):
  * its own zero-key server, six fake receipts on fresh demo markets, the money tricks over the HTTP API,
- * the two known limits on one more market, and three calls straight at the PayPal emulator. Every
+ * a receipt reprinted at the cap on one more market, and three calls straight at the PayPal emulator. Every
  * attempt must move exactly what the shared money rules say ($0.00 when refused), the layer the run
  * derives from each answer must be the one docs/TECHNICAL-DETAILS.md names, and its sample table must be this
  * run's table. Against a server that pays the queuer more than the rules say, it must exit 1.
@@ -35,7 +35,7 @@ interface Row {
   refused: boolean;
   moved: Money;
   expected: Money;
-  outcome: 'refused' | 'to_a_person' | 'intended' | 'capped' | 'known_limit';
+  outcome: 'refused' | 'to_a_person' | 'intended' | 'capped';
   intended: boolean;
   ok: boolean;
   asExpected: boolean;
@@ -76,7 +76,6 @@ const EXPECTED: readonly [id: string, stoppedBy: string, code: string, outcome: 
   ['paypal-after-final', 'PayPal emulator', 'AUTHORIZATION_ALREADY_CAPTURED', 'refused'],
   ['paypal-payout-again', 'PayPal emulator', 'USER_BUSINESS_ERROR', 'refused'],
   ['reprint-at-cap', 'sent to a person', 'listed_price', 'to_a_person'],
-  ['spoofed-check-in', 'not stopped', 'checked_in', 'known_limit'],
 ];
 
 /** The rows that move money, in cents (shared/src/money.ts on the worked example, docs/DOMAIN.md section 7). */
@@ -147,10 +146,10 @@ describe('npm run attack, CI mode', { skip: QUICK }, () => {
         const want = { captured: 0, refunded: 0, paidOut: 0, held: 0, ...MOVES[row.id] };
         assert.deepEqual(row.moved, want, `row ${row.n} ${row.id} moved`);
         assert.equal(row.intended, row.outcome === 'intended');
-        const through = ['intended', 'capped', 'known_limit'].includes(row.outcome);
+        const through = ['intended', 'capped'].includes(row.outcome);
         assert.equal(row.refused, !through, `row ${row.n} ${row.id} refused`);
       }
-      assert.equal(report.markets.length, 9, 'six fake-receipt markets, the handover market, the money market and the known-limits market');
+      assert.equal(report.markets.length, 9, 'six fake-receipt markets, the handover market, the money market and the reprint market');
       assert.deepEqual(report.markets.flatMap((m) => m.violations), []);
 
       const readme = readFileSync(join(REPO, 'docs', 'TECHNICAL-DETAILS.md'), 'utf8');

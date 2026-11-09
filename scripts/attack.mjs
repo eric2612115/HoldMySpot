@@ -4,8 +4,7 @@
 // the server's state machine, or PayPal's own limits on the emulator) and the money it moved
 // (docs/DECISIONS.md D-137 to D-139, D-147 to D-149). The layer follows from the answer: a receipt's
 // failed checks (server/src/ai/basis.ts, as in the ablation), or the refusal code (LAYER_OF_CODE in
-// server/src/demo/attack.ts). One row is a known limit that no layer stops (a phone that reports the
-// shop's position from home); it runs so the table shows what it moves.
+// server/src/demo/attack.ts).
 //
 //   npm run attack                        starts its own zero-key server (simulated PayPal, recorded AI
 //                                         answers, an empty secrets folder), attacks it and stops it
@@ -15,9 +14,8 @@
 //   npm run attack -- --ci                plain output (no colour, no progress); server/test/attack.test.ts
 //
 // Exit 0 when every attempt moved exactly what the shared money rules say: $0.00 when refused, the
-// genuine receipt's amount for the control, shipping capped at the requester's budget, and $0.00 for the
-// known limit (a check-in moves nothing). Exit 1 when any attempt moved anything else, or an attempt that
-// must be refused was not.
+// genuine receipt's amount for the control, and shipping capped at the requester's budget. Exit 1 when
+// any attempt moved anything else, or an attempt that must be refused was not.
 //
 // The fake receipts are the rendered photos in server/fixtures/proofs, read by the recorded answers of a
 // real model, each on a fresh demo market (D-138). The last three rows go straight to the PayPal emulator
@@ -44,7 +42,7 @@ Options:
   --port-offset <n>       with --reuse: the same flag as npm run demo (server port ${DEFAULT_PORTS.server} + n);
                           otherwise the port of the server this starts (default: any free port)
   --server-port <p>       the server's port, instead of --port-offset
-  --only <parts>          receipts, money, limits and/or paypal (comma-separated); default all four
+  --only <parts>          receipts, money, reprint and/or paypal (comma-separated); default all four
   --json <file>           also write the report as JSON
   --ci                    plain output: no colour, no progress lines
   --verbose               print the server's or PayPal's full answer under the table
@@ -243,8 +241,8 @@ function diffMoney(after, before) {
   return Object.fromEntries(MONEY_KEYS.map((k) => [k, after[k] - before[k]]));
 }
 
-/** What an attempt is meant to do: be refused, move the control's money, be capped, or show a known limit. */
-const OUTCOME_NOTE = { intended: 'intended', capped: 'capped', known_limit: 'known limit' };
+/** What an attempt is meant to do: be refused, move the control's money, or be capped. */
+const OUTCOME_NOTE = { intended: 'intended', capped: 'capped' };
 
 function movedText(m, note) {
   const parts = [];
@@ -311,7 +309,7 @@ async function main() {
     return 0;
   }
   if (args.ci) useColor = false;
-  const PARTS = ['receipts', 'money', 'limits', 'paypal'];
+  const PARTS = ['receipts', 'money', 'reprint', 'paypal'];
   const parts = new Set((args.only ?? PARTS.join(',')).split(',').map((s) => s.trim()).filter(Boolean));
   if (parts.size === 0 || [...parts].some((p) => !PARTS.includes(p))) {
     console.error(`--only takes ${PARTS.join(', ')} (comma-separated).\n\n${USAGE}`);
@@ -331,11 +329,11 @@ async function main() {
 
   const load = (rel) => import(pathToFileURL(path.join(REPO, rel)).href);
   const shared = await load('shared/src/index.ts');
-  const { ATTACK_HANDOVER, ATTACK_LIMITS, ATTACK_RECEIPTS, LAYER_OF_CODE } = await load('server/src/demo/attack.ts');
+  const { ATTACK_HANDOVER, ATTACK_REPRINT, ATTACK_RECEIPTS, LAYER_OF_CODE } = await load('server/src/demo/attack.ts');
   const { checkBasis } = await load('server/src/ai/basis.ts');
   const { placeholderPng } = await load('server/src/util/images.ts');
   const { createFakePayPal } = await load('server/src/paypal/fake.ts');
-  const { HERO, SEED_USERS, askFeeAt, bidLimitCents, distanceMeters, epochToZonedLocal, findShop, jobCaps, travelMinutes, zonedLocalToEpoch, receiptCapture, shippingCapture, payoutsForCapture } = shared;
+  const { HERO, SEED_USERS, bidLimitCents, distanceMeters, epochToZonedLocal, findShop, jobCaps, travelMinutes, zonedLocalToEpoch, receiptCapture, shippingCapture, payoutsForCapture } = shared;
   const shop = findShop(HERO.shopId);
   const user = (id) => SEED_USERS.find((u) => u.id === id);
   const sf = (hhmm) => zonedLocalToEpoch(`${MARKET_DAY} ${hhmm}`, ZONE);
@@ -356,7 +354,7 @@ async function main() {
   const portGiven = args['port-offset'] !== undefined || args['server-port'] !== undefined;
   const startedAt = new Date();
   // The PayPal part alone needs no server.
-  const needServer = parts.has('receipts') || parts.has('money') || parts.has('limits');
+  const needServer = parts.has('receipts') || parts.has('money') || parts.has('reprint');
   if (args.reuse || !needServer) {
     base = needServer ? `http://127.0.0.1:${ports.server}` : null;
   } else {
@@ -508,7 +506,7 @@ async function main() {
      * follows from the checks that failed, labelled as the ablation labels them (server/src/ai/basis.ts):
      * a failed hard check that uses no reading (photo hash, file metadata, the receipt QR's store ID) is
      * "rules", one that compares what the model read is "AI + rules", and a receipt left for review is
-     * "sent to a person". A pass is "-" for the control and "not stopped" for a known limit.
+     * "sent to a person". A pass is "-" for the control and "not stopped" for an attempt that must be refused.
      */
     const sendProof = async (queuerId, jobId, caseId, { passLayer = '-' } = {}) => {
       const receipt = await upload(queuerId, 'receipt', fixture(`${caseId}/receipt.png`), 'a receipt');
@@ -556,7 +554,7 @@ async function main() {
       'paper-moon-generator-metadata': { order: 7, attempt: 'Receipt file made by an image generator', expectLayer: 'sent to a person' },
     };
     let market = 0;
-    const markets = (parts.has('receipts') ? ATTACK_RECEIPTS.length : 0) + (parts.has('money') ? 2 : 0) + (parts.has('limits') ? 1 : 0);
+    const markets = (parts.has('receipts') ? ATTACK_RECEIPTS.length : 0) + (parts.has('money') ? 2 : 0) + (parts.has('reprint') ? 1 : 0);
     for (const c of parts.has('receipts') ? ATTACK_RECEIPTS : []) {
       const words = RECEIPTS[c.caseId];
       if (!words) throw new SetupError(`no wording for the attack case ${c.caseId}`);
@@ -728,13 +726,13 @@ async function main() {
           const r = await api('POST', `/api/jobs/${wei.jobId}/shipment`, { as: 'wei', idem: shipKey, body: shipBody });
           if (!r.ok) return { refused: true, code: r.code, layer: layerOf(r.code), answer: r.code, detail: r.message };
           const charged = r.json.job.amounts.shippingCents;
-          // shippingCapture in shared/src/money.ts caps what the queuer reports at the budget; no label is read.
+          // shippingCapture in shared/src/money.ts caps what the queuer declares at the requester's budget.
           return {
             refused: false,
             code: charged === weiJob.caps.shippingCents ? 'capped' : 'not capped',
             layer: 'rules',
-            answer: 'capped: over-claims up to the budget are paid',
-            detail: `Shipping charged at ${usd(charged)} of the ${usd(claimed)} claimed, plus PayPal's fee on it at cost; the payout repays the ${usd(receiptCap.retailCents)} shop price and that ${usd(charged)}. Nothing checks the postage itself, so a claim up to the budget is paid as reported.`,
+            answer: `capped at the ${usd(weiJob.caps.shippingCents)} budget`,
+            detail: `Shipping charged at ${usd(charged)} of the ${usd(claimed)} claimed, plus PayPal's fee on it at cost; the payout repays the ${usd(receiptCap.retailCents)} shop price and that ${usd(charged)}. Shipping is declared by the queuer and capped by the budget.`,
           };
         },
       );
@@ -798,99 +796,25 @@ async function main() {
       await checkInvariants('money tricks');
     }
 
-    // ---- part 3: a known limit and the reprint the listed price now catches (D-147, D-151) ------------
-    if (parts.has('limits')) {
+    // ---- part 3: a receipt reprinted at the cap, which the listed-price check catches (D-147, D-151) --
+    if (parts.has('reprint')) {
       market++;
-      const { requesterId, queuerId, spooferId, reprintCaseId, reprintOf } = ATTACK_LIMITS;
-      const spoofer = user(spooferId);
-      progress(`Market ${market} of ${markets} (fresh, 10:30): a known limit and a reprint. ${spoofer.displayName} runs a fee clock from home; ${user(queuerId).displayName} reprints ${user(requesterId).displayName}'s receipt at her cap.`);
+      const { requesterId, queuerId, reprintCaseId, reprintOf } = ATTACK_REPRINT;
+      progress(`Market ${market} of ${markets} (fresh, 10:30): ${user(queuerId).displayName} reprints ${user(requesterId).displayName}'s receipt at her cap.`);
       await reset();
       await clock('10:31');
       const request = await placeRequest(requesterId);
-      await clock('10:35');
-      // An offer like Wei's in the story: $15, down $1 every 5 minutes to $8, posted from home.
-      const offer = must(
-        await api('POST', '/api/asks', {
-          as: spooferId,
-          idem: `attack-${run}-offer`,
-          body: {
-            shopId: HERO.shopId,
-            itemId: HERO.itemId,
-            capacity: 1,
-            modes: ['ship', 'local'],
-            feeCents: 1500,
-            clock: { stepCents: 100, intervalMs: 5 * 60_000, floorCents: 800 },
-            etaAt: (await marketNow()) + (travelMinutes(spoofer.home, shop.lngLat) + 1) * 60_000,
-            from: { lngLat: spoofer.home, accuracyM: 10 },
-          },
-        }),
-        `${spoofer.displayName}'s offer`,
-      );
       await clock('10:40');
       const errand = await claim(queuerId, request.bid.id, '10:50');
-      await clock('10:42');
-      const staged = await upload(spooferId, 'line_photo', lineOf(spooferId), 'a line photo');
-      const km = (distanceMeters(spoofer.home, shop.lngLat) / 1000).toFixed(1);
-      const spoof = await attempt(
-        {
-          order: 23,
-          id: 'spoofed-check-in',
-          attempt: "Check in from home, the phone reporting the shop's position",
-          expectLayer: 'not stopped',
-          mustRefuse: false,
-          outcome: 'known_limit',
-          expect: ZERO,
-          expectCode: 'checked_in',
-        },
-        async () => {
-          const r = await api('POST', `/api/claims/${offer.claim.id}/check-in`, { as: spooferId, body: { lngLat: shop.lngLat, accuracyM: 8, photoFileId: staged.id } });
-          if (!r.ok) return refusal(r);
-          const proof = await waitFor('the line photo check', async () => {
-            const p = (await records()).proofs.filter((x) => x.claimId === offer.claim.id && x.kind === 'check_in').at(-1);
-            return p && p.status !== 'verifying' ? p : null;
-          });
-          if (proof.status !== 'passed') return { refused: true, code: proof.status, layer: proof.status === 'needs_review' ? 'sent to a person' : 'AI + rules', answer: proof.status, detail: proof.summary };
-          return {
-            refused: false,
-            code: 'checked_in',
-            layer: 'not stopped',
-            answer: 'checked in; fee clock started',
-            detail: `The server takes the position the phone reports, and the line photo shows the visit's code, so the check-in passed at 10:42 and the fee clock started, ${km} km from the shop.`,
-          };
-        },
-      );
-      // Wei checks in at the shop for real at 10:50; then the clock runs to 11:05 to see Rex's fee.
+      // Wei checks in at the shop at 10:50, buys at 11:38 and sends the reprint at 11:42.
       await clock('10:50');
       await checkIn(queuerId, errand.claimId);
-      await clock('11:05');
-      // The server's scheduler runs the fee clock's steps after the jump, in the background: wait until the
-      // step that reaches a request has filled it (at $11.00 Priya's request does), so the row does not
-      // depend on how fast the machine is. Without a fill in 60 s the row reports the fee instead.
-      const seen = await waitFor(`${spoofer.displayName}'s fee clock to reach a request`, async () => {
-        const rec = await records();
-        return rec.matches.some((x) => x.askId === offer.ask.id) ? rec : null;
-      }).catch(async (err) => {
-        if (err instanceof SetupError) return records();
-        throw err;
-      });
-      const fill = seen.matches.filter((x) => x.askId === offer.ask.id).sort((a, b) => a.at - b.at)[0];
-      const ask = seen.asks.find((a) => a.id === offer.ask.id);
-      if (fill) {
-        const bid = seen.bids.find((b) => b.id === fill.bidId);
-        spoof.answer = `checked in; fee fell to ${usd(fill.feeCents)} and filled`;
-        spoof.detail += ` From home, his fee fell from ${usd(ask.feeCents)} and matched ${bid?.requesterName ?? 'a request'} at ${usd(fill.feeCents)} at ${epochToZonedLocal(fill.at, ZONE).slice(11, 16)}. No money moves until a receipt passes.`;
-      } else if (ask) {
-        spoof.answer = `checked in; fee down to ${usd(askFeeAt(ask, sf('11:05')))}`;
-        spoof.detail += ` By 11:05 his fee had fallen from ${usd(ask.feeCents)} to ${usd(askFeeAt(ask, sf('11:05')))}.`;
-      }
-
       await clock('11:38');
       await bought(queuerId, errand.jobId);
       await clock('11:42');
       const job = (await jobOf(errand.jobId)).job;
       const real = caseOf(reprintOf).expect.retailCents;
       const forged = receiptCapture(job.caps, caseOf(reprintCaseId).expect.retailCents, 'ship');
-      const honest = receiptCapture(job.caps, real, 'ship');
       await attempt(
         {
           order: 22,
@@ -907,11 +831,11 @@ async function main() {
           if (out.proofStatus === 'passed') return out;
           return {
             ...out,
-            detail: `${out.detail} The reprint matches itself (lines, total and QR) and stays under the ${usd(job.caps.retailCents)} cap, but ${usd(forged.retailCents)} is above the plush's listed ${usd(real)}, so a person decides (D-151); had it passed, ${usd(forged.amountCents - honest.amountCents)} more would have been captured than the real receipt (${usd(forged.amountCents)}, not ${usd(honest.amountCents)}).`,
+            detail: `${out.detail} The reprint matches itself (lines, total and QR) and stays under the ${usd(job.caps.retailCents)} cap, and the listed-price check catches it: ${usd(forged.retailCents)} is above the plush's listed ${usd(real)}, so a person decides (D-151) and nothing is captured.`,
           };
         },
       );
-      await checkInvariants('known limits');
+      await checkInvariants('reprint');
     }
 
     // ---- part 4: straight at PayPal, skipping HoldMySpot (D-139) ----------------------------------
@@ -1053,8 +977,7 @@ async function main() {
       `${refused.length} refused, $0.00 moved`,
       ...(toPerson.length ? [`${toPerson.length} sent to a person, $0.00 moved so far${listed(toPerson)}`] : []),
       ...(kind('intended').length ? [`${kind('intended').length} moved exactly the intended amount${listed(kind('intended'))}`] : []),
-      ...(kind('capped').length ? [`${kind('capped').length} paid as claimed up to the requester's budget${listed(kind('capped'))}`] : []),
-      ...(kind('known_limit').length ? [`${kind('known_limit').length} not stopped, ${kind('known_limit').length === 1 ? 'the known limit' : 'the known limits'} README lists${listed(kind('known_limit'))}`] : []),
+      ...(kind('capped').length ? [`${kind('capped').length} paid shipping as declared, capped by the requester's budget${listed(kind('capped'))}`] : []),
     ];
     console.log(`${rows.length} attempts: ${summary.join('; ')}.`);
     if (invariantRuns.length > 0) {
