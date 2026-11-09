@@ -42,7 +42,7 @@ The demo day is a plush drop in San Francisco's Japantown on 2026-11-12 (market 
 8. **14:00.** Wei ships the parcel. The tracking number goes onto Mia's PayPal order, a final capture of **\$9.57** (the \$8.75 shipping Wei reports, under her \$12 budget, and PayPal's \$0.82 fee on it) releases the remaining **\$5.44**, and Payouts sends Wei **\$42.75** (the shop price and the shipping he reported).
 
 <!-- numbers:hero-totals:start -->
-Mia: held \$63.70, charged \$58.26 (\$34.00 shop price, \$12.00 fee, \$8.75 shipping, \$3.51 processing), \$5.44 released. Wei: received \$53.55 (\$42.75 back for the plush and the postage he declared, \$10.80 for his time). PayPal: \$3.51 (\$2.19 and \$0.82 on the two captures, \$0.25 on each payout), exactly the processing line. HoldMySpot: \$1.20, 10% of the queue fee. Rex's fake receipt: \$0.
+Mia: held \$63.70, charged \$58.26 (\$34.00 shop price, \$12.00 fee, \$8.75 shipping, \$3.51 processing), \$5.44 released. Wei: received \$53.55 (\$42.75 back for the plush and the postage he declared, \$10.80 for his time). PayPal: \$3.51 (\$2.19 and \$0.82 on the two captures, \$0.25 on each payout), exactly the processing line. HoldMySpot: \$1.20, 10% of the queue fee. Rex's receipt that failed four checks: \$0.
 <!-- numbers:hero-totals:end -->
 
 Mia pays the shop price printed on the receipt, with no markup from HoldMySpot; the fee pays Wei for his time. Every purchase is for one named requester, within the shop's per-person limit. Mia's \$24.26 on top of the plush is the cost of getting it across the country: \$12.00 for Wei's time (HoldMySpot keeps \$1.20 of it), \$8.75 of shipping and \$3.51 of PayPal's processing.
@@ -117,6 +117,15 @@ The hero errand ran twice on PayPal's sandbox on 2026-11-07: through the web app
 | PayPal's fees, equal to Mia's processing line | \$3.51 | \$3.51 |
 | Left with HoldMySpot: 10% of the \$12 fee | \$1.20 | \$1.20 |
 | Kept in | [`proto-shots/v3/final/`](../proto-shots/v3/final/): 16 phone screenshots, 3 ops console screenshots and 3 clips (D-121, D-122); the walk's log ([web-run-20261107.txt](evidence/web-run-20261107.txt)) and PayPal's read-back ([sandbox-readback-20261107.txt](evidence/sandbox-readback-20261107.txt)) | [docs/SANDBOX-GATES.md](SANDBOX-GATES.md#full-job-through-the-server-sandbox), and PayPal's sanitized answers in [`server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/`](../server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/), pinned by `server/test/paypal/sandbox-parity.test.ts` (D-120) |
+**Again on 2026-11-09, on the current build** (the app-stamped photos), three more times, each read back from PayPal with GET calls only:
+
+| Run on 2026-11-09 | Order | Authorization | Captures \$48.69 and \$9.57 | Payout batches \$10.80 and \$42.75 | Log |
+|---|---|---|---|---|---|
+| The web app on two phones (`web/scripts/sandbox-walk.mjs`); `npm run paypal:check` found PayPal matching the ledger to the cent | `7396788025685924T` | `9KJ11656GF995531R` | `6NA8650702616170F`, `352158903M329042E` | `ZL7YXUPNNUCF4`, `9RSCJELWW6AUS` | [web-run-20261109.txt](evidence/web-run-20261109.txt) |
+| `npm run errand`, the own-keys path in README; `npm run paypal:check` found PayPal matching the ledger to the cent | `4CM94847JR152032T` | `9BE6416664373732P` | `0J260223X3204031D`, `4HE57002LK731594M` | `ZA8MV9ZXVMT54`, `8YYKP2XBJK5HS` | [errand-run-20261109.txt](evidence/errand-run-20261109.txt) |
+| The hosted judge site's "Use the real PayPal sandbox" path (`npm run hosted` with the nine Render variables, [HOSTING.md](HOSTING.md)) | `5PY04562NA309360X` | `9L90810467378031Y` | `7XV76064UH101771A`, `5JP246025R969501C` | `HQ3VEF7CQ63C2`, `QDYCL78BL67YC` | [hosted-sandbox-run-20261109.txt](evidence/hosted-sandbox-run-20261109.txt) |
+
+Each held \$63.70, captured \$48.69 and \$9.57, released \$5.44 and paid out \$10.80 and \$42.75.
 
 **A local pickup errand on the sandbox too**, run `20261108-1357` on 2026-11-08 (`npm run gates -- lifecycle --local`, D-156: the server's HTTP API only, the buyer's approval in a headless browser, recorded AI answers). Sam in San Francisco asks for the same plush for local pickup, so there is no shipping budget and no ship-to address; Wei takes it at \$12, checks in, buys it with the hero's \$34.00 receipt, and nothing is charged until he enters the handover code Sam's phone shows. Read back from PayPal with GET calls only, every amount, status and PayPal fee matched the server's ledger to the cent: 11 of 11 checks on the [gates page](SANDBOX-GATES.md#local-errand-through-the-server-sandbox), and the amounts are the ones the shared money rules give for this errand.
 

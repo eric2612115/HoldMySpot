@@ -36,7 +36,7 @@
 | `npm test`, no keys | 753 tests, 0 failed; 19 property tests, 31,680 generated cases | [tests.json](docs/evidence/tests.json) |
 <!-- numbers:front-proof:end -->
 
-These numbers are generated from the logs, and `npm test` fails if this page disagrees with them.
+These numbers are generated from the logs, and `npm test` fails if this page disagrees with them. On 2026-11-09 the same errand ran three more times on PayPal's sandbox on the current build, through the web app, `npm run errand` and the hosted site's sandbox path, each read back from PayPal ([ids](docs/TECHNICAL-DETAILS.md#proof-on-the-real-paypal-sandbox)).
 
 ## 1. Technological implementation
 

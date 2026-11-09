@@ -747,7 +747,7 @@ const BLOCKS = {
       `Mia: held \\${usd(w.heldCents)}, charged \\${usd(w.capturedCents)} (\\${usd(shopFee)} shop price, \\${usd(w.receiptCapture.feeCents)} fee, \\${usd(w.shippingCapture.shippingCents)} shipping, \\${usd(w.processingCents)} processing), \\${usd(w.releasedCents)} released.` +
         ` Wei: received \\${usd(w.paidOutCents)} (\\${usd(reimb.amountCents)} back for the plush and the postage he declared, \\${usd(fee.amountCents)} for his time).` +
         ` PayPal: \\${usd(w.paypalFeesCents)} (\\${usd(w.receiptCapture.paypalFeeCents)} and \\${usd(w.shippingCapture.paypalFeeCents)} on the two captures, \\${usd(w.pricing.payoutItemCents)} on each payout), exactly the processing line.` +
-        ` HoldMySpot: \\${usd(w.platformCents)}, 10% of the queue fee. Rex's fake receipt: \\$0.`,
+        ` HoldMySpot: \\${usd(w.platformCents)}, 10% of the queue fee. Rex's receipt that failed four checks: \\$0.`,
     ];
   },
   'ai-eval': (n) => {

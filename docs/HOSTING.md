@@ -69,6 +69,8 @@ With the PayPal variables set, the judge's page offers "Use the real PayPal sand
 3. **Let Wei run the errand.** The server plays Wei's side over the market's own routes, with the same code as `npm run errand` (`server/src/hosted/sandboxErrand.ts`): claim, check-in with his line photo, the receipt, tracking and shipping. PayPal captures the receipt and then the shipping, the final capture releases the rest, and Payouts pays Wei.
 4. **Read PayPal's ids.** The page lists each step and every money line with PayPal's id as it lands: the hold's authorization, both captures and both payout batches.
 
+This path ran end to end on PayPal's sandbox on 2026-11-09 (`npm run hosted` with the nine variables): order `5PY04562NA309360X` held \$63.70, captured \$48.69 and \$9.57, released \$5.44 and paid out \$10.80 and \$42.75, every id read back from PayPal ([log](evidence/hosted-sandbox-run-20261109.txt)).
+
 To run it on your machine with your own sandbox keys (saved by `npm run keys` in `.secrets/`, or in the folder `HMS_SECRETS_DIR` names): `npm run hosted -- --port-offset 701`, open `http://127.0.0.1:9497/`, choose the sandbox, approve the hold in PayPal's window and press "Let Wei run the errand".
 
 ## For an AI reviewer

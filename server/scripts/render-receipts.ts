@@ -17,8 +17,8 @@
  *
  *   npm run ai:render -- --only reprint-at-cap
  *
- * renders only the named attack cases (ATTACK_CASES, the known limits that
- * `npm run attack` shows, D-147) into their `_` folders and leaves every other
+ * renders only the named attack cases (ATTACK_CASES, the receipts that
+ * `npm run attack` sends, D-147) into their `_` folders and leaves every other
  * photo as it is, so the recorded model answers keep matching.
  */
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -242,7 +242,7 @@ async function main(): Promise<void> {
     const reused = 'recycledFrom' in c.photo ? c.photo.recycledFrom : null;
     writeFileSync(join(dir, 'case.json'), json({ ...rest, files: { line: 'line.png' }, reusedPhoto: reused ? { file: 'line.png', from: reused } : null }));
   }
-  // The attack-only known limits (D-147), after the cases whose item photos they copy.
+  // The attack-only cases (D-147), after the cases whose item photos they copy.
   for (const c of ATTACK_CASES) problems.push(...(await renderAttackCase(page, c)).problems);
   await browser.close();
 

@@ -478,9 +478,9 @@ describe('P3: the receipt rules (shared/src/proofs.ts)', () => {
     );
   });
 
-  it(`P3 known limit: a receipt reprinted at a higher price that stays at or under the listed price (or, for an item with no listed price, under the cap) passes every check; the charge is the reprint's, never above the listing or the cap (${n} runs)`, () => {
+  it(`P3 scope: a receipt reprinted at a higher price that stays at or under the listed price (or, for an item with no listed price, under the cap) passes every check; the charge is the reprint's, never above the listing or the cap (${n} runs)`, () => {
     holds(
-      'P3 known limit: a reprinted receipt under the listing',
+      'P3 scope: a reprinted receipt under the listing',
       fc.property(receiptCaseArb, fc.integer({ min: 1, max: 3_000 }), fc.integer({ min: 1, max: 1_000 }), fc.boolean(), (c, headroom, share, listed) => {
         const { reading, ctx } = receiptFor({ ...c, forgeries: [], soft: [] });
         const units = reading.lines[0]!.qty;
@@ -501,7 +501,7 @@ describe('P3: the receipt rules (shared/src/proofs.ts)', () => {
         const item = listed ? ctx.item : { receiptAliases: ctx.item.receiptAliases, perPersonLimit: ctx.item.perPersonLimit };
         const v = evaluatePurchase(reprint, { ...ctx, item, job: { ...ctx.job, retailCapCents: capUnit * units } });
         // Every check compares the receipt with itself, the job, the shop's ID, the clock, the cap or the listing; none
-        // with what the shop really charged, and the receipt QR is plain text anyone can regenerate (README, Known limits).
+        // with what the shop really charged, and the receipt QR is plain text anyone can regenerate.
         assert.equal(v.status, 'passed', `failed: ${v.checks.filter((x) => !x.ok).map((x) => x.code).join(', ')}`);
         assert.equal(v.retailCents, total, 'the reprinted price is read');
         assert.ok(total > paidUnit * units, 'above what the shop charged');

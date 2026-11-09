@@ -4,10 +4,9 @@ import { OpenAiCompatibleProvider } from './openai.ts';
 /**
  * Muse Spark over Meta's Chat Completions endpoint, with JSON-schema output.
  * It is a preset of the OpenAI-compatible provider (openai.ts): provider id
- * `muse`, key MODEL_API_KEY, instructions as a `system` message. Tool calling
- * is not proven for this provider, so `agent()` reports `unsupported` and the
- * bidding agent runs in decision mode: one JSON answer per run, applied
- * through the same mandate checks.
+ * `muse`, key MODEL_API_KEY, instructions as a `system` message. The bidding
+ * agent runs on it in decision mode: `agent()` reports `unsupported`, and each
+ * run sends one JSON answer, applied through the same mandate checks.
  */
 
 export interface MuseProviderOptions {

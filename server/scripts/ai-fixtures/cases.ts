@@ -644,7 +644,7 @@ export const CHECK_IN_CASES: CheckInCase[] = [
 export const ALL_CASES: FixtureCase[] = [...PURCHASE_CASES, ...CHECK_IN_CASES];
 
 // ---------------------------------------------------------------------------
-// Known limits, rendered for `npm run attack` only
+// Attack-only cases, rendered for `npm run attack` only
 // ---------------------------------------------------------------------------
 
 /**
