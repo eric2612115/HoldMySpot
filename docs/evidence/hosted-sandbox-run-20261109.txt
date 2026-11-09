@@ -1,0 +1,39 @@
+The hosted judge site's real-PayPal-sandbox path, end to end (docs/HOSTING.md, D-163), 2026-11-09.
+Server: server/src/hosted/main.ts at commit e935c91, started with the nine Render variables as environment
+variables (PAYPAL_*, MODEL_API_KEY, VITE_AG_STUDIO_LICENSE_KEY), on 127.0.0.1. A sandbox market, Mia's request,
+the sandbox buyer's approval on PayPal's page, the authorization, then "Let Wei run the errand" (POST /api/hosted/errand).
+
+== The run (seconds since start; ids and amounts only)
+[   2 s] market: mode sandbox
+[   2 s] config: PayPal sandbox, AI muse/muse-spark-1.3 replay
+[   4 s] request bid_0065: hold $63.70, PayPal order 5PY04562NA309360X (sandbox)
+[  12 s]   buyer: typed the person-3 email
+[  16 s]   buyer: signed in as person-3
+[  18 s]   buyer: hosted sandbox order: pressed PayPal's continue button
+[  21 s]   buyer: hosted sandbox order: PayPal returned to the shop after 15 s
+[  22 s] PayPal order 5PY04562NA309360X: APPROVED
+[  24 s] authorized: 9L90810467378031Y, hold held $63.70, request open
+[  24 s] pressed: Let Wei run the errand
+[  70 s] errand: done
+[  70 s]   step claimed: clm_0001, job job_0001, fee $12.00
+[  70 s]   step checked in: claim clm_0001 checked_in
+[  70 s]   step proof: passed (muse replay), retail $34.00, capture $48.69
+[  70 s]   step fee payout: po_0001 $10.80 succeeded
+[  70 s]   step shipped: job shipped, tracking HPG-2611-09952047
+[  70 s]   step reimbursement payout: po_0002 $42.75 succeeded
+[  70 s]   ledger held $63.70 succeeded 9L90810467378031Y
+[  70 s]   ledger captured $48.69 succeeded 7XV76064UH101771A
+[  70 s]   ledger paid_out $10.80 succeeded HQ3VEF7CQ63C2
+[  70 s]   ledger captured $9.57 succeeded 5JP246025R969501C
+[  70 s]   ledger released $5.44 succeeded 5JP246025R969501C
+[  70 s]   ledger paid_out $42.75 succeeded QDYCL78BL67YC
+
+== PayPal's own records, read back with GET calls only (npm run paypal:check -- --order 5PY04562NA309360X)
+PayPal sandbox, read back 2026-11-09 07:40 UTC (GET calls only)
+  Order 5PY04562NA309360X: COMPLETED, intent AUTHORIZE, $63.70, invoice HMS-mw8y94ag-bid_0065, custom_id bid_0065
+  Tracking HPG-2611-09952047 on capture 7XV76064UH101771A: SHIPPED
+  Authorization 9L90810467378031Y: CAPTURED, $63.70
+  Capture 7XV76064UH101771A: COMPLETED, $48.69 final
+  Capture 5JP246025R969501C: COMPLETED, $9.57 final
+  Payout batch HQ3VEF7CQ63C2: SUCCESS, one item, $10.80 (Wei's fee minus 10%)
+  Payout batch QDYCL78BL67YC: SUCCESS, one item, $42.75 (the plush and the shipping he declared)
