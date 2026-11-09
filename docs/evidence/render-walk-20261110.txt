@@ -1,0 +1,35 @@
+The live judge site on Render, https://holdmyspot-k4a4.onrender.com, driven in Chromium at 1440 x 900 by
+web/scripts/hosted-walk.mjs (BASE_URL set to the site), 2026-11-10 01:1x Taipei, deploy of commit 9c31a35 (plan 1c-2g, the
+nine variables set, AG Studio licensed). Each line is one check; screenshots stay on the machine that ran it.
+
+ok   the page fits 1440 without horizontal scroll
+ok   visiting the page built a market
+ok   Mia holds $63.70
+ok   Wei's phone shows the plush request
+ok   a second browser context is untouched by the hold
+ok   Wei's errand is open on his phone
+ok   Wei's money chip reads Paid $53.55 (Paid $53.55)
+ok   Mia's ledger: held 6370 succeeded
+ok   Mia's ledger: captured 4869 succeeded
+ok   Mia's ledger: captured 957 succeeded
+ok   Mia's ledger: released 544 succeeded
+ok   Wei's ledger: paid_out 1080 succeeded
+ok   Wei's ledger: paid_out 4275 succeeded
+ok   the page shows $58.26 charged, $5.44 released, $53.55 paid
+ok   the second context is still at the start while the first finished
+ok   start over returned to a fresh market
+ok   the second context did not change
+ok   #/board fits 1440
+ok   #/board shows no licence watermark
+ok   #/board shows this visitor's server market, not the in-browser replay
+ok   #/market fits 1440
+ok   #/market shows no licence watermark
+ok   #/market shows this visitor's server market, not the in-browser replay
+ok   #/people fits 1440
+ok   #/people shows no licence watermark
+ok   #/people shows this visitor's server market, not the in-browser replay
+ok   "Fake receipt" is picked on Wei's phone
+ok   the receipt that failed the checks moved $0
+ok   a narrow screen shows one phone
+ok   the narrow page has no sideways scroll
+ok   no console errors

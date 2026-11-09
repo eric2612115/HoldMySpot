@@ -2,27 +2,27 @@
   "tool": "npm run attack",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-09T12:22:13.458Z",
-  "commit": "6de6ee4",
+  "startedAt": "2026-11-09T17:08:51.293Z",
+  "commit": "9c31a35",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "a0db35b235d3",
     "server": "80adb51f95c7",
-    "web": "575640d8fb98",
+    "web": "4002cffe84da",
     "ops": "08ff90394d1c",
     "scripts": "959179cc338c"
   },
   "commitCodeTrees": {
     "shared": "a0db35b235d3",
     "server": "80adb51f95c7",
-    "web": "575640d8fb98",
+    "web": "4002cffe84da",
     "ops": "08ff90394d1c",
     "scripts": "959179cc338c"
   },
   "node": "24.22.2",
   "platform": "darwin arm64",
   "server": {
-    "url": "http://127.0.0.1:49819",
+    "url": "http://127.0.0.1:62186",
     "startedHere": true,
     "mode": "fake",
     "ai": {

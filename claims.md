@@ -5,7 +5,7 @@ Every claim that [README.md](README.md), [docs/TECHNICAL-DETAILS.md](docs/TECHNI
 **VERIFIED** means a test in `npm test`, a command's recorded output in [docs/evidence/](docs/evidence/), a committed fixture or a committed screenshot shows the claim as worded.
 
 <!-- numbers:totals:start -->
-**Totals:** 150 claims, every one VERIFIED: 1. Money and PayPal (34); 2. The real PayPal sandbox (18); 3. Property tests P1 to P8 (8); 4. AI (15); 5. Attack and ablation (5); 6. Market and fairness (9); 7. The story and the demo (8); 8. Sponsors: AG Studio and Bryntum (13); 9. Setup, tests and reproducibility (19); 10. Claims made only in the Devpost text (21). Counted from the tables below by `npm run numbers`.
+**Totals:** 151 claims, every one VERIFIED: 1. Money and PayPal (34); 2. The real PayPal sandbox (18); 3. Property tests P1 to P8 (8); 4. AI (15); 5. Attack and ablation (5); 6. Market and fairness (9); 7. The story and the demo (8); 8. Sponsors: AG Studio and Bryntum (13); 9. Setup, tests and reproducibility (20); 10. Claims made only in the Devpost text (21). Counted from the tables below by `npm run numbers`.
 <!-- numbers:totals:end -->
 
 **How to check a row with no keys:** `npm run setup`, then the command in its Proof column; `npm test` runs every test named here (`npm test -- --only server` for one package). Numbers in README come from [docs/evidence/numbers.json](docs/evidence/numbers.json), which `npm run numbers` derives from the logs and fixtures below; `npm test` fails when README disagrees (`server/test/readme-numbers.test.ts`).
@@ -15,11 +15,11 @@ Every claim that [README.md](README.md), [docs/TECHNICAL-DETAILS.md](docs/TECHNI
 <!-- numbers:logs:start -->
 | Log | Made by | Recorded (UTC) | Commit | Code (shared, server, web, ops, scripts) differs from the commit | Git trees of shared, server, web, ops and scripts |
 |---|---|---|---|---|---|
-| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-09 12:22 | `6de6ee4` | no | `a0db35b235d3`, `80adb51f95c7`, `575640d8fb98`, `08ff90394d1c`, `959179cc338c` |
-| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-09 12:22 | `6de6ee4` | no | `a0db35b235d3`, `80adb51f95c7`, `575640d8fb98`, `08ff90394d1c`, `959179cc338c` |
-| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-09 12:22 | `6de6ee4` | no | `a0db35b235d3`, `80adb51f95c7`, `575640d8fb98`, `08ff90394d1c`, `959179cc338c` |
-| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-09 12:22 | `6de6ee4` | no | `a0db35b235d3`, `80adb51f95c7`, `575640d8fb98`, `08ff90394d1c`, `959179cc338c` |
-| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-09 12:22 | `6de6ee4` | no | `a0db35b235d3`, `80adb51f95c7`, `575640d8fb98`, `08ff90394d1c`, `959179cc338c` |
+| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-09 17:09 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
+| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-09 17:08 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
+| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-09 17:08 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
+| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-09 17:09 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
+| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-09 17:08 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
 <!-- numbers:logs:end -->
 
 **Where:** R = docs/TECHNICAL-DETAILS.md, by section; Devpost = the Devpost text, by field (section 10's ids start with V, so they are never confused with the D- rows of docs/DECISIONS.md). Test names are quoted in part; `P1` to `P8` are the property tests in section 3.
@@ -39,6 +39,7 @@ README.md states these in short form; each one rests on the rows named. Its type
 | Hero errand on the sandbox, its ids, every amount read back | S1, S2, S3, H2 |
 | Local pickup on the sandbox, its ids and amounts | S16 |
 | The same errand three more times on 2026-11-09: the web app, `npm run errand` and the hosted site, each read back from PayPal | S17, S18, S19 |
+| Try it at the live site on Render | T23 |
 | Gates passed on the sandbox; PayPal's sandbox enforces the day-4 reauthorization window | S5, S6 |
 | Venmo-button hold and Venmo-funded capture | S10, S11 |
 | Tracking on the order; void; refunds, never more than is refundable, once per key; status sync; OAuth | M13, M11, M15, M34, M35, M16, S5 |
@@ -238,6 +239,7 @@ Each runs inside `npm test` with a fixed seed; the counts are in [docs/evidence/
 | T20 | On the hosted site a demo photo or a chosen simulated reading never reaches a model; a visitor's own photo goes to the model only with a server-side key and under caps per market and per day; past a cap the agents say so; without a key an unknown photo stays unread and the agents say there is no model. | R: The hosted judge site; docs/HOSTING.md | `server/test/hosted.test.ts` "hosted AI" (on stand-in ports): "a demo photo or a chosen simulated reading never reaches the model, and a visitor's photo does, up to the cap", "the daily cap is shared across markets and resets the next day", "agent turns stop at the cap and say so", "without a key an unknown photo stays unread and the agents say no model" | - | VERIFIED |
 | T21 | The hosted site's sandbox choice builds a market on PayPal's real sandbox: on 2026-11-09 the sandbox buyer approved order `5PY04562NA309360X` on PayPal's own page, PayPal authorized \$63.70, and "Let Wei run the errand" captured \$48.69 and \$9.57, released \$5.44 and paid out \$10.80 and \$42.75, every id read back from PayPal with GET calls. | docs/HOSTING.md | `server/src/hosted/sandboxErrand.ts`; `npm run paypal:check -- --order 5PY04562NA309360X` | [docs/evidence/hosted-sandbox-run-20261109.txt](docs/evidence/hosted-sandbox-run-20261109.txt) | VERIFIED |
 | T22 | On the hosted site, "Let Wei run the errand" plays the queuer's side on the server with the stamped photos and comes out at the hero's numbers (`server/test/hosted.test.ts`, on the PayPal emulator). | docs/HOSTING.md | `server/test/hosted.test.ts` | - | VERIFIED |
+| T23 | The judge site runs live on Render at https://holdmyspot-k4a4.onrender.com (commit `9c31a35`, plan `1c-2g`): on 2026-11-10 the hosted browser walk passed all 31 checks there, among them a private market per visitor, the whole errand with Wei's money chip reading Paid \$53.55, the three ops pages with no licence watermark, and no console errors. | R: Try it; docs/HOSTING.md | `web/scripts/hosted-walk.mjs` with `BASE_URL` set to the site | `docs/evidence/render-walk-20261110.txt` | VERIFIED |
 
 ## 10. Claims made only in the Devpost text
 
