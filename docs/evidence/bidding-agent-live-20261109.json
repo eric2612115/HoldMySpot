@@ -1,0 +1,132 @@
+{
+  "what": "The bidding agent on the phone with a live model: GET /api/bids/bid_0065/agent-actions, the whole response.",
+  "recorded": "2026-11-09, Taipei afternoon",
+  "commit": "2b794a1",
+  "command": "HMS_AI_KEY_FILES=<file>#MODEL_API_KEY npm run demo -- --ai live --port-offset 2000 --no-ops",
+  "paypal": "simulated PayPal (fake mode)",
+  "setup": "Mia asked over the API for the Mochi Bunny plush: max fee $12.00, hold $63.70, goal \"As cheap as I can get it, never above my max fee.\"; after the hold the market clock ran at 60x for about 3 minutes.",
+  "response": {
+    "actions": [
+      {
+        "id": "act_0001",
+        "bidId": "bid_0065",
+        "at": 1794509160060,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping the request open at a $12.00 fee to wait for a helper offer.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 8544
+        }
+      },
+      {
+        "id": "act_0002",
+        "bidId": "bid_0065",
+        "at": 1794511272420,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request at a $12.00 fee while we wait for a helper offer to match.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 19113
+        }
+      },
+      {
+        "id": "act_0003",
+        "bidId": "bid_0065",
+        "at": 1794512820900,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request at a $12.00 fee to wait for a helper offer.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 14315
+        }
+      },
+      {
+        "id": "act_0004",
+        "bidId": "bid_0065",
+        "at": 1794514195440,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request at a $12.00 fee for now while we wait for a helper offer.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 14373
+        }
+      },
+      {
+        "id": "act_0005",
+        "bidId": "bid_0065",
+        "at": 1794515318340,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request open at a $12.00 fee to wait for a helper offer before the deadline.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 11117
+        }
+      },
+      {
+        "id": "act_0006",
+        "bidId": "bid_0065",
+        "at": 1794516613080,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request at a $12.00 fee to wait for a helper offer before the deadline.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 9213
+        }
+      },
+      {
+        "id": "act_0007",
+        "bidId": "bid_0065",
+        "at": 1794517788480,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request at a $12.00 fee while we wait for a helper offer.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 10587
+        }
+      },
+      {
+        "id": "act_0008",
+        "bidId": "bid_0065",
+        "at": 1794518949420,
+        "kind": "keep",
+        "fromFeeCents": 1200,
+        "toFeeCents": 1200,
+        "reason": "Keeping your request open at a $12.00 fee to wait for a cheaper helper offer.",
+        "ai": {
+          "provider": "muse",
+          "model": "muse-spark-1.3",
+          "mode": "live",
+          "latencyMs": 8793
+        }
+      }
+    ]
+  }
+}
