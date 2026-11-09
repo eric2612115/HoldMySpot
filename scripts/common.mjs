@@ -93,14 +93,18 @@ export const CODE_FOLDERS = ['shared', 'server', 'web', 'ops', 'scripts'];
  * differs from it (untracked files included), and the git tree of each code folder as the files on
  * disk are now, untracked ones included. A tree is git's own content hash of a folder, so once these
  * files are committed, `git rev-parse <commit>:server` names the same tree; the logs themselves sit in
- * docs/, outside these folders, so recording them does not change the hashes.
+ * docs/, outside these folders, so recording them does not change the hashes. `commitTrees` are the same
+ * folders' trees in the commit itself, so a log shows on its own whether its code differed from the commit.
  */
 export function gitState(cwd = REPO) {
   const git = (args, env) => spawnSync('git', args, { cwd, encoding: 'utf8', env: env ?? process.env });
   const rev = git(['rev-parse', '--short', 'HEAD']);
-  if (rev.status !== 0) return { commit: null, dirty: null, trees: null };
+  if (rev.status !== 0) return { commit: null, dirty: null, trees: null, commitTrees: null };
   const st = git(['status', '--porcelain', '--untracked-files=all']);
   const dirty = st.status === 0 ? st.stdout.trim().length > 0 : null;
+  const committed = git(['rev-parse', ...CODE_FOLDERS.map((f) => `HEAD:${f}`)]);
+  const lines = committed.status === 0 ? committed.stdout.trim().split('\n') : [];
+  const commitTrees = lines.length === CODE_FOLDERS.length ? Object.fromEntries(CODE_FOLDERS.map((f, i) => [f, lines[i].slice(0, 12)])) : null;
   // A throwaway index: HEAD's files, then every change and untracked file on disk (.gitignore applies).
   const index = path.join(os.tmpdir(), `hms-git-index-${process.pid}-${Date.now()}`);
   const env = { ...process.env, GIT_INDEX_FILE: index };
@@ -116,7 +120,7 @@ export function gitState(cwd = REPO) {
   } finally {
     fs.rmSync(index, { force: true });
   }
-  return { commit: rev.stdout.trim(), dirty, trees };
+  return { commit: rev.stdout.trim(), dirty, trees, commitTrees };
 }
 
 // ---------------------------------------------------------------------------

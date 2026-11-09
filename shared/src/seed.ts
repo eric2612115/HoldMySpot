@@ -46,7 +46,7 @@ export function offsetLngLat(origin: LngLat, east: number, north: number): LngLa
 export const HERO = {
   /** Mia in New York: the ship-to-me request. */
   requesterId: 'mia',
-  /** Wei, the hero queuer (the owner's character), lives a few minutes from Japantown. */
+  /** Wei, the hero queuer, lives a few minutes from Japantown. */
   queuerId: 'wei',
   /** The runner whose receipt is fake in the hero script. */
   fakeReceiptQueuerId: 'rex',
@@ -496,7 +496,7 @@ export const SEED_USERS: User[] = [
   requester('sam', 'Sam W.', 'sf', 'requester-sam'),
   requester('noor', 'Noor A.', 'sf', 'requester-noor'),
   requester('leo', 'Leo M.', 'sf', 'requester-leo'),
-  // Wei is the hero queuer (the owner's character); every queuer lives in the US.
+  // Wei is the hero queuer; every queuer lives in the US.
   queuer('wei', 'Wei', 'sf', [-122.4385, 37.7779], reliability(49, 1, 0), 'queuer-wei'),
   queuer('lin', 'Lin', 'sf', [-122.434, 37.7905], reliability(38, 2, 0), 'queuer-lin'),
   queuer('rin', 'Rin', 'sf', [-122.426, 37.776], reliability(23, 1, 1), 'queuer-rin'),

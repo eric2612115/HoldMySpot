@@ -4,10 +4,10 @@
 # each capture, each payout batch). Each line below is PayPal's own answer, printed as ids, statuses and
 # amounts; no request body, key, email address or name. "schedule" is shared/src/money.ts's fee for that
 # amount. The output is kept verbatim below the line of dashes; only these comment lines were added.
-# Repeat it for orders your own app made: npm run paypal:check -- --order <id> (scripts/paypal-check.mjs).
-# The last line of each section (captured, released, paid out, PayPal fees, left with HoldMySpot) is computed by
-# the read-back script from the lines above it; it is not a PayPal field. That script ran in the 11-07 build session
-# and is not in this repository (these three comment lines were added on 2026-11-08, D-149).
+# `npm run paypal:check -- --order <id>` (scripts/paypal-check.mjs) reproduces each line with GET calls only: the
+# order, its authorization, captures and tracker; with `-- --bid <id>` against the server that ran the errand it also
+# reads each capture's and payout item's PayPal fee and the payout batches. The last line of each section (captured,
+# released, paid out, PayPal fees, left with HoldMySpot) is the sum of the lines above it, not a PayPal field.
 # ------------------------------------------------------------------------------------------------------
 v24.15.0
 == lifecycle 20261107-2047

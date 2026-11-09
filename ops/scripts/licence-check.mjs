@@ -125,6 +125,6 @@ const licensed = banners.length === 0 && watermarks.length === 0;
 console.log(
   licensed
     ? 'Verdict: licensed. No AG licence banner or watermark.'
-    : 'Verdict: not fully licensed. Every feature still works (AG trial mode); an AG Studio Pro with AI key removes the banner and the watermark (ops/README.md, Licences).',
+    : 'Verdict: AG trial mode, every feature works; an AG Studio Pro with AI key removes the trial notices.',
 );
 if ((strict && !licensed) || !agentAnswered) process.exitCode = 1;

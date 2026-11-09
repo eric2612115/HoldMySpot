@@ -10,7 +10,7 @@ The sandbox answers quoted below come from runs against the real sandbox on 11-0
 |---|---|---|
 | Platform merchant (payee of every hold, sender of every payout) | Existing sandbox app, US business account `<sandbox business account>` | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID` in `sandbox.env` in the secrets folder (`.secrets/` written by `npm run keys`, or `HMS_SECRETS_DIR`) |
 | Requester (buyer) | US personal account `<sandbox personal account>` (or a dedicated judge buyer) | `PAYPAL_BUYER_EMAIL`; the password is typed only on PayPal's own pages |
-| Queuer payout receiver | Any US personal sandbox account other than the buyer (no Taiwan account is needed, owner 11-07) | `PAYPAL_PAYOUT_EMAIL` (its older name `PAYPAL_TW_PAYOUT_EMAIL` is still read, D-17). When `sandbox.env` has none, the gate script takes `--payout-to <label>` from `sandbox-buyers.json` (never the buyer) and hands it to the server it starts as `PAYPAL_PAYOUT_EMAIL` in the environment (D-69). |
+| Queuer payout receiver | Any US personal sandbox account other than the buyer (no Taiwan account is needed) | `PAYPAL_PAYOUT_EMAIL` (its older name `PAYPAL_TW_PAYOUT_EMAIL` is still read, D-17). When `sandbox.env` has none, the gate script takes `--payout-to <label>` from `sandbox-buyers.json` (never the buyer) and hands it to the server it starts as `PAYPAL_PAYOUT_EMAIL` in the environment (D-69). |
 
 The platform app's transaction and dispute history can hold objects that are not HoldMySpot's. Every object we create carries an `HMS-` prefixed `invoice_id` and our id in `custom_id`; the status sync and the dispute list ignore anything without that prefix.
 
@@ -167,9 +167,9 @@ Commands (all record sanitized answers as fixtures; D-69):
 | G1 | Capture below the held amount with `final_capture=true`, then GET the authorization | Status CAPTURED, nothing left to capture |
 | G2 | Two captures, the first `final_capture=false` | Both COMPLETED; a third capture is refused |
 | G3 | Void after a partial capture | Remainder released (VOIDED / PARTIALLY_CAPTURED then VOIDED) |
-| G4 | Venmo AUTHORIZE with `testBuyerCountry: 'US'` (owner approves in the popup) | Authorization CREATED, funding `venmo`; capture works |
+| G4 | Venmo AUTHORIZE with `testBuyerCountry: 'US'` (the buyer approves in the popup) | Authorization CREATED, funding `venmo`; capture works |
 | G5 | Pay Later with intent AUTHORIZE (bonus) | Authorization CREATED with Pay Later funding; then `paylater` joins `HMS_PAYPAL_FUNDING` |
-| G6 | Payout by email to the payout receiver sandbox account | SUCCESS, or UNCLAIMED until the owner accepts it on sandbox.paypal.com |
+| G6 | Payout by email to the payout receiver sandbox account | SUCCESS, or UNCLAIMED until the receiver accepts it on sandbox.paypal.com |
 | G7 | Refund, then a buyer-opened dispute settled with `adjudicate` | Refund COMPLETED; dispute RESOLVED |
 | G8 | Tracking with carrier OTHER on a capture of an authorized order | 2xx and the tracker shows on the order |
 | G9 | Order with `payment_source` key accepted by a v6 session; local `PICKUP_FROM_PERSON` accepted | Approval succeeds |

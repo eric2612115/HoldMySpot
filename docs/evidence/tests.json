@@ -2,16 +2,23 @@
   "tool": "npm test",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-09T08:24:04.569Z",
-  "seconds": 111.5,
-  "commit": "0a9057b",
+  "startedAt": "2026-11-09T12:22:34.155Z",
+  "seconds": 324.5,
+  "commit": "6de6ee4",
   "uncommittedChanges": true,
   "codeTrees": {
-    "shared": "f2d772c516e9",
-    "server": "eba3365d795f",
-    "web": "12dec2f99a8e",
-    "ops": "9b8a3eac4f75",
-    "scripts": "9e97aa29eba8"
+    "shared": "a0db35b235d3",
+    "server": "80adb51f95c7",
+    "web": "575640d8fb98",
+    "ops": "08ff90394d1c",
+    "scripts": "959179cc338c"
+  },
+  "commitCodeTrees": {
+    "shared": "a0db35b235d3",
+    "server": "80adb51f95c7",
+    "web": "575640d8fb98",
+    "ops": "08ff90394d1c",
+    "scripts": "959179cc338c"
   },
   "node": "24.22.2",
   "npm": "11.19.1",
@@ -36,7 +43,7 @@
       "pkg": "shared",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 3.3,
+      "seconds": 3.4,
       "tests": 103,
       "passed": 103,
       "failed": 0,
@@ -112,7 +119,7 @@
       "pkg": "server",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 98.1,
+      "seconds": 236.6,
       "tests": 485,
       "passed": 485,
       "failed": 0,
@@ -164,13 +171,13 @@
       "pkg": "web",
       "label": "type check",
       "ok": true,
-      "seconds": 3.6
+      "seconds": 17.1
     },
     {
       "pkg": "web",
       "label": "tests (vitest)",
       "ok": true,
-      "seconds": 1.2,
+      "seconds": 3.3,
       "tests": 139,
       "passed": 139,
       "failed": 0,
@@ -180,13 +187,13 @@
       "pkg": "ops",
       "label": "type check",
       "ok": true,
-      "seconds": 4.2
+      "seconds": 49.3
     },
     {
       "pkg": "ops",
       "label": "tests",
       "ok": true,
-      "seconds": 1,
+      "seconds": 14.6,
       "tests": 27,
       "passed": 27,
       "failed": 0,

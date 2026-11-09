@@ -4,7 +4,7 @@ One Node process on one port serves the phone app, the ops console under `/ops/`
 
 **There is no external database.** Each market is an in-memory SQLite database inside the process, one per visitor, with its own folder of uploaded photos. That is why nothing needs a backup or a migration and why visitors cannot collide. It also means a restart or a new deploy clears every market; a visitor reloads the page and gets a fresh one. Nothing here is meant to be kept.
 
-## What the owner does
+## Deploy on Render
 
 1. In Render: **New > Blueprint**, pick this repository, branch `main`. Render reads `render.yaml` and offers one web service, `holdmyspot`.
 2. Render asks for the values below. Paste them; leave blank anything you do not want (each one only switches a feature off).
@@ -22,15 +22,15 @@ The site works with none of them: simulated PayPal, recorded AI answers, simulat
 
 ## The plan, and why
 
-`render.yaml` sets plan `1c-2g` (1 CPU, 2 GB). Measured on this code with `node --expose-gc server/scripts/hosted-memory.ts 40` (macOS, Node 24.22):
+`render.yaml` sets plan `1c-2g` (1 CPU, 2 GB). Measured with `node --expose-gc server/scripts/hosted-memory.ts 40` (macOS, Node 24.22, [log](evidence/hosted-memory-20261109.txt)):
 
 | | RSS |
 |---|---|
-| The process with no markets | 130 MB |
-| 40 fresh markets | 471 MB (about 8.5 MB each) |
-| The same 40 after each ran the whole hero day | 512 MB (about 9.6 MB each) |
+| The process with no markets | 133 MB |
+| 40 fresh markets | 440 MB (about 7.7 MB each) |
+| The same 40 after each ran the whole hero day | 524 MB (about 9.8 MB each) |
 
-A market builds in about 0.5 s, and 40 idle markets use 0.3% of one CPU, because a paused market's timers sleep until its next request.
+A market builds in about 0.6 s (620 ms on average over the 40), and 40 idle markets use 0.3% of one CPU, because a paused market's timers sleep until its next request.
 
 **The cap is 40 markets** (`HMS_HOSTED_MARKET_CAP`), about 530 MB, which leaves room for uploads, compression of the page bundles and Linux differing from macOS. The memory allows more; 40 serves a judging panel, and a new visitor at the cap displaces the market idle the longest.
 
@@ -76,6 +76,7 @@ To run it on your machine with your own sandbox keys (saved by `npm run keys` in
 ## For an AI reviewer
 
 ```sh
+BASE=http://127.0.0.1:8796   # npm run hosted; or the hosted site's URL
 TOKEN=$(curl -s -X POST "$BASE/api/demo/session" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
 curl -s -X POST "$BASE/api/demo/start" -H "X-HMS-Market: $TOKEN" -H 'content-type: application/json' -d '{"scriptId":"hero","speed":600}'
 until curl -s "$BASE/api/demo/state" -H "X-HMS-Market: $TOKEN" | grep -q '"finished"'; do sleep 1; done

@@ -534,6 +534,23 @@ function deriveSmoke(report) {
   return { answered: report.answered, readySeconds: report.readySeconds, paypal: report.paypal, ai: report.ai, os: osName(report.platform), node: report.node, recordedOn: report.startedAt.slice(0, 10) };
 }
 
+/**
+ * Whether a log's code differed from its commit, over the code folders only (shared, server, web, ops, scripts):
+ * the trees of those folders as the files were on disk against the same folders' trees in the commit, both
+ * recorded in the log. A change elsewhere (docs/, README) is not code. When this clone has the commit, git's own
+ * trees for it must be the ones the log recorded, so a log cannot claim a commit's code it did not run on.
+ */
+function codeDiffers(file, r) {
+  if (!r.codeTrees || !r.commitCodeTrees) return null;
+  if (r.commit && spawnSync('git', ['cat-file', '-e', `${r.commit}^{commit}`], { cwd: REPO }).status === 0) {
+    const g = spawnSync('git', ['rev-parse', ...CODE_FOLDERS.map((f) => `${r.commit}:${f}`)], { cwd: REPO, encoding: 'utf8' });
+    const trees = g.status === 0 ? g.stdout.trim().split('\n').map((t) => t.slice(0, 12)) : [];
+    const wrong = CODE_FOLDERS.filter((f, i) => trees[i] !== r.commitCodeTrees[f]);
+    if (wrong.length > 0) throw new Stale(`${file} records trees for commit ${r.commit} that git does not give for ${wrong.join(', ')}.`);
+  }
+  return CODE_FOLDERS.some((f) => r.codeTrees[f] !== r.commitCodeTrees[f]);
+}
+
 /** Which code each log in docs/evidence/ ran on (D-149): claims.md's generated "logs" table. */
 function deriveLogs() {
   const kinds = [
@@ -554,6 +571,7 @@ function deriveLogs() {
       at: typeof r[atKey] === 'string' ? r[atKey].slice(0, 16).replace('T', ' ') : null,
       commit: r.commit ?? null,
       uncommittedChanges: r.uncommittedChanges ?? null,
+      codeDiffersFromCommit: codeDiffers(SRC[key], r),
       codeTrees: r.codeTrees ?? null,
     });
   }
@@ -808,7 +826,7 @@ const BLOCKS = {
       `| Gates passed on PayPal's sandbox | ${gatesPassed(g)} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md) |`,
       `| The model reads, the rules decide (${a.cases} demo photos, recorded ${a.stamp} answers) | ${a.modelCalls} model calls: ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | \`npm run ai:eval\` | [ai-eval.json](evidence/ai-eval.json) |`,
       `| Which layer stops which fake | Fakes stopped: Rules + AI ${ab.rulesAndAi.fakesStopped}/${ab.cases.fake}; the rules on the true reading (each photo's truth.json, not a reader) ${ab.rulesOnly.fakesStopped}/${ab.cases.fake}; the model without the job, not asked for a verdict, ${ab.aiOnly.fakesStopped}/${ab.cases.fake}; code alone ${ab.codeAlone}/${ab.cases.fake}, a rule on the model's reading for the other ${ab.readingOnly}; genuine proofs passed ${ab.rulesAndAi.genuinePassed}/${ab.cases.genuine} in each | \`npm run ablation\` | [ABLATION.md](ABLATION.md), [ablation.json](evidence/ablation.json) |`,
-      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as declared, capped by the budget; ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](evidence/attack.json) |`,
+      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as declared, capped by the budget; across ${at.markets} markets and ${at.jobsChecked} jobs, ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} | \`npm run attack\` | [attack.json](evidence/attack.json) |`,
       `| A fresh start answers with no keys | ${list(s.answered)} answered, ready in ${s.readySeconds} s. PayPal: ${s.paypal}. AI: ${s.ai} | \`npm run demo -- --smoke\` | [smoke.json](evidence/smoke.json) |`,
     ];
   },
@@ -840,11 +858,11 @@ function claimTotals(text) {
 const CLAIMS_BLOCKS = {
   totals: (_n, text) => [claimTotals(text)],
   logs: (n) => [
-    '| Log | Made by | Recorded (UTC) | Commit | Uncommitted changes | Git trees of shared, server, web, ops and scripts |',
+    '| Log | Made by | Recorded (UTC) | Commit | Code (shared, server, web, ops, scripts) differs from the commit | Git trees of shared, server, web, ops and scripts |',
     '|---|---|---|---|---|---|',
     ...n.logs.map(
       (l) =>
-        `| [${l.file}](${l.path}) | \`${l.tool}\` | ${l.at ?? '-'} | ${l.commit ? `\`${l.commit}\`` : '-'} | ${l.uncommittedChanges === null ? '-' : l.uncommittedChanges ? 'yes' : 'no'} | ${l.codeTrees ? CODE_FOLDERS.map((f) => `\`${l.codeTrees[f] ?? '-'}\``).join(', ') : 'not recorded'} |`,
+        `| [${l.file}](${l.path}) | \`${l.tool}\` | ${l.at ?? '-'} | ${l.commit ? `\`${l.commit}\`` : '-'} | ${l.codeDiffersFromCommit === null ? '-' : l.codeDiffersFromCommit ? 'yes' : 'no'} | ${l.codeTrees ? CODE_FOLDERS.map((f) => `\`${l.codeTrees[f] ?? '-'}\``).join(', ') : 'not recorded'} |`,
     ),
   ],
 };
@@ -860,12 +878,13 @@ const FRONT_BLOCKS = {
     const run = n.sandbox.serverRun;
     const lr = n.sandbox.localRun;
     const g = n.sandbox.gates;
+    const web = n.sandbox.webRun;
     const a = n.aiEval;
     const at = n.attack;
     return [
       '| Proof | Result | Log |',
       '|---|---|---|',
-      `| Hero errand on the real PayPal sandbox, through the web app and through the API | Held \\${usd(run.authorization.amountCents)}, captured ${run.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')}, released \\${usd(run.releasedCents)}, paid out ${run.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')}; PayPal's fees \\${usd(run.paypalFeesCents)}, exactly the processing line; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox) |`,
+      `| Hero errand on the real PayPal sandbox, through the web app and through the API | Held \\${usd(run.authorization.amountCents)}, captured ${run.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')}, released \\${usd(run.releasedCents)}, paid out ${run.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')}; PayPal's fees \\${usd(run.paypalFeesCents)}, exactly the processing line; both runs read back from PayPal match the ledger to the cent (the API run: ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks; the web app run: ${web.walkChecks.passed} of ${web.walkChecks.of} walk checks and PayPal's read-back) | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), [web run](docs/evidence/web-run-20261107.txt) |`,
       `| Local pickup on the real PayPal sandbox | Held \\${usd(lr.authorization.amountCents)}, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match | [gates](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox) |`,
       `| Gates passed on the real PayPal sandbox | ${gatesPassed(g)} | [gates](docs/SANDBOX-GATES.md) |`,
       `| AI reads, rules decide (${a.cases} demo photos) | ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |`,
@@ -886,7 +905,19 @@ const FRONT_BLOCKS = {
 /** The most README.md may weigh, and what its first 8 KB must already say: an AI reader's text may be cut off. */
 const FRONT_MAX_BYTES = 22 * 1024;
 const FRONT_FIRST_BYTES = 8192;
-const FRONT_MUST_OPEN_WITH = ['For AI reviewers', 'Orders v2', 'Payouts', 'Muse Spark', 'AG Studio', 'Bryntum', 'read-back checks', 'verdicts', 'attempts'];
+const FRONT_MUST_OPEN_WITH = [
+  // The rule, word for word as the Devpost pitch and docs/NEEDS-A-PERSON.md state it (claims.md M2).
+  'No charge until AI reads the receipt and the rules pass it, or a person approves it.',
+  'For AI reviewers',
+  'Orders v2',
+  'Payouts',
+  'Muse Spark',
+  'AG Studio',
+  'Bryntum',
+  'read-back checks',
+  'verdicts',
+  'attempts',
+];
 
 /** Words and sentences the front page must never carry. */
 const FRONT_BANNED = [/\b(?:scalp|resell|flip)\w*/i, /fake receipts? moves? /i];
@@ -938,7 +969,11 @@ function frontChecks(n) {
     { name: 'the receipt capture', re: new RegExp(`PayPal captures \\*\\*${$}${amt}\\*\\*`, 'g'), want: [d(w.receiptCapture.amountCents)] },
     { name: 'the shipping capture and the release', re: new RegExp(`a final capture of \\*\\*${$}${amt}\\*\\* \\([^)]*\\) releases \\*\\*${$}${amt}\\*\\*`, 'g'), want: [d(w.shippingCapture.amountCents), d(w.releasedCents)] },
     { name: 'the payouts to Wei', re: new RegExp(`Payouts sends Wei \\*\\*${$}${amt}\\*\\*`, 'g'), want: [[d(fee.amountCents)], [d(reimb.amountCents)]] },
-    { name: 'the rules on the true reading', re: /With the rules on the true reading, (\d+) of (\d+) bad proofs/g, want: [String(n.ablation.rulesOnly.fakesStopped), String(n.ablation.cases.fake)] },
+    {
+      name: 'the ablation: rules + AI, the model alone, code alone',
+      re: /On the (\d+) bad demo proofs, rules \+ AI stop (\d+) of (\d+), the model's own report alone (\d+) of (\d+), and code alone (\d+) of (\d+)/g,
+      want: [n.ablation.cases.fake, n.ablation.rulesAndAi.fakesStopped, n.ablation.cases.fake, n.ablation.aiOnly.fakesStopped, n.ablation.cases.fake, n.ablation.codeAlone, n.ablation.cases.fake].map(String),
+    },
   ];
 }
 
@@ -1337,6 +1372,7 @@ async function record(portOffset, outDir = rel('docs', 'evidence')) {
       commit: git.commit,
       uncommittedChanges: git.dirty,
       codeTrees: git.trees,
+      commitCodeTrees: git.commitTrees,
       node: process.versions.node,
       npm: npmVersion(),
       platform: `${process.platform} ${process.arch}`,
@@ -1374,6 +1410,7 @@ async function record(portOffset, outDir = rel('docs', 'evidence')) {
         commit: git.commit,
         uncommittedChanges: git.dirty,
         codeTrees: git.trees,
+        commitCodeTrees: git.commitTrees,
         node: process.versions.node,
         npm: npmVersion(),
         platform: `${process.platform} ${process.arch}`,

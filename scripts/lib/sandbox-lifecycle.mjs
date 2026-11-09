@@ -440,7 +440,7 @@ export async function runLifecycle({
     const paypalCaptured = result.paypal.captures.filter((c) => c.status === 'COMPLETED').reduce((s, c) => s + c.amountCents, 0);
     check('authorization amount', pa.amountCents === result.server.hold.amountCents, `PayPal ${usd(pa.amountCents)}, server hold ${usd(result.server.hold.amountCents)}`);
     check('authorization closed', pa.status === 'CAPTURED' && result.server.hold.status === 'captured', `PayPal ${pa.status}, server ${result.server.hold.status}`);
-    check('captured total', paypalCaptured === serverCaptured && serverCaptured === result.server.hold.capturedCents, `PayPal ${usd(paypalCaptured)} in ${result.paypal.captures.length} captures, ledger ${usd(serverCaptured)}`);
+    check('captured total', paypalCaptured === serverCaptured && serverCaptured === result.server.hold.capturedCents, `PayPal ${usd(paypalCaptured)} in ${result.paypal.captures.length} capture${result.paypal.captures.length === 1 ? '' : 's'}, ledger ${usd(serverCaptured)}`);
     check('released rest', serverReleased === pa.amountCents - paypalCaptured && serverReleased === result.server.hold.releasedCents, `ledger ${usd(serverReleased)}, PayPal remainder ${usd(pa.amountCents - paypalCaptured)}`);
     check(
       'capture by capture',

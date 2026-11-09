@@ -116,7 +116,7 @@ const NO_HAIR = '#3A2B33';
  * The demo people, keyed by the `avatar` string each seeded user carries
  * (shared/src/seed.ts). Mia, Wei, Lin, Rex and Priya are the film's own
  * characters; the others are new looks made the same way. Mia and Wei, the
- * film's leads, stay human; Wei is the owner's character.
+ * film's leads, stay human.
  */
 export const PEOPLE: Record<string, PersonLook> = {
   // Requesters.

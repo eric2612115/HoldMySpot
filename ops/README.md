@@ -24,7 +24,7 @@ URL switches (all optional):
 | `?agents=model` / `offline` | Where the agents think. Default: the server's AI port on the live server when it runs a live model, offline on the replay; `model` lets the replay use the server's model too (D-103) |
 | `?words=market` | Screen words bid, ask, spread instead of request, offer, gap (D-37) |
 
-The play button runs the market clock 60 times faster; the moment buttons jump to scenes worth filming.
+The play button runs the market clock 60 times faster; the moment buttons jump to the day's key moments.
 
 ## Check
 

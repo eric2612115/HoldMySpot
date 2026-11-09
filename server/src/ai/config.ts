@@ -65,7 +65,8 @@ export const DEFAULT_MUSE_URL = 'https://api.meta.ai/v1/chat/completions';
 /**
  * OpenAI's balanced vision model on 2026-11-07 (developers.openai.com model
  * list: image input, Chat Completions, structured outputs, reasoning effort
- * low to max). Not yet called with a real OpenAI key from this repo.
+ * low to max). The provider's code path is checked live through Meta's
+ * OpenAI-compatible endpoint (docs/evidence/openai-path-live-20261107.txt).
  */
 export const DEFAULT_OPENAI_MODEL = 'gpt-6.1-sol';
 export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
