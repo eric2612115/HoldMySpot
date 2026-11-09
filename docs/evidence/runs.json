@@ -1,45 +1,45 @@
 {
   "tool": "npm run numbers -- --record",
   "format": 1,
-  "startedAt": "2026-11-09T08:07:48.652Z",
-  "commit": "5f93d4d",
+  "startedAt": "2026-11-09T08:23:30.751Z",
+  "commit": "0a9057b",
   "uncommittedChanges": true,
   "codeTrees": {
-    "shared": "d358c655a04b",
-    "server": "9b96ab4abab8",
-    "web": "b227d7a17ac8",
-    "ops": "75c53e05e553",
-    "scripts": "740e3a72f4b9"
+    "shared": "f2d772c516e9",
+    "server": "eba3365d795f",
+    "web": "12dec2f99a8e",
+    "ops": "9b8a3eac4f75",
+    "scripts": "9e97aa29eba8"
   },
   "node": "24.22.2",
   "npm": "11.19.1",
   "platform": "darwin arm64",
   "cpus": 8,
   "loadAverageAtEnd": [
-    4.7,
-    28.6,
-    70.8
+    5.5,
+    28.5,
+    47.3
   ],
   "commands": [
     {
       "command": "npm run ai:eval",
       "exitCode": 0,
-      "seconds": 24
+      "seconds": 13
     },
     {
       "command": "npm run attack",
       "exitCode": 0,
-      "seconds": 32.9
+      "seconds": 15.9
     },
     {
       "command": "npm run demo -- --smoke",
       "exitCode": 0,
-      "seconds": 1.6
+      "seconds": 4.1
     },
     {
       "command": "npm test",
       "exitCode": 0,
-      "seconds": 104
+      "seconds": 112.2
     }
   ]
 }

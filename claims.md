@@ -15,11 +15,11 @@ Every claim that [README.md](README.md), [docs/TECHNICAL-DETAILS.md](docs/TECHNI
 <!-- numbers:logs:start -->
 | Log | Made by | Recorded (UTC) | Commit | Uncommitted changes | Git trees of shared, server, web, ops and scripts |
 |---|---|---|---|---|---|
-| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-09 08:08 | `5f93d4d` | yes | `d358c655a04b`, `9b96ab4abab8`, `b227d7a17ac8`, `75c53e05e553`, `740e3a72f4b9` |
-| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-09 08:08 | `5f93d4d` | no | `d358c655a04b`, `9b96ab4abab8`, `b227d7a17ac8`, `75c53e05e553`, `740e3a72f4b9` |
-| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-09 08:08 | `5f93d4d` | yes | `d358c655a04b`, `9b96ab4abab8`, `b227d7a17ac8`, `75c53e05e553`, `740e3a72f4b9` |
-| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-09 08:08 | `5f93d4d` | yes | `d358c655a04b`, `9b96ab4abab8`, `b227d7a17ac8`, `75c53e05e553`, `740e3a72f4b9` |
-| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-09 08:07 | `5f93d4d` | yes | `d358c655a04b`, `9b96ab4abab8`, `b227d7a17ac8`, `75c53e05e553`, `740e3a72f4b9` |
+| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-09 08:24 | `0a9057b` | yes | `f2d772c516e9`, `eba3365d795f`, `12dec2f99a8e`, `9b8a3eac4f75`, `9e97aa29eba8` |
+| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-09 08:23 | `0a9057b` | no | `f2d772c516e9`, `eba3365d795f`, `12dec2f99a8e`, `9b8a3eac4f75`, `9e97aa29eba8` |
+| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-09 08:23 | `0a9057b` | yes | `f2d772c516e9`, `eba3365d795f`, `12dec2f99a8e`, `9b8a3eac4f75`, `9e97aa29eba8` |
+| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-09 08:23 | `0a9057b` | yes | `f2d772c516e9`, `eba3365d795f`, `12dec2f99a8e`, `9b8a3eac4f75`, `9e97aa29eba8` |
+| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-09 08:23 | `0a9057b` | yes | `f2d772c516e9`, `eba3365d795f`, `12dec2f99a8e`, `9b8a3eac4f75`, `9e97aa29eba8` |
 <!-- numbers:logs:end -->
 
 **Where:** R = docs/TECHNICAL-DETAILS.md, by section; D = the Devpost text, by field. Test names are quoted in part; `P1` to `P8` are the property tests in section 3.
