@@ -117,7 +117,8 @@ The hero errand ran twice on PayPal's sandbox on 2026-11-07: through the web app
 | PayPal's fees, equal to Mia's processing line | \$3.51 | \$3.51 |
 | Left with HoldMySpot: 10% of the \$12 fee | \$1.20 | \$1.20 |
 | Kept in | [`proto-shots/v3/final/`](../proto-shots/v3/final/): 16 phone screenshots, 3 ops console screenshots and 3 clips (D-121, D-122); the walk's log ([web-run-20261107.txt](evidence/web-run-20261107.txt)) and PayPal's read-back ([sandbox-readback-20261107.txt](evidence/sandbox-readback-20261107.txt)) | [docs/SANDBOX-GATES.md](SANDBOX-GATES.md#full-job-through-the-server-sandbox), and PayPal's sanitized answers in [`server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/`](../server/test/paypal/fixtures/recorded/20261107-2047-lifecycle/), pinned by `server/test/paypal/sandbox-parity.test.ts` (D-120) |
-**Again on 2026-11-09, on the current build** (the app-stamped photos), three more times, each read back from PayPal with GET calls only:
+
+**Again on 2026-11-09, on the stamped-photo build** (the app-stamped photos), three more times, each read back from PayPal with GET calls only:
 
 | Run on 2026-11-09 | Order | Authorization | Captures \$48.69 and \$9.57 | Payout batches \$10.80 and \$42.75 | Log |
 |---|---|---|---|---|---|
