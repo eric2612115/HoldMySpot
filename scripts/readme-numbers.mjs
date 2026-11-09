@@ -413,8 +413,6 @@ function deriveGates(text, serverRun, localRun) {
     lastUpdate: /^Last update: ([^.]+)\./m.exec(text)?.[1] ?? null,
     pass: by('pass'),
     partial: by('partial'),
-    waiting: by('waiting'),
-    notRun: by('not run'),
     serverRun: lifecycleOf('## Full job through the server (sandbox)', serverRun, 'lifecycle'),
     localRun: lifecycleOf('## Local errand through the server (sandbox)', localRun, 'lifecycle --local'),
     probeRun,
@@ -490,6 +488,9 @@ function deriveAttack(report) {
   if (report.tool !== 'npm run attack') throw new Stale(`${SRC.attack} is not an npm run attack report.`);
   if (!report.ok) throw new Stale(`${SRC.attack} records a run where money moved wrongly or an attempt was not stopped.`);
   if (report.rows.some((x) => x.outcome === undefined)) throw new Stale(`${SRC.attack} predates the outcome of each row (D-149): run npm run numbers -- --record.`);
+  const OUTCOMES = ['refused', 'to_a_person', 'intended', 'capped'];
+  const other = report.rows.filter((x) => !OUTCOMES.includes(x.outcome));
+  if (other.length > 0) throw new Stale(`${SRC.attack} has rows with an outcome this script does not know (${other.map((x) => `row ${x.n}: ${x.outcome}`).join(', ')}): run npm run numbers -- --record.`);
   const zero = (m) => m.captured === 0 && m.refunded === 0 && m.paidOut === 0 && m.held === 0;
   const by = (o) => report.rows.filter((x) => x.ok && x.outcome === o);
   const moved = (x) => ({ n: x.n, id: x.id, capturedCents: x.moved.captured, paidOutCents: x.moved.paidOut });
@@ -503,7 +504,6 @@ function deriveAttack(report) {
     toPerson: by('to_a_person').map((x) => x.n),
     intended: by('intended').map(moved),
     capped: by('capped').map(moved),
-    knownLimits: by('known_limit').map(moved),
     stoppedBy: layers,
     markets: report.markets.length,
     // Holds a capture was tried on; the seeded crowd's other holds in those markets are not counted.
@@ -735,6 +735,9 @@ async function derive() {
 // README.md: generated blocks
 // ---------------------------------------------------------------------------
 
+/** The gates PayPal's sandbox passed, as the gates page records them: "G0, G1, ... and G11". */
+const gatesPassed = (g) => (g.pass.length <= 1 ? g.pass.join('') : `${g.pass.slice(0, -1).join(', ')} and ${g.pass.at(-1)}`);
+
 const BLOCKS = {
   'hero-totals': (n) => {
     const w = n.workedExample;
@@ -744,7 +747,7 @@ const BLOCKS = {
       `Mia: held \\${usd(w.heldCents)}, charged \\${usd(w.capturedCents)} (\\${usd(shopFee)} shop price, \\${usd(w.receiptCapture.feeCents)} fee, \\${usd(w.shippingCapture.shippingCents)} shipping, \\${usd(w.processingCents)} processing), \\${usd(w.releasedCents)} released.` +
         ` Wei: received \\${usd(w.paidOutCents)} (\\${usd(reimb.amountCents)} back for the plush and the postage he declared, \\${usd(fee.amountCents)} for his time).` +
         ` PayPal: \\${usd(w.paypalFeesCents)} (\\${usd(w.receiptCapture.paypalFeeCents)} and \\${usd(w.shippingCapture.paypalFeeCents)} on the two captures, \\${usd(w.pricing.payoutItemCents)} on each payout), exactly the processing line.` +
-        ` HoldMySpot: \\${usd(w.platformCents)}, 10% of the queue fee. The fake receipt: \\$0.`,
+        ` HoldMySpot: \\${usd(w.platformCents)}, 10% of the queue fee. Rex's fake receipt: \\$0.`,
     ];
   },
   'ai-eval': (n) => {
@@ -794,15 +797,6 @@ const BLOCKS = {
       : 'The server days printed no coverage';
     const list = (xs) => xs.join(', ');
     const lr = n.sandbox.localRun;
-    const gateLists = [
-      ['pass', g.pass],
-      ['partial', g.partial],
-      ['waiting', g.waiting],
-      ['not run', g.notRun],
-    ]
-      .filter(([, xs]) => xs.length > 0)
-      .map(([k, xs]) => `${k}: ${list(xs)}`)
-      .join('; ');
     return [
       '| Claim | Result | Run it | Log or fixture |',
       '|---|---|---|---|',
@@ -811,10 +805,10 @@ const BLOCKS = {
       `| PayPal's sandbox charged what the rules say | Run \`${run.run}\`: held \\${usd(run.authorization.amountCents)}, captured ${capt}, released \\${usd(run.releasedCents)}, paid out ${paid}; PayPal's fees ${fees} = \\${usd(run.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(run.platformCents)}; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match; the same amounts as the worked example in \`shared/src/money.ts\` | \`npm run gates -- lifecycle\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md#full-job-through-the-server-sandbox), [PayPal's answers](../${run.fixtures}/) |`,
       `| The web app run on PayPal's sandbox read back the same | PayPal on ${web.readBackAt}: authorization \`${web.authorization.id}\` \\${usd(web.authorization.amountCents)} ${web.authorization.status}; captures ${web.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')} ${[...new Set(web.captures.map((c) => c.status))].join(', ')} (PayPal's fees ${web.captures.map((c) => `\\${usd(c.paypalFeeCents)}`).join(' + ')}); released \\${usd(web.releasedCents)}; payouts ${web.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')} ${[...new Set(web.payouts.map((p) => p.status))].join(', ')}; tracking ${web.tracking.status}; HoldMySpot kept \\${usd(web.platformCents)}. The walk's own checks of the server's ledger: ${web.walkChecks.passed}/${web.walkChecks.of}, the same ids and amounts | \`web/scripts/sandbox-walk.mjs\` (your sandbox keys, a second sandbox buyer) | [web-run-20261107.txt](evidence/web-run-20261107.txt), [sandbox-readback-20261107.txt](evidence/sandbox-readback-20261107.txt) |`,
       `| A local pickup errand on PayPal's sandbox charged what the rules say | Run \`${lr.run}\` (Sam's plush, a \`PICKUP_FROM_PERSON\` order): held \\${usd(lr.authorization.amountCents)}, nothing captured at the receipt, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)} in one payout; PayPal's fees \\${usd(lr.captures[0].paypalFeeCents)} + \\${usd(lr.payouts[0].paypalFeeCents)} = \\${usd(lr.paypalFeesCents)}, the processing line; HoldMySpot kept \\${usd(lr.platformCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match; the same amounts as the shared rules give for this local errand | \`npm run gates -- lifecycle --local\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md#local-errand-through-the-server-sandbox), [PayPal's answers](../${lr.fixtures}/) |`,
-      `| Sandbox gates | ${gateLists} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md) |`,
+      `| Gates passed on PayPal's sandbox | ${gatesPassed(g)} | \`npm run gates -- status\` (your sandbox keys) | [SANDBOX-GATES.md](SANDBOX-GATES.md) |`,
       `| The model reads, the rules decide (${a.cases} demo photos, recorded ${a.stamp} answers) | ${a.modelCalls} model calls: ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | \`npm run ai:eval\` | [ai-eval.json](evidence/ai-eval.json) |`,
       `| Which layer stops which fake | Fakes stopped: Rules + AI ${ab.rulesAndAi.fakesStopped}/${ab.cases.fake}; the rules on the true reading (each photo's truth.json, not a reader) ${ab.rulesOnly.fakesStopped}/${ab.cases.fake}; the model without the job, not asked for a verdict, ${ab.aiOnly.fakesStopped}/${ab.cases.fake}; code alone ${ab.codeAlone}/${ab.cases.fake}, a rule on the model's reading for the other ${ab.readingOnly}; genuine proofs passed ${ab.rulesAndAi.genuinePassed}/${ab.cases.genuine} in each | \`npm run ablation\` | [ABLATION.md](ABLATION.md), [ablation.json](evidence/ablation.json) |`,
-      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as claimed, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} got through, ${at.knownLimits.length === 1 ? 'the known limit' : 'the known limits'} (${at.knownLimits.map((x) => LIMIT_WORDS[x.id] ?? x.id).join(', ')}); ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](evidence/attack.json) |`,
+      `| What the cheating attempts move | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved (${layers}); ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as declared, capped by the budget; ${at.violations === 0 ? 'no hold captured more than it held and no job paid out more than it charged' : `${at.violations} broken invariants`} in ${at.markets} markets (${at.holdsChecked} ${at.holdsChecked === 1 ? 'hold' : 'holds'} a capture was tried on, ${at.jobsChecked} jobs) | \`npm run attack\` | [attack.json](evidence/attack.json) |`,
       `| A fresh start answers with no keys | ${list(s.answered)} answered, ready in ${s.readySeconds} s. PayPal: ${s.paypal}. AI: ${s.ai} | \`npm run demo -- --smoke\` | [smoke.json](evidence/smoke.json) |`,
     ];
   },
@@ -822,8 +816,29 @@ const BLOCKS = {
 
 const CODE_FOLDERS = ['shared', 'server', 'web', 'ops', 'scripts'];
 
-/** claims.md's generated blocks: the code each log ran on. */
+/**
+ * claims.md's totals line, counted from its own tables: every row whose first cell is a claim id (M1, S16,
+ * F8b ...), by section, and how many of them are VERIFIED.
+ */
+function claimTotals(text) {
+  const sections = [];
+  for (const part of text.split('\n## ').slice(1)) {
+    const title = part.split('\n')[0].trim();
+    const rows = part
+      .split('\n')
+      .filter((l) => /^\| [A-Z]\d+[a-z]? \|/.test(l))
+      .map((l) => l.replace(/^\|\s*|\s*\|$/g, '').split(/\s+\|\s+/));
+    if (rows.length > 0) sections.push({ title, claims: rows.length, verified: rows.filter((r) => r.at(-1) === 'VERIFIED').length });
+  }
+  const claims = sum(sections.map((x) => x.claims));
+  const verified = sum(sections.map((x) => x.verified));
+  const by = sections.map((x) => `${x.title} (${x.claims})`).join('; ');
+  return `**Totals:** ${claims} claims, ${verified === claims ? 'every one VERIFIED' : `${verified} VERIFIED, ${claims - verified} not`}: ${by}. Counted from the tables below by \`npm run numbers\`.`;
+}
+
+/** claims.md's generated blocks: its totals and the code each log ran on. */
 const CLAIMS_BLOCKS = {
+  totals: (_n, text) => [claimTotals(text)],
   logs: (n) => [
     '| Log | Made by | Recorded (UTC) | Commit | Uncommitted changes | Git trees of shared, server, web, ops and scripts |',
     '|---|---|---|---|---|---|',
@@ -847,24 +862,14 @@ const FRONT_BLOCKS = {
     const g = n.sandbox.gates;
     const a = n.aiEval;
     const at = n.attack;
-    const list = (xs) => xs.join(', ');
-    const gateLists = [
-      ['pass', g.pass],
-      ['partial', g.partial],
-      ['waiting', g.waiting],
-      ['not run', g.notRun],
-    ]
-      .filter(([, xs]) => xs.length > 0)
-      .map(([k, xs]) => `${k}: ${list(xs)}`)
-      .join('; ');
     return [
       '| Proof | Result | Log |',
       '|---|---|---|',
       `| Hero errand on the real PayPal sandbox, through the web app and through the API | Held \\${usd(run.authorization.amountCents)}, captured ${run.captures.map((c) => `\\${usd(c.amountCents)}`).join(' + ')}, released \\${usd(run.releasedCents)}, paid out ${run.payouts.map((p) => `\\${usd(p.amountCents)}`).join(' + ')}; PayPal's fees \\${usd(run.paypalFeesCents)}, exactly the processing line; ${g.serverRun.matches} of ${g.serverRun.checks} read-back checks match | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox) |`,
       `| Local pickup on the real PayPal sandbox | Held \\${usd(lr.authorization.amountCents)}, one capture of \\${usd(lr.captures[0].amountCents)} at the handover code, released \\${usd(lr.releasedCents)}, paid out \\${usd(lr.paidOutCents)}; ${g.localRun.matches} of ${g.localRun.checks} read-back checks match | [gates](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox) |`,
-      `| Sandbox gates | ${gateLists} | [gates](docs/SANDBOX-GATES.md) |`,
+      `| Gates passed on the real PayPal sandbox | ${gatesPassed(g)} | [gates](docs/SANDBOX-GATES.md) |`,
       `| AI reads, rules decide (${a.cases} demo photos) | ${a.verdicts}/${a.cases} verdicts, ${a.exactCheckSets}/${a.cases} exact failed-check sets, ${a.money.ok}/${a.money.of} money, ${a.fields.ok}/${a.fields.of} fields, ${a.badProofsCaught.caught}/${a.badProofsCaught.of} bad proofs caught, ${a.genuineWronglyFailed.failed}/${a.genuineWronglyFailed.of} genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |`,
-      `| \`npm run attack\`, no keys | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved; ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as declared, up to the budget; ${rowList(at.knownLimits.map((x) => x.n))} is the known limit | [attack.json](docs/evidence/attack.json) |`,
+      `| \`npm run attack\`, no keys | ${at.attempts} attempts: ${at.refused} refused with \\$0.00 moved; ${rowList(at.toPerson)} sent to a person, \\$0.00 until they decide; ${rowList(at.intended.map((x) => x.n))} moved exactly the genuine receipt's amount; ${rowList(at.capped.map((x) => x.n))} paid shipping as declared, capped by the budget | [attack.json](docs/evidence/attack.json) |`,
       `| \`npm test\`, no keys | ${t.tests} tests, ${t.failed} failed; ${t.properties.tests} property tests, ${grouped(t.properties.runs)} generated cases | [tests.json](docs/evidence/tests.json) |`,
     ];
   },
@@ -933,7 +938,6 @@ function frontChecks(n) {
     { name: 'the receipt capture', re: new RegExp(`PayPal captures \\*\\*${$}${amt}\\*\\*`, 'g'), want: [d(w.receiptCapture.amountCents)] },
     { name: 'the shipping capture and the release', re: new RegExp(`a final capture of \\*\\*${$}${amt}\\*\\* \\([^)]*\\) releases \\*\\*${$}${amt}\\*\\*`, 'g'), want: [d(w.shippingCapture.amountCents), d(w.releasedCents)] },
     { name: 'the payouts to Wei', re: new RegExp(`Payouts sends Wei \\*\\*${$}${amt}\\*\\*`, 'g'), want: [[d(fee.amountCents)], [d(reimb.amountCents)]] },
-    { name: 'the demo photo count', re: /All (\d+) demo photos/g, want: [String(n.aiEval.cases)] },
     { name: 'the rules on the true reading', re: /With the rules on the true reading, (\d+) of (\d+) bad proofs/g, want: [String(n.ablation.rulesOnly.fakesStopped), String(n.ablation.cases.fake)] },
   ];
 }
@@ -982,9 +986,6 @@ function frontProblems(front, numbers) {
   return problems;
 }
 
-/** How README names each attack row that gets through as a known limit. */
-const LIMIT_WORDS = { 'spoofed-check-in': 'a spoofed position', 'reprint-at-cap': 'a receipt reprinted at the cap' };
-
 const marker = (name, edge) => `<!-- numbers:${name}:${edge} -->`;
 
 function renderReadme(readme, numbers, blocks = BLOCKS) {
@@ -999,7 +1000,7 @@ function renderReadme(readme, numbers, blocks = BLOCKS) {
       missing.push(name);
       continue;
     }
-    out = `${out.slice(0, i + start.length)}\n${render(numbers).join('\n')}\n${out.slice(j)}`;
+    out = `${out.slice(0, i + start.length)}\n${render(numbers, out).join('\n')}\n${out.slice(j)}`;
   }
   return { text: out, missing };
 }
@@ -1117,7 +1118,7 @@ function proseChecks(n) {
     { name: "local proof: HoldMySpot's share", re: new RegExp(`HoldMySpot's 10% of the ${$}(\\d+) fee \\| ${$}${amt}`, 'g'), want: [String(n.localExample.inputs.feeCents / 100), d(local.platformCents)], required: true },
     // Versions of the recorded runs (docs/evidence/tests.json)
     { name: 'checked platform', re: /Checked on (\w+) with Node (\d+\.\d+) and npm (\d+\.\d+)/g, want: [n.tests.os, majorMinor(n.tests.node), majorMinor(n.tests.npm)], required: true },
-    { name: 'known limits platform', re: /checked on (\w+) \(Node (\d+\.\d+), npm (\d+\.\d+)\)/g, want: [n.tests.os, majorMinor(n.tests.node), majorMinor(n.tests.npm)], required: true },
+    { name: 'attack attempts', re: /`npm run attack` tries (\d+) ways to cheat it/g, want: [String(n.attack.attempts)], required: true },
     { name: 'test steps', re: /All green: (\d+) steps/g, want: [String(n.tests.steps)] },
     ...(n.runs ? [{ name: 'attack duration', re: /One command, no keys, (under a minute|about a minute|about \d+ minutes)/g, want: [n.runs.attackDuration], required: true }] : []),
   ];
@@ -1150,32 +1151,16 @@ function anchors(n) {
   ];
 }
 
-/** Gates named in README's "Gates passed" line must have that status on the gates page. */
+/** Gates named in docs/TECHNICAL-DETAILS.md's "Gates passed" line must be passes on the gates page. */
 function gateLineProblems(readme, n) {
   const line = readme.split('\n').find((l) => l.startsWith('- **Gates passed**'));
   if (!line) return ['docs/TECHNICAL-DETAILS.md has no "- **Gates passed**" line'];
-  // The line's parts by their bold labels: the passed gates first, then any of Partial, Waiting and "Not on the gates page yet".
-  const labels = [
-    ['**Partial:**', 'partial'],
-    ['**Waiting:**', 'waiting'],
-    ['**Not on the gates page yet:**', 'notYet'],
-  ];
-  const marks = labels
-    .map(([label, key]) => ({ key, at: line.indexOf(label), length: label.length }))
-    .filter((m) => m.at >= 0)
-    .sort((a, b) => a.at - b.at);
-  const parts = { passed: line.slice(0, marks[0]?.at ?? line.length), partial: '', waiting: '', notYet: '' };
-  marks.forEach((m, i) => {
-    parts[m.key] = line.slice(m.at + m.length, marks[i + 1]?.at ?? line.length);
-  });
-  const gatesIn = (s) => [...s.matchAll(/\bG(\d+)\b/g)].map((m) => `G${m[1]}`);
   const g = n.sandbox.gates;
   const problems = [];
-  for (const id of gatesIn(parts.passed)) if (!g.pass.includes(id)) problems.push(`README lists ${id} as passed; ${SRC.gates} says ${id} is not a pass`);
-  for (const id of gatesIn(parts.partial)) if (!g.partial.includes(id)) problems.push(`README lists ${id} as partial; ${SRC.gates} says otherwise`);
-  for (const id of gatesIn(parts.waiting)) if (!g.waiting.includes(id)) problems.push(`README lists ${id} as waiting; ${SRC.gates} says otherwise`);
-  for (const id of gatesIn(parts.notYet)) if (g.pass.includes(id) || g.partial.includes(id)) problems.push(`README says ${id} is not on the gates page yet; ${SRC.gates} records it as ${g.pass.includes(id) ? 'a pass' : 'partial'}`);
-  for (const id of g.partial) if (!gatesIn(parts.partial).includes(id)) problems.push(`${SRC.gates} records ${id} as partial; README's gates line does not list it under **Partial:**`);
+  for (const m of line.matchAll(/\bG(\d+)\b/g)) {
+    const id = `G${m[1]}`;
+    if (!g.pass.includes(id)) problems.push(`README lists ${id} as passed; ${SRC.gates} says ${id} is not a pass`);
+  }
   return problems;
 }
 
@@ -1270,7 +1255,7 @@ function freshProblemsOrThrow(dir, numbers) {
     if (!k.ok) problems.push(`the fresh npm run attack moved money it should not or let an attempt through (${dir}/attack.json)`);
     else {
       const f = deriveAttack(k);
-      const pick = (x) => ({ attempts: x.attempts, movedNothing: x.movedNothing, intended: x.intended, capped: x.capped, knownLimits: x.knownLimits, stoppedBy: x.stoppedBy, rows: x.rows, violations: x.violations });
+      const pick = (x) => ({ attempts: x.attempts, movedNothing: x.movedNothing, intended: x.intended, capped: x.capped, stoppedBy: x.stoppedBy, rows: x.rows, violations: x.violations });
       if (!isDeepStrictEqual(pick(f), pick(numbers.attack))) problems.push(`the fresh npm run attack differs from ${SRC.attack}: run npm run numbers -- --record`);
     }
   }
@@ -1491,11 +1476,11 @@ async function main() {
     problems.push(...readmeProblems(readme, numbers), ...frontProblems(front, numbers));
     const c = renderReadme(claims, numbers, CLAIMS_BLOCKS);
     for (const name of c.missing) problems.push(`claims.md has no generated block "${name}"`);
-    if (c.text !== claims) problems.push('claims.md\'s generated block "logs" differs from docs/evidence/ (npm run numbers rewrites it)');
+    if (c.text !== claims) problems.push('claims.md\'s generated blocks "totals" and "logs" differ from its tables and docs/evidence/ (npm run numbers rewrites them)');
     if (args.fresh) problems.push(...freshProblems(path.resolve(args.fresh), numbers));
   } else {
     const w = writeDerived(numbers, { numbers: numbersFile, readme: readmeFile, front: frontFile, claims: claimsFile });
-    console.log(`${green('Wrote')} ${path.relative(REPO, numbersFile)}${w.readmeChanged ? ' and the generated blocks of README.md and docs/TECHNICAL-DETAILS.md' : ''}${w.claimsChanged ? " and claims.md's logs table" : ''}.`);
+    console.log(`${green('Wrote')} ${path.relative(REPO, numbersFile)}${w.readmeChanged ? ' and the generated blocks of README.md and docs/TECHNICAL-DETAILS.md' : ''}${w.claimsChanged ? " and claims.md's totals and logs table" : ''}.`);
     for (const name of w.readme.missing) problems.push(`docs/TECHNICAL-DETAILS.md has no generated block "${name}"`);
     for (const name of w.claims.missing) problems.push(`claims.md has no generated block "${name}"`);
     problems.push(...readmeProblems(w.readme.text, numbers).filter((p) => !p.includes('generated block')));

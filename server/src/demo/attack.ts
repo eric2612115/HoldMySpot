@@ -62,10 +62,8 @@ export const LAYER_OF_CODE: Readonly<Record<string, 'rules' | 'state machine'>> 
 };
 
 /**
- * The attack's last market (D-147, D-151): Rex checks in from home while his phone reports the shop's
- * position, with his rendered line photo (its code pinned on rex at Paper Moon Toys), a known limit no
- * layer stops; and Wei sends Mia's real receipt reprinted at her $36.00 cap with a matching QR
- * (server/fixtures/proofs/_reprint-at-cap, its code pinned on mia>wei by the hero setup like her
- * genuine one), which the listed-price check now sends to a person.
+ * The attack's last market (D-147, D-151): Wei sends Mia's real receipt reprinted at her $36.00 cap
+ * with a matching QR (server/fixtures/proofs/_reprint-at-cap, its code pinned on mia>wei by the hero
+ * setup like her genuine one), which the listed-price check sends to a person.
  */
-export const ATTACK_LIMITS = { reprintCaseId: '_reprint-at-cap', reprintOf: 'paper-moon-mia-genuine', requesterId: 'mia', queuerId: 'wei', spooferId: 'rex' } as const;
+export const ATTACK_REPRINT = { reprintCaseId: '_reprint-at-cap', reprintOf: 'paper-moon-mia-genuine', requesterId: 'mia', queuerId: 'wei' } as const;

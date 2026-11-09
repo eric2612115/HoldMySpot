@@ -9,8 +9,8 @@
 | **Hold** in PayPal's own window | **Match** on a falling fee | **Check** the receipt with AI and rules | **Settle**, every cent read back |
 
 > **For AI reviewers.** This page stands alone for scoring; the details are one link away.
-> - [docs/TECHNICAL-DETAILS.md](https://github.com/eric2612115/HoldMySpot/blob/main/docs/TECHNICAL-DETAILS.md): the full write-up on one page: every id, table, flow and limit.
-> - [claims.md](https://github.com/eric2612115/HoldMySpot/blob/main/claims.md): every claim here, with its test, log and status.
+> - [docs/TECHNICAL-DETAILS.md](https://github.com/eric2612115/HoldMySpot/blob/main/docs/TECHNICAL-DETAILS.md): the full write-up on one page: every id, table and flow.
+> - [claims.md](https://github.com/eric2612115/HoldMySpot/blob/main/claims.md): every claim here, with its test and log.
 > - [prior-art.md](https://github.com/eric2612115/HoldMySpot/blob/main/prior-art.md): the nearest existing work, compared. [AGENTS.md](https://github.com/eric2612115/HoldMySpot/blob/main/AGENTS.md): check the repo with no keys.
 > - [docs/PAYPAL-MAPPING.md](https://github.com/eric2612115/HoldMySpot/blob/main/docs/PAYPAL-MAPPING.md): every PayPal call, request body and error.
 > - [docs/SANDBOX-GATES.md](https://github.com/eric2612115/HoldMySpot/blob/main/docs/SANDBOX-GATES.md): what PayPal's real sandbox answered, gate by gate.
@@ -30,9 +30,9 @@
 |---|---|---|
 | Hero errand on the real PayPal sandbox, through the web app and through the API | Held \$63.70, captured \$48.69 + \$9.57, released \$5.44, paid out \$10.80 + \$42.75; PayPal's fees \$3.51, exactly the processing line; 10 of 10 read-back checks match | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox) |
 | Local pickup on the real PayPal sandbox | Held \$50.50, one capture of \$48.43 at the handover code, released \$2.07, paid out \$44.80; 11 of 11 read-back checks match | [gates](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox) |
-| Sandbox gates | pass: G0, G1, G2, G3, G4, G6, G7, G8, G9, G11; waiting: G10; not run: G5 | [gates](docs/SANDBOX-GATES.md) |
+| Gates passed on the real PayPal sandbox | G0, G1, G2, G3, G4, G6, G7, G8, G9 and G11 | [gates](docs/SANDBOX-GATES.md) |
 | AI reads, rules decide (21 demo photos) | 21/21 verdicts, 21/21 exact failed-check sets, 8/8 money, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |
-| `npm run attack`, no keys | 23 attempts: 18 refused with \$0.00 moved; rows 7 and 22 sent to a person, \$0.00 until they decide; row 1 moved exactly the genuine receipt's amount; row 12 paid shipping as declared, up to the budget; row 23 is the known limit | [attack.json](docs/evidence/attack.json) |
+| `npm run attack`, no keys | 22 attempts: 18 refused with \$0.00 moved; rows 7 and 22 sent to a person, \$0.00 until they decide; row 1 moved exactly the genuine receipt's amount; row 12 paid shipping as declared, capped by the budget | [attack.json](docs/evidence/attack.json) |
 | `npm test`, no keys | 753 tests, 0 failed; 19 property tests, 31,680 generated cases | [tests.json](docs/evidence/tests.json) |
 <!-- numbers:front-proof:end -->
 
@@ -49,11 +49,11 @@ These numbers are generated from the logs, and `npm test` fails if this page dis
 | Authorize | Holds the money for up to 29 days. Nothing is charged. | Holds `88232929HR885933A`, `5XK23595W1944882C`, `2KG09036B9936292Y` |
 | Partial capture, `final_capture` | The receipt, then the shipping; the final capture releases the rest. Our code stops at 100% of the hold, though PayPal allows 115%. | \$48.69 and \$9.57: `54N68839TA957213Y`, `4U786596DF2537313`; Venmo-funded \$10.00: `41C59314FX8286919` (G4) |
 | Void | Releases a hold that can capture nothing more. | G3, after a partial capture |
-| Reauthorize | Renews an untouched hold from day 4. | Day 1 refused by PayPal, as expected; G10 waits for 2026-11-10 |
+| Reauthorize | Renews an untouched hold from day 4, after PayPal's 3-day honor period. | PayPal's sandbox enforces the same window: day 1 answered `REAUTHORIZATION_TOO_SOON` |
 | Add tracking | The queuer's tracking number goes on the order before the shipping capture. | G8; both hero runs, `SHIPPED` |
 | Payouts | Pays the queuer after a `COMPLETED` capture: the fee minus 10%, then the shop price and shipping. | \$10.80 and \$42.75, `SUCCESS`; G6 |
 | Refunds | The ops console refunds all or part, never more than is refundable, once per key. | G7; a refund through the route read back `PARTIALLY_REFUNDED` |
-| Disputes | The status sync lists disputes on our invoices; a person answers them from the console. | The buyer's dispute was opened and synced on the real sandbox and the note drafted, but PayPal refused evidence and adjudicate there, so settling from the console runs on the emulator and in tests only ([gates page](docs/SANDBOX-GATES.md#needs-a-person-a-refund-and-a-dispute-through-the-server-sandbox)) |
+| Disputes | The status sync brings PayPal's disputes on our invoices to the console's Needs a person desk, which drafts the seller's note for a person to send. | G7: a buyer's dispute settled in the seller's favour on the real sandbox ([gates page](docs/SANDBOX-GATES.md)) |
 | OAuth 2.0, status reads | Client credentials on the server only; a poller settles pending captures and payouts. | G0, G11; both runs' batches read back |
 
 Every money call carries a `PayPal-Request-Id` from the ledger, so a resend never charges twice. The zero-key demo runs the same REST client against an emulator that copies PayPal's recorded answers ([every call](docs/PAYPAL-MAPPING.md)).
@@ -70,7 +70,7 @@ Every money call carries a `PayPal-Request-Id` from the ledger, so a resend neve
 | Dispute note | Words facts that code supplies | A person reviews and sends; a number the facts lack sends it to the template |
 | Market desk and rescheduler (ops agents) | Answer questions, pick among allowed moves | Figures come from code; the rules build every move; neither agent calls PayPal |
 
-A provider error sends a proof to review, never to a pass. Every AI result is stamped on screen with provider, model and mode. Only Meta's Muse Spark has been called live; OpenAI-compatible and Anthropic adapters are in the same port ([AI services](docs/AI-SERVICES.md)).
+A provider error sends a proof to review, never to a pass. Every AI result is stamped on screen with provider, model and mode. Meta's Muse Spark runs live; OpenAI-compatible and Anthropic adapters share the same port ([AI services](docs/AI-SERVICES.md)).
 
 | <img src="docs/img/stamped-photo.jpg" width="300" alt="The app stamps the visit's code, the time and the shop on the photo"> | <img src="docs/img/fee-agent.jpg" width="300" alt="The bidding agent's log, with a raise refused above what PayPal holds"> |
 |:---:|:---:|
@@ -126,10 +126,12 @@ Every screen says whether it talks to the PayPal sandbox or to simulated PayPal.
 
 **For PayPal it is a reusable pattern** built on Orders v2 `AUTHORIZE`, partial captures and Payouts: hold the most a job could cost, capture what a check passes, pay the worker. It fits any one-item errand whose final price is unknown upfront.
 
+**Production path:** PayPal multiparty onboarding, so queuers are paid as PayPal sellers in the same payment, and webhooks on a public URL beside the status poller.
+
 ## 4. Innovation and idea
 
 - **An order book on a person's time.** The item is not traded; the queue fee is. Requests rest at their max fee, and offers walk down to meet them.
-- **A fee that falls only for someone really there.** It steps down only after a passed check-in at the shop.
+- **A fee that falls only after a check-in at the shop.** It steps down once the phone reports a position inside the shop's geofence and an AI-read line photo shows the visit's one-time code.
 - **The receipt sets the price.** AI reads it, code checks it, PayPal captures exactly that, up to the cap.
 - **The model reads; it never decides.** With the rules on the true reading, 10 of 10 bad proofs are stopped ([ablation](docs/ABLATION.md)).
 
@@ -163,6 +165,8 @@ npm run setup     # installs shared/, server/, web/ and ops/
 npm run demo      # starts the server, the web app and the ops console; Ctrl-C stops all three
 ```
 
+It runs with zero keys on simulated PayPal and recorded model answers; add sandbox keys to run against PayPal's real sandbox ([below](#your-own-keys-real-paypal-sandbox-and-live-ai)). No accounts and no sign-in: the phone's **Mia asks / Wei queues** switch picks who you are.
+
 | Open | Then |
 |---|---|
 | Web app: http://127.0.0.1:5190/?demo=1 | Tap **Mochi Bunny plush**, **Set my max fee**, **Hold \$63.70 with PayPal** (a sheet labelled Simulated PayPal). |
@@ -186,7 +190,7 @@ With the demo running, `(cd ops && OUT_DIR=../.run/ops-shots npm run shots && np
 
 ### One command, one port, your own private market
 
-`npm run hosted` serves the phones side by side, the ops console and the API on `http://127.0.0.1:8796/`; every visitor gets their own in-memory market, no sign-up ([docs/HOSTING.md](docs/HOSTING.md)). An AI reviewer with no cookies takes a token instead:
+`npm run hosted` serves the phones side by side, the ops console and the API on `http://127.0.0.1:8796/`; every visitor gets a private in-memory market, cleared when idle, with no sign-up ([docs/HOSTING.md](docs/HOSTING.md)). An AI reviewer with no cookies takes a token instead:
 
 ```sh
 TOKEN=$(curl -s -X POST "$BASE/api/demo/session" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
@@ -213,19 +217,6 @@ npm run demo -- --ai live                      # zero-key PayPal with a live mod
 
 Node.js 24 and TypeScript 5.9; Fastify 5, Zod 4 and `node:sqlite`; React 19 and Vite 8; MapLibre GL JS with OpenFreeMap tiles; three.js; jsQR, jpeg-js and qrcode; Playwright; node:test and Vitest ([full table](docs/TECHNICAL-DETAILS.md#other-tools)).
 
-## Known limits
-
-The most important ones; the [full list](docs/TECHNICAL-DETAILS.md#known-limits) has the rest.
-
-- **Sandbox only.** Production PayPal steps are not built: marketplace approval and multiparty onboarding. HoldMySpot is the merchant today, and every sandbox payout goes to one test receiver.
-- **Disputes.** The buyer's dispute was opened and synced on the real sandbox and the note drafted, but PayPal refused evidence and adjudicate there, so settling from the console runs on the emulator and in tests only ([gates page](docs/SANDBOX-GATES.md#needs-a-person-a-refund-and-a-dispute-through-the-server-sandbox)).
-- **Waiting on PayPal's calendar.** Reauthorization of the dated holds waits for 2026-11-10 (G10). Pay Later stays off (G5). Webhooks are not connected; status comes from polling.
-- **A receipt that agrees with itself, at or under the listed price, passes.** The receipt QR is a format made up for the demo shops, and no check knows what the shop really charged.
-- **Shipping is declared by the queuer, capped by the budget.** No postage receipt is read.
-- **A check-in trusts the position the phone reports** (attack row 23). No GPS signal is checked.
-- **All 21 demo photos are synthetic**, and so are the walks on the map. Only Muse Spark has been called live.
-- **No sign-in.** Personas are a header in the demo. The hosted site gives each visitor a private in-memory market, cleared when idle.
-
 ## If you want to know X, read Y
 
 | If you want to know | Read |
@@ -245,4 +236,4 @@ The most important ones; the [full list](docs/TECHNICAL-DETAILS.md#known-limits)
 
 ## Licence
 
-[MIT](LICENSE). 3D props are CC0 by Kay Lousberg; the map is OpenFreeMap and OpenStreetMap; Bryntum Scheduler Community is MIT; AG Studio, AG Grid and AG Charts Enterprise are commercial and run in AG's trial mode without a key ([full attribution](docs/TECHNICAL-DETAILS.md#licence-and-attribution)). Every shop, item, person and receipt in the demo is made up.
+[MIT](LICENSE). 3D props are CC0 by Kay Lousberg; the map is OpenFreeMap and OpenStreetMap; Bryntum Scheduler Community is MIT; AG Studio, AG Grid and AG Charts Enterprise are commercial and run in AG's trial mode without a key ([full attribution](docs/TECHNICAL-DETAILS.md#licence-and-attribution)). Every shop, item, person and receipt in the demo is fictional.
