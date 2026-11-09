@@ -31,7 +31,7 @@
     },
     "rulesOnly": {
       "label": "Rules on the true reading",
-      "definition": "The model is switched off and each photo's `truth.json`, the reading it was drawn with, is the reading; the hashes, QR, metadata and the rules' context are the same as in Rules + AI. It is a perfect reader, so it is not a system that could run without a model.",
+      "definition": "The model is switched off and each photo's `truth.json`, the reading it was drawn with, is the reading; the hashes, QR, metadata and the rules' context are the same as in Rules + AI.",
       "fakesStopped": 10,
       "genuinePassed": 7,
       "reviewStopped": 4,

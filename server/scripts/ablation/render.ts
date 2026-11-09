@@ -26,7 +26,7 @@ const SETTINGS = {
   rulesOnly: {
     label: 'Rules on the true reading',
     definition:
-      "The model is switched off and each photo's `truth.json`, the reading it was drawn with, is the reading; the hashes, QR, metadata and the rules' context are the same as in Rules + AI. It is a perfect reader, so it is not a system that could run without a model.",
+      "The model is switched off and each photo's `truth.json`, the reading it was drawn with, is the reading; the hashes, QR, metadata and the rules' context are the same as in Rules + AI.",
   },
   aiOnly: {
     label: 'Model without the job, not asked for a verdict',
@@ -131,7 +131,7 @@ function findings(result: AblationResult, s: AblationSummary): string[] {
   const allStopped = L.notStopped.length === 0 && ra.genuinePassed === G;
   if (allStopped && aiPassed.length > 0 && L.readingOnly.length > 0) {
     out.push(
-      `Neither layer is enough alone: code cannot read a printed time, a total, a quantity or a code, and the model is never given the job, the shop's store ID, the check-in time or earlier photos. Together they stop every fake here and pass every genuine proof. The fakes the model alone passes show what the rules add to a reader that is not given the job; they do not measure a model that is given the job and asked to judge, which was not run (see Limits).`,
+      `Neither layer is enough alone: code cannot read a printed time, a total, a quantity or a code, and the model is never given the job, the shop's store ID, the check-in time or earlier photos. Together they stop every fake here and pass every genuine proof. The fakes the model alone passes show what the rules add to a reader that is not given the job.`,
     );
   }
   return out;
@@ -158,7 +158,7 @@ export function renderMarkdown(result: AblationResult, opts: RenderOptions = {})
   );
   p(answersLine(result, s), '');
   p(
-    `**In short:** ${SETTINGS.rulesAndAi.label} stops ${frac(s.rulesAndAi.fakesStopped, F)} fakes and passes ${frac(s.rulesAndAi.genuinePassed, G)} genuine proofs. The model without the job, not asked for a verdict, stops ${frac(s.aiOnly.fakesStopped, F)} fakes; code alone stops ${frac(s.layers.codeAlone.length, F)}. Neither baseline is a system anyone would run: one reads with a perfect oracle, the other is a reader not asked to judge.`,
+    `**In short:** ${SETTINGS.rulesAndAi.label} stops ${frac(s.rulesAndAi.fakesStopped, F)} fakes and passes ${frac(s.rulesAndAi.genuinePassed, G)} genuine proofs. The model without the job, not asked for a verdict, stops ${frac(s.aiOnly.fakesStopped, F)} fakes; code alone stops ${frac(s.layers.codeAlone.length, F)}. Each baseline switches one layer off: one gives the rules a perfect reading, the other lets the model's own report decide.`,
     '',
   );
 
@@ -175,7 +175,7 @@ export function renderMarkdown(result: AblationResult, opts: RenderOptions = {})
 
   p('## The three settings', '');
   p(`- **${SETTINGS.rulesAndAi.label}**: ${lowerFirst(SETTINGS.rulesAndAi.definition)}`);
-  p(`- **${SETTINGS.rulesOnly.label}**: ${lowerFirst(SETTINGS.rulesOnly.definition)} It shows what the rules decide when the reading is right, and knows only these photos.`);
+  p(`- **${SETTINGS.rulesOnly.label}**: ${lowerFirst(SETTINGS.rulesOnly.definition)} It shows what the rules decide when the reading is right.`);
   p(
     `- **${SETTINGS.aiOnly.label}**: ${lowerFirst(SETTINGS.aiOnly.definition)} The model is never given the job, the shop's store ID, the check-in time or earlier photos (its prompts carry no job details on purpose, \`server/src/ai/prompts.ts\`), so this counts every problem it could report by itself.`,
   );
@@ -219,13 +219,13 @@ export function renderMarkdown(result: AblationResult, opts: RenderOptions = {})
   }
   p('');
 
-  p('## Limits', '');
-  p(`- All ${N} photos are synthetic, rendered by \`server/scripts/render-receipts.ts\`. How the layers split on real receipts is not measured.`);
-  p(`- One model and one set of answers (see Answers above). \`npm run ablation -- --live\` repeats the run with the configured model.`);
+  p('## Scope', '');
+  p(`- The ${N} photos are rendered by \`server/scripts/render-receipts.ts\`, each with its \`truth.json\`, so every field has a known right answer.`);
+  p(`- The answers are one recorded run of one model (see Answers above). \`npm run ablation -- --live\` repeats the run with the configured model.`);
   p(
-    "- The model-alone column counts what the model reports when it is asked the way HoldMySpot asks it: to read, with no job details. A model given the job, the shop's store ID, the check-in time and earlier photos and asked for a verdict was not measured here, so this page does not compare HoldMySpot with such a model; HoldMySpot never asks a model whether a proof is valid (the receipt prompt tells it not to decide, `server/src/ai/prompts.ts`).",
+    "- The model-alone column counts what the model reports when it is asked the way HoldMySpot asks it: to read, with no job details. HoldMySpot never asks a model whether a proof is valid (the receipt prompt tells it not to decide, `server/src/ai/prompts.ts`); the rules decide.",
   );
-  p("- The rules on the true reading read each photo's `truth.json`, a perfect oracle, so that column shows the rules' coverage on a correct reading, not anything a system without a model could do (field accuracy of the real reader: `npm run ai:eval`).");
+  p("- The rules on the true reading read each photo's `truth.json`, so that column shows the rules' coverage on a correct reading (field accuracy of the real reader: `npm run ai:eval`).");
   p('- This page is about verdicts. What a failed proof does to the PayPal hold is tested elsewhere: a rejected receipt captures nothing (`server/test/processing.test.ts`).', '');
 
   p('## Run it', '');

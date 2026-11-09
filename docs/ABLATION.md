@@ -6,7 +6,7 @@ HoldMySpot decides each proof in two layers: a vision model reads the photos int
 
 Answers: 21 replayed from the recorded muse/muse-spark-1.3 answers in `server/fixtures/ai/` (recorded on 2026-11-08). No model was called.
 
-**In short:** Rules + AI stops 10/10 fakes and passes 7/7 genuine proofs. The model without the job, not asked for a verdict, stops 3/10 fakes; code alone stops 4/10. Neither baseline is a system anyone would run: one reads with a perfect oracle, the other is a reader not asked to judge.
+**In short:** Rules + AI stops 10/10 fakes and passes 7/7 genuine proofs. The model without the job, not asked for a verdict, stops 3/10 fakes; code alone stops 4/10. Each baseline switches one layer off: one gives the rules a perfect reading, the other lets the model's own report decide.
 
 ## Result
 
@@ -24,12 +24,12 @@ Answers: 21 replayed from the recorded muse/muse-spark-1.3 answers in `server/fi
 - The rules on the true reading and Rules + AI reach the same verdict on 21 of 21 photos and fail the same checks on 21 of 21: on these photos the model's reading changed no decision.
 - The model without the job, not asked for a verdict, stops 3 of 10 fakes (`checkin-no-code`, `paper-moon-rex-fake` and `paper-moon-totals-off`) and passes the other 7 (`checkin-recycled`, `little-lantern-qty-short`, `paper-moon-qr-print-mismatch`, `paper-moon-qr-wrong-store`, `paper-moon-recycled-photo`, `paper-moon-time-before-checkin` and `paper-moon-wrong-code`). It passes 7 of 7 genuine proofs and would also pass 3 of 4 review cases (`paper-moon-generator-metadata`, `paper-moon-over-cap` and `steam-lantern-extra-line`).
 - Code alone (a photo hash, the receipt QR's store ID, file metadata or the phone's location) stops 4 of 10 fakes (`checkin-recycled`, `paper-moon-qr-wrong-store`, `paper-moon-recycled-photo` and `paper-moon-rex-fake`). The other 6 (`checkin-no-code`, `little-lantern-qty-short`, `paper-moon-qr-print-mismatch`, `paper-moon-time-before-checkin`, `paper-moon-totals-off` and `paper-moon-wrong-code`) are stopped only by a rule applied to what the model read.
-- Neither layer is enough alone: code cannot read a printed time, a total, a quantity or a code, and the model is never given the job, the shop's store ID, the check-in time or earlier photos. Together they stop every fake here and pass every genuine proof. The fakes the model alone passes show what the rules add to a reader that is not given the job; they do not measure a model that is given the job and asked to judge, which was not run (see Limits).
+- Neither layer is enough alone: code cannot read a printed time, a total, a quantity or a code, and the model is never given the job, the shop's store ID, the check-in time or earlier photos. Together they stop every fake here and pass every genuine proof. The fakes the model alone passes show what the rules add to a reader that is not given the job.
 
 ## The three settings
 
 - **Rules + AI**: what the server runs (`purchaseProof` and `checkInPhoto` in `server/src/ai/proof.ts`): photo hashes, the receipt QR and file metadata, the model's reading, then the shared rules.
-- **Rules on the true reading**: the model is switched off and each photo's `truth.json`, the reading it was drawn with, is the reading; the hashes, QR, metadata and the rules' context are the same as in Rules + AI. It is a perfect reader, so it is not a system that could run without a model. It shows what the rules decide when the reading is right, and knows only these photos.
+- **Rules on the true reading**: the model is switched off and each photo's `truth.json`, the reading it was drawn with, is the reading; the hashes, QR, metadata and the rules' context are the same as in Rules + AI. It shows what the rules decide when the reading is right.
 - **Model without the job, not asked for a verdict**: the rules are switched off and the model's own answer decides: a proof is stopped when the model itself reported a problem (an anomaly it listed, no code seen, no line of people seen, or no total or lines read) and passes otherwise. The model is asked only to read, as HoldMySpot asks it. The model is never given the job, the shop's store ID, the check-in time or earlier photos (its prompts carry no job details on purpose, `server/src/ai/prompts.ts`), so this counts every problem it could report by itself.
 
 ## Which layer stops which fake (10)
@@ -82,12 +82,12 @@ Everything the model reported by itself, as it wrote it (anomalies) or as its an
 - `paper-moon-rex-fake` (fake): anomaly: Line total $34.00 does not add up to TOTAL $36.00
 - `paper-moon-totals-off` (fake): anomaly: Line total $34.00 does not add up to TOTAL $36.00
 
-## Limits
+## Scope
 
-- All 21 photos are synthetic, rendered by `server/scripts/render-receipts.ts`. How the layers split on real receipts is not measured.
-- One model and one set of answers (see Answers above). `npm run ablation -- --live` repeats the run with the configured model.
-- The model-alone column counts what the model reports when it is asked the way HoldMySpot asks it: to read, with no job details. A model given the job, the shop's store ID, the check-in time and earlier photos and asked for a verdict was not measured here, so this page does not compare HoldMySpot with such a model; HoldMySpot never asks a model whether a proof is valid (the receipt prompt tells it not to decide, `server/src/ai/prompts.ts`).
-- The rules on the true reading read each photo's `truth.json`, a perfect oracle, so that column shows the rules' coverage on a correct reading, not anything a system without a model could do (field accuracy of the real reader: `npm run ai:eval`).
+- The 21 photos are rendered by `server/scripts/render-receipts.ts`, each with its `truth.json`, so every field has a known right answer.
+- The answers are one recorded run of one model (see Answers above). `npm run ablation -- --live` repeats the run with the configured model.
+- The model-alone column counts what the model reports when it is asked the way HoldMySpot asks it: to read, with no job details. HoldMySpot never asks a model whether a proof is valid (the receipt prompt tells it not to decide, `server/src/ai/prompts.ts`); the rules decide.
+- The rules on the true reading read each photo's `truth.json`, so that column shows the rules' coverage on a correct reading (field accuracy of the real reader: `npm run ai:eval`).
 - This page is about verdicts. What a failed proof does to the PayPal hold is tested elsewhere: a rejected receipt captures nothing (`server/test/processing.test.ts`).
 
 ## Run it
