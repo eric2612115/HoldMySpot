@@ -105,5 +105,5 @@ test('replay PayPal ids follow the emulator; "Holds and captures" gets the holds
   assert.equal(topicOf('Which capture was the largest?'), 'captures');
   const snap = { at: t, datasets: datasetsAt(w, t), bundle: boardBundle(w, t), shops: SEED_SHOPS, proposals: [], books: booksAt(w, t) } as unknown as MarketSnapshot;
   assert.match(topicFacts(snap, 'captures'), /processing at cost/);
-  assert.match(topicFacts(snap, 'disputes'), /dispute sync is not built yet/);
+  assert.match(topicFacts(snap, 'disputes'), /status sync lists every dispute PayPal reports/);
 });

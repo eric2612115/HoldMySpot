@@ -226,10 +226,10 @@ function disputesText(snap: MarketSnapshot, disputes: Dispute[] | null, shop?: s
   const open = (disputes ?? []).filter((d) => d.status !== 'resolved');
   return [
     disputes === null
-      ? 'The replay has no PayPal dispute records. The server\'s dispute sync is not built yet; disputes ran only in the sandbox gate script (G7).'
+      ? 'The replay carries no PayPal dispute records; on the server, the status sync lists every dispute PayPal reports on our invoices, on the Needs a person page.'
       : open.length
         ? `${open.length} open PayPal dispute${open.length > 1 ? 's' : ''}: ${open.map((d) => `${cents(d.amount.cents)} on capture ${d.captureId} (${d.reason}, ${d.status})`).join('; ')}.`
-        : `No open PayPal disputes on record${disputes.length ? ` (${disputes.length} resolved)` : ''}; the server's sync with PayPal's Disputes API is not built yet.`,
+        : `No open PayPal disputes on record${disputes.length ? ` (${disputes.length} resolved)` : ''}.`,
     rejected.length ? `Rejected receipts (nothing captured): ${rejected.map((j) => `${j.queuerName} for ${j.requesterName} at ${clockText(j.failure!.at)}`).join('; ')}.` : 'No receipt was rejected.',
     failedPay.length || capFails.length
       ? `Failed captures: ${(failedPay.length ? failedPay.map((j) => `${j.requesterName} via ${j.queuerName} at ${clockText(j.failure!.at)}`) : capFails.map((r) => `${s(r.who)} ${usd(n(r.amountUsd))}`)).join('; ')}.`
