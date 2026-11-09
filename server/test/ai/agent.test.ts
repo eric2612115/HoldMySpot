@@ -138,6 +138,19 @@ describe('model runs stay inside the mandate', () => {
     assert.equal(provider.jsonCalls[0]?.schemaName, 'agent_decision');
   });
 
+  it('shows amounts the model wrote in cents as dollars, in both modes', async () => {
+    const json = new StubProvider({
+      id: 'muse',
+      json: () => ({ action: 'lower_fee', maxFeeCents: 1100, qty: null, reason: 'Lowering the request fee to 1100 cents per unit, under the 1,200 cents ceiling.' }),
+    });
+    const a = await runAgent(run(mia(), T0 + 30 * MIN), json);
+    assert.deepEqual([a.decision.kind, a.decision.toFeeCents], ['lower_fee', 1100]);
+    assert.equal(a.decision.reason, 'Lowering the request fee to $11.00 per unit, under the $12.00 ceiling.');
+    const tools = new StubProvider({ agent: async () => ({ summary: '', calls: [{ name: 'keep', input: { reason: "Wei's offer steps down to 1100 cents soon." } }] }) });
+    const b = await runAgent(run(mia(), T0 + 30 * MIN), tools);
+    assert.equal(b.decision.reason, "Wei's offer steps down to $11.00 soon.");
+  });
+
   it('keeps the fee and logs a note when the provider fails', async () => {
     const provider = new StubProvider({
       agent: async () => {

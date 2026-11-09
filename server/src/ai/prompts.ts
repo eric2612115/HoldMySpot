@@ -37,7 +37,7 @@ Goal: get the request filled before the deadline at the lowest fee.
 - Wait when a checked-in helper's fee will step down to the current max fee soon.
 - Raise the fee gradually as the deadline nears and no offer is in reach; take an offer within the ceiling when the deadline is close.
 - Cancel only when the shop is sold out or the goal can no longer be met.
-Finish with exactly one action: set_max_fee, reduce_qty, cancel_bid or keep. Its reason is shown to the requester: one plain sentence with the amounts, in everyday words ("request", "offer", "helper", "fee"). Amounts are in US cents.`;
+Finish with exactly one action: set_max_fee, reduce_qty, cancel_bid or keep. Its reason is shown to the requester: one plain sentence with the amounts, in everyday words ("request", "offer", "helper", "fee"). Amounts in the data are in US cents; in the reason, write each amount in dollars, like $11.00.`;
 
 export const ESTIMATE_SYSTEM = `You explain HoldMySpot estimates to people in one or two short, plain sentences each.
 Use only the numbers you are given; never invent prices, times or rates. Say it is an estimate where it matters.

@@ -7,7 +7,7 @@ import { AGENT_SYSTEM } from './prompts.ts';
 import { fixtureKey } from './replay.ts';
 import { AGENT_DECISION_SCHEMA } from './schemas.ts';
 import type { AgentDecisionOutput, JsonSchema } from './schemas.ts';
-import { oneSentence, unitWord } from './text.ts';
+import { centsAsDollars, oneSentence, unitWord } from './text.ts';
 import { dayTime, formatDuration, hhmm } from './time.ts';
 import type { AgentDecision, AgentRunInput, AgentRunResult } from './types.ts';
 
@@ -283,7 +283,7 @@ function applyProposal(
     return { ok: false, error };
   }
   const cur = input.bid.maxFeeCents;
-  const reason = typeof p.reason === 'string' && p.reason.trim() ? oneSentence(p.reason) : '';
+  const reason = typeof p.reason === 'string' && p.reason.trim() ? oneSentence(centsAsDollars(p.reason)) : '';
   let problem: string | null = null;
   if (p.kind === 'set_fee') {
     problem = feeProblem(input, ceiling, p.cents);
@@ -414,7 +414,7 @@ export async function runAgent(input: AgentRunInput, provider: AiProvider | null
         maxSteps: AGENT_MAX_STEPS,
         fixtureKey: fixtureKey({ task: 'bidding_agent', schemaName: 'tools-v1', system: AGENT_SYSTEM, prompt: `${prompt}\n${JSON.stringify(view)}`, images: [] }),
       });
-      const d = state.decision ?? decision('keep', input.bid.maxFeeCents, input.bid.maxFeeCents, res.summary ? oneSentence(res.summary) : `Kept the fee at ${usd(input.bid.maxFeeCents)}.`);
+      const d = state.decision ?? decision('keep', input.bid.maxFeeCents, input.bid.maxFeeCents, res.summary ? oneSentence(centsAsDollars(res.summary)) :`Kept the fee at ${usd(input.bid.maxFeeCents)}.`);
       return finish(d, { toolCalls: res.toolCalls, refused: state.refused, refusedFeeCents: state.refusedFeeCents ?? null, decidedBy: 'model', ai: res.stamp });
     } catch (e) {
       if (asAiError(e).kind !== 'unsupported') throw e;

@@ -73,6 +73,16 @@ export function unitWord(n: number, kind: ItemKind): string {
   return n === 1 ? one : many;
 }
 
+/**
+ * Amounts a model wrote in cents ("1100 cents", "1,100 US cents", "50¢") as dollars ("$11.00"). The agents read
+ * the market in integer cents, and a person reads their reasons, so code fixes the wording whatever the model wrote.
+ */
+export function centsAsDollars(text: string): string {
+  return text.replace(/\b(\d{1,3}(?:,\d{3})+|\d+)\s?(?:US\s)?(?:cents?\b|¢)/gi, (_m, n: string) =>
+    formatUsd(Number(n.replace(/,/g, '')), { exact: true }),
+  );
+}
+
 /** First sentence, single line, at most `max` characters. Used on model-written reasons. */
 export function oneSentence(text: string, max = 220): string {
   const flat = text.replace(/\s+/g, ' ').trim();
