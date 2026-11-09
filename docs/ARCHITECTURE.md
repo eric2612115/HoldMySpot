@@ -1,14 +1,12 @@
 # HoldMySpot architecture
 
-Status: proposed, 2026-11-07, for the PayPal AI Hackathon entry (deadline 2026-11-13 04:00 Taipei). Decisions behind this page are in [DECISIONS.md](DECISIONS.md).
+Built for the PayPal AI Hackathon. Decisions behind this page are in [DECISIONS.md](DECISIONS.md).
 
-HoldMySpot is a walking order book on the queue fee: requesters anywhere in the US post bids backed by PayPal holds; queuers near the shop post asks and check in; an AI-read, rule-checked receipt triggers partial captures and Payouts. Rules: [DOMAIN.md](DOMAIN.md). PayPal calls: [PAYPAL-MAPPING.md](PAYPAL-MAPPING.md). AI: [AI-SERVICES.md](AI-SERVICES.md). Endpoints and events: [API.md](API.md). Owner steps: [SANDBOX-GATES.md](SANDBOX-GATES.md).
+HoldMySpot is a walking order book on the queue fee: requesters anywhere in the US post bids backed by PayPal holds; queuers near the shop post asks and check in; an AI-read, rule-checked receipt triggers partial captures and Payouts. Rules: [DOMAIN.md](DOMAIN.md). PayPal calls: [PAYPAL-MAPPING.md](PAYPAL-MAPPING.md). AI: [AI-SERVICES.md](AI-SERVICES.md). Endpoints and events: [API.md](API.md). Sandbox gates: [SANDBOX-GATES.md](SANDBOX-GATES.md).
 
-## 1. Fixed versus open
+## 1. Fixed by decision
 
-**Fixed now** (change only through a new decision): the contract in `shared/src/contract.ts`; the market and money rules and state machines in `shared/src`; the PayPal call sequence; the AI service boundaries; the seed catalog; env vars, ports and runtime modes; the repo layout and stack; the demo script format.
-
-**Open** (later work changes only these): screen layouts and visual design, map art and 3D characters, motion, copy tone (within the required disclosures in DOMAIN.md section 9), the ops dashboard layout, camera choreography for the film.
+These change only through a new row in DECISIONS.md: the contract in `shared/src/contract.ts`; the market and money rules and state machines in `shared/src`; the PayPal call sequence; the AI service boundaries; the seed catalog; env vars, ports and runtime modes; the repo layout and stack; the demo script format. Screen layouts, map art, 3D characters, motion and the ops dashboard layout change freely, within the required disclosures in DOMAIN.md section 9.
 
 ## 2. System
 
@@ -17,7 +15,7 @@ flowchart LR
   subgraph Browser
     W["web/ player map app<br/>React, MapLibre, three.js"]
     O["ops/ operator console<br/>Bryntum Scheduler, AG Studio"]
-    SDK["PayPal JS SDK v6<br/>PayPal, Venmo, Pay Later buttons"]
+    SDK["PayPal JS SDK v6<br/>PayPal and Venmo buttons"]
   end
   subgraph S["server/ Node + Fastify, 127.0.0.1:8796"]
     API["REST /api/*"]
@@ -90,14 +88,14 @@ HoldMySpot/
     data/                      git-ignored: holdmyspot.sqlite, uploads/
   scripts/                     setup-sandbox-secrets.mjs (writes sandbox.env), sandbox-gates.mjs (day-1 gates;
                                results in docs/SANDBOX-GATES.md)
-  web/                         player map app (prototype in progress: React 19, Vite, MapLibre, three.js)
+  web/                         phone app: the 3D map, both people's phones (React 19, Vite, MapLibre, three.js)
   ops/                         operator console: React + Vite; Bryntum Scheduler queuer board with a synced
                                MapLibre map, AG Studio market dashboard; reads GET /api/ops/records when the server
                                answers, else replays the hero day in the browser (scripts/shots-live.mjs films a run)
   assets-src/                  third-party asset packs (cloned repos git-ignored)
 ```
 
-Package wiring: `server`, `web` and `ops` depend on `"@holdmyspot/shared": "file:../shared"`. A root npm workspace comes later, once the web prototype settles (creating it now would change how `npm install` behaves inside `web/` while another agent works there). Shared files use only erasable TypeScript and `.ts` import paths, so Node runs them directly and Vite bundles them; they compile under both the shared tsconfig and the web app's settings.
+Package wiring: `server`, `web` and `ops` depend on `"@holdmyspot/shared": "file:../shared"`. There is no root workspace: `npm run setup` installs each package from its own lockfile (D-86). Shared files use only erasable TypeScript and `.ts` import paths, so Node runs them directly and Vite bundles them; they compile under both the shared tsconfig and the web app's settings.
 
 ## 4. Runtime modes
 
@@ -120,7 +118,7 @@ If `HMS_MODE=sandbox` but `sandbox.env` in the secrets folder (`HMS_SECRETS_DIR`
 - **Workers** (in process):
   - matcher timer: runs `matchBook` at each book's `nextClockStepAt` and after clock speed changes;
   - sweeper (`HMS_SWEEP_SECONDS`, 15): lapses claims past their window, expires bids past their deadline, applies `renewalVerdict` to holds, fails shipped jobs without tracking after `shipWithinDays`, voids holds that can capture nothing more;
-  - PayPal poller (both modes, `HMS_PAYPAL_POLL_SECONDS`): pending captures and payout batches (authorizations and disputes later);
+  - PayPal poller (both modes, `HMS_PAYPAL_POLL_SECONDS`): pending captures, payout batches and disputes on our invoices;
   - AI queue: proof checks with concurrency 2, 60-second timeout, one retry, then `needs_review`;
   - bidding agent scheduler (AI-SERVICES.md 4.5);
   - demo director (section 8).
@@ -159,7 +157,7 @@ One stream per client: `GET /api/events?as=<userId>&since=<seq>` (EventSource ca
 - **Determinism.** Seed `20261112`, market start `2026-11-12T10:30:00-08:00` (San Francisco), speed 60, sequential ids, fake PayPal ids, AI in `replay`. The same script gives the same screens every run, also for a second take in the same server process (the scheduler forgets a market's finished work at a reset). `npm run demo` starts every boot from a fresh market at the script's start (`HMS_DEMO_RESET=1`). When a script finishes, the market clock pauses on the closing numbers; `POST /api/demo/resume` leaves a finished script there, and `POST /api/demo/clock {"paused": false}` runs the market on (D-65).
 - **Photos.** The hero uploads the rendered photos in `server/fixtures/proofs` for Wei's and Rex's check-ins and for Mia's, Priya's and Rex's receipts, with the codes they show pinned on the records (D-48). In `replay` the AI services answer with Muse Spark's recorded reading of each photo (`server/fixtures/ai`, made by `npm run ai:eval -- --record`), offline; the rules decide as in a live run (D-66). Other uploads are placeholders with a simulated scenario.
 - **Scripts.** `hero` (below), `renewal` (a hold created three market days earlier is reauthorized on day 4), `local-errand` (New York shortcake: claim, check-in, USD receipt, handover code, hold $51.54, one capture of $49.47 with $2.47 processing at cost, payout of $46.10, HoldMySpot keeps $0.90), `ambient` (crowd bids and walking avatars for B-roll).
-- **Filming.** Takes use fake mode or replay so nothing slow or flaky runs live in a take. A sandbox run of the same script (with `wait_for` steps where the owner approves in PayPal's window) is recorded separately to show real sandbox ids. The real reauthorization is filmed on 11-11 or 11-12 from holds created on 11-08.
+- **Filming.** Takes use fake mode or replay, so every take shows the same screens. A sandbox run of the same script (with `wait_for` steps where the owner approves in PayPal's window) is recorded separately to show real sandbox ids.
 
 Hero script (market time, San Francisco, 2026-11-12; amounts from DOMAIN.md section 7):
 
@@ -189,9 +187,9 @@ With the jump, the run takes about 3 minutes at speed 60.
 - **San Francisco, farther out:** Butter Bell Bakery (Basque cheesecake), Crumb & Clover Bakery (tres leches), Ocean Beach Bakehouse (morning buns), Pocket Pals Plush (Sleepy Otter plush), Little Wave Toys (Sea Otter plush), Geneva Toy Corner (Cloud Pup plush), Kettle Moon Ramen, Sunset Ramen House and Dogpatch Noodle Co. Some are outside the 30-minute travel range or close before a queuer could arrive, so the overview greys them.
 - **New York (`?city=nyc`):** Petal & Crumb Bakery (strawberry shortcake, $38, local errand), Little Orbit Toys (Space Pup plush, $32, one per customer, ships), Bowery Noodle Club (tonkotsu ramen, $21), Houston Street Bakeshop (chocolate babka, $22).
 - **Item kinds:** `cake` and `ramen` are perishable local errands; `plush` drops are sold in person, one per customer (Little Lantern allows 6), and may ship to another US city (the shipping the queuer declares, up to the requester's budget).
-- **Personas:** requesters Mia, Jun and Priya (New York), Sam, Noor and Leo (San Francisco); San Francisco queuers Wei (hero; the owner's character), Lin, Rin, Ava, Jo and Rex (low reliability, the fake receipt); New York queuers Dana, Theo and Mo. Queuer home positions are private and only feed the travel-range rule and synthetic walks.
+- **Personas:** requesters Mia, Jun and Priya (New York), Sam, Noor and Leo (San Francisco); San Francisco queuers Wei (hero; the owner's character), Lin, Rin, Ava, Jo and Rex (low reliability; his receipt fails the checks); New York queuers Dana, Theo and Mo. Queuer home positions are private and only feed the travel-range rule and the demo walks.
 - **Crowd bids:** generated by the server from `DEMO_SEED` with `CROWD_NAMES`.
-- Item ids equal the web map's point ids. Store receipts carry a fictional `RCPT1` QR (store ID, receipt number, date, total, currency, lines); the store IDs are made up and belong to no real company.
+- Item ids equal the web map's point ids. Store receipts carry a fictional `RCPT1` QR (store ID, receipt number, date, total, currency, lines); the store IDs are fictional and belong to no real company.
 
 ## 10. Environment variables
 
@@ -201,7 +199,7 @@ With the jump, the run takes about 3 minutes at speed 60.
 |---|---|---|
 | `HMS_MODE` | `fake` | `fake` or `sandbox`; `sandbox` with missing settings refuses to start (D-108) |
 | `HMS_SANDBOX_FALLBACK` | empty | `fake`: the explicit opt-in to run simulated PayPal when `HMS_MODE=sandbox` cannot start (tests and the settings probe) |
-| `HMS_HOST` / `HMS_PORT` | `127.0.0.1` / `8796` | 8795 was taken by another local server |
+| `HMS_HOST` / `HMS_PORT` | `127.0.0.1` / `8796` | |
 | `HMS_DB_PATH` | `server/data/holdmyspot.sqlite` | `:memory:` in tests |
 | `HMS_UPLOAD_DIR` | `server/data/uploads` | |
 | `HMS_SECRETS_DIR` | `.secrets/` in the repo (written by `npm run keys`) | reads `sandbox.env`, `ai.env` and the AG licence files; no folder outside the repo is read unless this names it (D-131) |
@@ -211,7 +209,7 @@ With the jump, the run takes about 3 minutes at speed 60.
 | `HMS_AI_FIXTURES_DIR` | `server/fixtures/ai` | replay answers; the test suites point it at an empty folder except `test/replay.test.ts` |
 | `HMS_ANTHROPIC_MODEL` | `claude-opus-5-5` | |
 | `HMS_MUSE_MODEL` / `HMS_MUSE_URL` | `muse-spark-1.3` / `https://api.meta.ai/v1/chat/completions` | |
-| `HMS_AI_BASE_URL` / `HMS_AI_MODEL` | `https://api.openai.com/v1` / `gpt-6.1-sol` | the `openai` provider: any OpenAI-compatible Chat Completions endpoint (`/chat/completions` is added to a base URL), key `OPENAI_API_KEY`; `MODEL_API_KEY` is used only when the base URL is Meta's own host. Not yet called with a real OpenAI key |
+| `HMS_AI_BASE_URL` / `HMS_AI_MODEL` | `https://api.openai.com/v1` / `gpt-6.1-sol` | the `openai` provider: any OpenAI-compatible Chat Completions endpoint (`/chat/completions` is added to a base URL), key `OPENAI_API_KEY`; `MODEL_API_KEY` is used only when the base URL is Meta's own host |
 | `HMS_AI_AGENT_TIMEOUT_MS` | `30000` | one bidding-agent run |
 | `HMS_AI_TIMEOUT_MS` | `60000` | |
 | `HMS_DEMO` | `0` | `1` enables demo routes and the director |
@@ -226,7 +224,7 @@ With the jump, the run takes about 3 minutes at speed 60.
 | `HMS_PAYPAL_SYNC` | `poll` | `poll` or `webhook` (webhook also keeps a slow poll) |
 | `HMS_PAYPAL_POLL_SECONDS` | `20` | |
 | `HMS_PAYPAL_TIMEOUT_MS` | `10000` | |
-| `HMS_PAYPAL_FUNDING` | `paypal,venmo` | buttons allowed; add `paylater` after probe G5 |
+| `HMS_PAYPAL_FUNDING` | `paypal,venmo` | buttons allowed: `paypal`, `venmo`, `paylater` (gate G5) |
 | `HMS_FAKE_FAIL` | empty | fake-mode failure injection, `<op>:<effect>[:<count>\|*]` (server/src/paypal/emulator.ts): for example `capture:unavailable:3` (an outage longer than the client's two retries), `payout:unclaimed`, `authorize:decline` |
 | `HMS_AI_PROOF_FIXTURES_DIR` | `server/fixtures/proofs` | rendered demo photos and their truth sidecars (AI services and demo director) |
 | `HMS_WEB_ORIGINS` | `http://127.0.0.1:5190,http://localhost:5190,http://127.0.0.1:5197,http://localhost:5197` | CORS in development |
@@ -237,7 +235,7 @@ With the jump, the run takes about 3 minutes at speed 60.
 
 **`ai.env`** in the secrets folder: optional `ANTHROPIC_API_KEY`, optional `MODEL_API_KEY`, optional `OPENAI_API_KEY`, and the provider settings `HMS_AI_PROVIDER`, `HMS_AI_BASE_URL`, `HMS_AI_MODEL`.
 
-**web/**: `VITE_HMS_API` (default empty: same origin through the Vite proxy to `http://127.0.0.1:8796`); a switch between the in-browser mock and the server (the web agent names it; `VITE_BACKEND=mock|server` is suggested). The PayPal client ID comes from `GET /api/config`, never from a web env file.
+**web/**: `VITE_HMS_API` (default empty: same origin through the Vite proxy to `http://127.0.0.1:8796`); `VITE_BACKEND=auto|server|mock` (default `auto`, overridable with `?backend=`) picks the server or the in-browser market. The PayPal client ID comes from `GET /api/config`, never from a web env file.
 
 **ops/**: `VITE_HMS_API`, `VITE_HMS_ADMIN_KEY` (only for a non-loopback server). The AG licence is read by `ops/vite.config.ts` at dev-server or build time: `VITE_AG_LICENSE_KEY` in the git-ignored `ops/.env.local`, else a key file (`HMS_AG_LICENSE_FILE`, default `aggrid-license.txt` in the secrets folder, mode 600); the AG Studio key the same way (`VITE_AG_STUDIO_LICENSE_KEY`, `HMS_AG_STUDIO_LICENSE_FILE`, `agstudio-license.txt`). `HMS_AG_TRIAL=1` (the launcher's `--no-ag-licence`) ignores every key. It is never printed or committed. Bryntum installs as `@bryntum/scheduler-community` and `@bryntum/scheduler-react-community` 8.0.0 (MIT) from the public npm registry.
 
@@ -254,23 +252,23 @@ Stop only the servers you started, by PID or with `npm run demo -- --stop` and t
 ## 12. Security and privacy
 
 - Secrets come only from the two files in `HMS_SECRETS_DIR` and the process env; logs show names and presence, never values. `GET /api/config` exposes only the public client ID.
-- No real sign-in in v1: requests act as a seeded persona through `X-HMS-User`. The server binds to 127.0.0.1; on any other host it refuses to start without `HMS_ADMIN_KEY`, and admin routes require `X-HMS-Admin-Key`.
+- Requests act as a seeded persona through `X-HMS-User`. The server binds to 127.0.0.1; on any other host it refuses to start without `HMS_ADMIN_KEY`, and admin routes require `X-HMS-Admin-Key`.
 - Uploads: JPEG, PNG or WebP, at most 8 MB, served only to the job's participants and ops.
-- Personal data: all personas are fictional; sandbox receiver emails are shown to ops only; no live positions leave the server (demo walks are synthetic).
+- Personal data: all personas are fictional; sandbox receiver emails are shown to ops only; no live positions leave the server (the map's walks come from the demo director).
 - CORS allow-list in development; one origin on the hosted site (`npm run hosted`, [HOSTING.md](HOSTING.md)).
 
 ## 13. Testing
 
-- `shared/`: `npm run check` (TypeScript plus 73 tests, including the worked money example, the matcher, the proof rules and the estimate formulas).
+- `shared/`: `npm run check` (TypeScript plus node:test: the worked money example, the matcher, the proof rules and the estimate formulas).
 - `server/`: `npm run check` (TypeScript plus node:test). Tests run in fake mode on an in-memory database with the market clock moved by hand: engine (price-time priority, partial fills, fee-clock steps at exact times, claims, compatibility, re-offers, lapses, sold out, deadlines), money (never above the user's limit even though PayPal allows 115%, job caps, final capture flag, voids after failures and partial captures, outages kept pending and retried with the same key, renewals on day 4, Venmo renewal-required, refunds, payout sync), the hero script end to end (held $63.70, captures $48.69 and $9.57 with processing at cost, released $5.44, payouts $10.80 and $42.75, PayPal's fees equal to the processing line, Rex's job $0), processing and payouts at cost on every job type (`test/processing.test.ts`), sandbox mode refusing to start without its settings (`test/config.test.ts`), every contract route over HTTP, SSE audiences and replay, and the bidding-agent loop. Every suite runs on the real PayPal client (emulator) since D-47. The suites read photos with the rules only (an empty replay folder); `test/replay.test.ts` plays the hero on the recorded Muse Spark answers and checks the same money and the `muse`/`replay` stamps.
 - End to end (`server/test/e2e.test.ts`): over HTTP only, with the real PayPal client and the real AI services (no key, no network): two US holds (PayPal and Venmo), Wei's fee clock filling both, Rex's missed check-in (claim lapsed, the plush back in the book), receipts read from the rendered photos, partial captures, payouts, tracking, final captures and releases, a sell-out that voids a hold, the scripted hero with both services, and the ops read model. `server/test/ports.test.ts` covers the wiring: PayPal state across a restart and a reset, two renewals from the original authorization, a decline and a second approval, sandbox run ids, and the AI loader.
 - Run the demo: `npm run demo` in `server/` (fake mode, the AI services in replay, a fresh market at 2026-11-12 10:30 San Francisco, speed 60), then `POST /api/demo/start {"scriptId":"hero","speed":60}`. With `npm run dev` in `ops/`, `npm run shots:live` there films the run into `proto-shots/v2/live/`; `npm run shots` in `web/` and in `ops/` take the final set into `proto-shots/v2/final/`; `node scripts/sandbox-walk.mjs` in `web/` takes one hero errand on the real PayPal sandbox into `proto-shots/v3/final/` (D-121). Git tracks only these two screenshot folders (D-68).
-- Sandbox: `node scripts/sandbox-gates.mjs run` runs the day-1 gates (PAYPAL-MAPPING.md section 7; results in docs/SANDBOX-GATES.md) and needs the owner for approvals.
+- Sandbox: `node scripts/sandbox-gates.mjs run` runs the day-1 gates (PAYPAL-MAPPING.md section 7; results in docs/SANDBOX-GATES.md); the sandbox buyer approves each order.
 - `web/`: the switch from its mock to the contract is in [WEB-INTEGRATION.md](WEB-INTEGRATION.md).
 
-## 14. Web prototype alignment
+## 14. Web app alignment
 
-| Prototype (`web/src`) | Contract and shared code |
+| Web app (`web/src`) | Contract and shared code |
 |---|---|
 | `domain/types.ts` `TaskPoint` | `Shop` + `Item` + `BookSnapshot`; `TaskPoint.id` equals `Item.id` |
 | `TaskPoint.retailCents`, `tags`, `hue` | `Item.retailCents`, `Item.tags`, `Shop.accent` |
@@ -291,14 +289,3 @@ Stop only the servers you started, by PID or with `npm run demo -- --stop` and t
 | `domain/earning.ts` travel and $/hour | the shared travel rule is the floor; the app's own estimate (walk up to 20 minutes, else transit) sets the minutes, the $/hour, the filters, the ring, greying and an offer's ETA (D-63) |
 
 The web app talks to the server when it answers (fake PayPal mode on 8796) and falls back to its in-browser market otherwise (WEB-INTEGRATION.md). Its money panel lists both personas' lines: the requester's holds, captures and releases and the queuer's payouts.
-
-## 15. Build order
-
-1. Server skeleton: config and mode resolution, SQLite schema, seed load, books, SSE, fake PayPal (P0).
-2. Bid, ask, claim, check-in, job, proof (fake AI), settlement and payouts, with the hero ledger test (P0). Add `server/data/` to `.gitignore`.
-3. Sandbox adapter and the probe script; owner runs the secrets script and the approvals.
-4. AI providers, proof pipeline, receipt fixtures, replay.
-5. Web: API client, PayPal v6 buttons, bid form with disclosures, queuer check-in and proof screens, ledger.
-6. Ops: Bryntum board with map, AG Studio datasets, proof review, money panel, demo panel.
-7. Demo director and scripts; film runs.
-8. P1 and P2 extras (agent, refunds, disputes, estimates endpoints).

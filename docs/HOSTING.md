@@ -13,7 +13,7 @@ One Node process on one port serves the phone app, the ops console under `/ops/`
 
 | Variable | Needed for | Where it comes from |
 |---|---|---|
-| `VITE_AG_STUDIO_LICENSE_KEY` | The ops console with no AG Studio watermark. Read at build time, so a change needs a rebuild. Expires 12-22; judging ends 12-15. | the contents of `agstudio-license.txt` |
+| `VITE_AG_STUDIO_LICENSE_KEY` | Licenses AG Studio in the ops console (without it AG's trial mode runs every feature). Read at build time, so a change needs a rebuild. Valid until 12-22; judging ends 12-15. | the contents of `agstudio-license.txt` |
 | `MODEL_API_KEY` | A real model read of a visitor's own photo, and the two ops agents thinking live. Never sent to the browser. | Meta's Muse Spark key |
 | `PAYPAL_ENV` | The "Use the real PayPal sandbox" choice | the word `sandbox` |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_EMAIL`, `PAYPAL_MERCHANT_ID`, `PAYPAL_BUYER_EMAIL`, `PAYPAL_PAYOUT_EMAIL` | the same | your sandbox app, as in `sandbox.env` |
@@ -32,13 +32,11 @@ The site works with none of them: simulated PayPal, recorded AI answers, simulat
 
 A market builds in about 0.5 s, and 40 idle markets use 0.3% of one CPU, because a paused market's timers sleep until its next request.
 
-**The cap is 40 markets** (`HMS_HOSTED_MARKET_CAP`), about 530 MB, which leaves room for uploads, compression of the page bundles and Linux differing from macOS. The memory would allow more; a demo for a judging panel does not need more, and a new visitor at the cap only displaces the market idle the longest.
+**The cap is 40 markets** (`HMS_HOSTED_MARKET_CAP`), about 530 MB, which leaves room for uploads, compression of the page bundles and Linux differing from macOS. The memory allows more; 40 serves a judging panel, and a new visitor at the cap displaces the market idle the longest.
 
-The smaller `0.5c-512mb` plan would hold about 25 markets with no headroom, and the build (web and ops together) peaked near 1 GB here, so it may not build there. The free plan sleeps when idle, so a judge's first visit would wait for it to wake.
+The plan also gives the build (web and ops together, near 1 GB at its peak) room to run, and an always-on instance answers a judge's first visit at once.
 
-Render's prices were not visible to this writer; check them against the credits.
-
-## Limits, all in `server/src/hosted/settings.ts`
+## Settings, all in `server/src/hosted/settings.ts`
 
 | Setting | Default |
 |---|---|
@@ -60,13 +58,18 @@ npm run hosted -- --port-offset 700      # builds if needed; http://127.0.0.1:94
 BASE_URL=http://127.0.0.1:9496 node web/scripts/hosted-walk.mjs   # the browser walk; screenshots in .run/hosted/
 ```
 
-Add `HMS_SECRETS_DIR=~/.config/paypal-hackathon` to build with the AG Studio key and offer the real sandbox. `HOST_ALIAS=judge.holdmyspot.test` on the walk shows the site under a name that is not localhost, where a licence watermark would be drawn.
+With keys in `.secrets/` (or the folder `HMS_SECRETS_DIR` names), the build carries the AG Studio key and the page offers the real sandbox. `HOST_ALIAS=judge.holdmyspot.test` on the walk shows the site under a host name other than localhost, as judges see it.
 
 ## The real PayPal sandbox choice
 
-With the PayPal variables set, the judge's page offers "Use the real PayPal sandbox". The judge approves the hold in PayPal's window with a sandbox buyer login you give privately in Devpost, then presses "Let Wei run the errand", and the page lists PayPal's ids. Capped at 20 markets a day.
+With the PayPal variables set, the judge's page offers "Use the real PayPal sandbox", and the whole errand runs on PayPal's sandbox:
 
-Not yet proven end to end: its market, a real order and PayPal's window were checked, and Wei's errand has run on the emulator, but no full run has gone through PayPal's real sandbox on this path. Before giving the URL to judges, do it once yourself: start it with `HMS_SECRETS_DIR=~/.config/paypal-hackathon npm run hosted -- --port-offset 701`, approve the hold in PayPal's window, press the button, and confirm the ids appear.
+1. **Choose the sandbox.** The page builds a market whose PayPal is the real sandbox client (up to `HMS_HOSTED_SANDBOX_PER_DAY` markets a day, 20 by default).
+2. **Approve the hold.** Mia's $63.70 hold opens in PayPal's own window; the judge signs in with the sandbox buyer login given privately in Devpost and approves it. PayPal authorizes the hold and nothing is charged.
+3. **Let Wei run the errand.** The server plays Wei's side over the market's own routes, with the same code as `npm run errand` (`server/src/hosted/sandboxErrand.ts`): claim, check-in with his line photo, the receipt, tracking and shipping. PayPal captures the receipt and then the shipping, the final capture releases the rest, and Payouts pays Wei.
+4. **Read PayPal's ids.** The page lists each step and every money line with PayPal's id as it lands: the hold's authorization, both captures and both payout batches.
+
+To run it on your machine with your own sandbox keys (saved by `npm run keys` in `.secrets/`, or in the folder `HMS_SECRETS_DIR` names): `npm run hosted -- --port-offset 701`, open `http://127.0.0.1:9497/`, choose the sandbox, approve the hold in PayPal's window and press "Let Wei run the errand".
 
 ## For an AI reviewer
 

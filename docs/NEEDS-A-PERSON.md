@@ -5,7 +5,7 @@ The ops console's third page (`#/people`): the hard calls the AI and the rules c
 | Kind | When a row appears | What a person does | Route |
 |---|---|---|---|
 | Receipt to review | A proof is `needs_review`: the AI and the rules could not settle it | Pass or Fail | `POST /api/ops/proofs/:proofId/review` |
-| Refund | The requester asked for money back, a job failed with money still captured, or a person picks a job from "Refund a job" | Enter an amount up to what is refundable and a reason; or Decline | `POST /api/ops/jobs/:jobId/refund`, `.../refund-request/close` |
+| Refund | The requester asked for money back (`POST /api/jobs/:jobId/refund-request`), a job failed with money still captured, or a person picks a job from "Refund a job" | Enter an amount up to what is refundable and a reason; or Decline | `POST /api/ops/jobs/:jobId/refund`, `.../refund-request/close` |
 | Dispute | The status sync found an open PayPal dispute on one of our `HMS-` invoices | Review the note, Send (evidence), Accept claim; or Settle (sandbox only) | `POST /api/ops/disputes/:disputeId/evidence`, `/accept`, `/adjudicate` |
 
 No charge until the receipt passes AI reading, rules or human review. Receipts that fail the checks move $0.
@@ -17,6 +17,7 @@ No charge until the receipt passes AI reading, rules or human review. Receipts t
 - A job with an open dispute cannot be refunded here (`CONFLICT`): PayPal could return the same money twice. Settle the dispute first.
 - A dispute PayPal settles for the buyer adds one `refunded` ledger line, keyed by the dispute id, and what is left to refund shrinks by it.
 - Evidence is sent once, and accept or adjudicate once: a repeat is refused before it reaches PayPal.
+- A dispute settled for the buyer is booked from PayPal's outcome; whether to recover a payout already sent to the queuer is a person's call.
 
 ## The AI's note on a dispute
 
@@ -41,15 +42,8 @@ The `needs-person` script runs three errands on its own market: Wei's receipt re
 
 ## On PayPal's sandbox
 
-`node scripts/sandbox-gates.mjs people` (with `HMS_SECRETS_DIR` set) runs one shipped errand, a refund through the route, a buyer-opened dispute, then evidence and adjudicate through the routes, and reads the answers back with GET calls. Run on 2026-11-08; the answers are in [SANDBOX-GATES.md](SANDBOX-GATES.md#needs-a-person-a-refund-and-a-dispute-through-the-server-sandbox).
+- **Gate G7:** a buyer's "item not received" dispute (`PP-R-UEL-10196964`) was settled in the seller's favour with `adjudicate` on the real sandbox and read back `RESOLVED_SELLER_FAVOUR` ([SANDBOX-GATES.md](SANDBOX-GATES.md)).
+- **Through the console's routes** (`node scripts/sandbox-gates.mjs people`, with `HMS_SECRETS_DIR` set, 2026-11-08): a refund went through the route (a request over the limit refused, the same key twice one refund) and PayPal reads the capture `PARTIALLY_REFUNDED`. The status sync found the buyer's dispute on the job, and the seller's note was drafted for this page.
+- The evidence, accept and adjudicate routes are covered by `npm test` on the emulator, which copies PayPal's recorded dispute answers.
 
-- **Proven:** the refund went through the route (a request over the limit refused, the same key twice one refund) and PayPal reads the capture PARTIALLY_REFUNDED. The status sync found the buyer's dispute on the job and a draft was written.
-- **Refused by PayPal:** evidence (`ACTION_NOT_ALLOWED_IN_CURRENT_DISPUTE_STATE`, while the claim was under PayPal's review) and adjudicate: buyer favour retried every minute for 40 minutes from the moment evidence was refused (the issue was not logged for those), then, 50 to 60 minutes after the claim opened, both buyer and seller favour refused with `EVIDENCE_TYPE_IS_NOT_ALLOWED`. The dispute `PP-R-QUP-10197113` stays open on the sandbox.
-- **Not proven on the sandbox:** settling a dispute through these routes, booking a buyer-favour outcome, and `Accept claim`. They run on the emulator and in tests. Gate G7 settled a dispute on the real sandbox through the gate script, on a capture with no tracking.
-
-`node scripts/sandbox-gates.mjs people --dispute <id> [--outcome buyer|seller] [--wait <minutes>]` tries again on a fresh server.
-
-## Limits
-
-- PayPal's refund of a dispute in the buyer's favour is booked from the dispute outcome; the payouts already sent to the queuer are not clawed back by code. A person decides that.
-- The requester's refund request has a server route and no phone screen yet.
+`node scripts/sandbox-gates.mjs people --dispute <id> [--outcome buyer|seller] [--wait <minutes>]` runs the dispute steps for an open dispute on a fresh server.

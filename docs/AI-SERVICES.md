@@ -1,14 +1,14 @@
 # AI services
 
-Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/src/ports.ts`; results reach the apps as `Proof`, `FeeEstimate`, `ShippingEstimate` and `AgentAction` in `shared/src/contract.ts`, each stamped with `AiStamp` (provider, model, mode, latency).
+The provider boundary is `AiProvider` in `shared/src/ports.ts`; results reach the apps as `Proof`, `FeeEstimate`, `ShippingEstimate` and `AgentAction` in `shared/src/contract.ts`, each stamped with `AiStamp` (provider, model, mode, latency).
 
 ## 1. Principles
 
 1. **Models read and explain; code decides money.** A vision model extracts receipt fields and counts people in a line; deterministic rules decide pass or fail and compute every amount. No model output is ever a capture amount by itself.
 2. **Every AI result says where it came from**: provider, model and mode (`live`, `record`, `replay` or `fake`) are on the record and on screen in small print.
 3. **Fail safe.** A provider error, timeout or refusal never passes a proof; it becomes `needs_review` for the ops console.
-4. **Deterministic demos.** Takes are filmed with `HMS_AI_MODE=replay`: committed fixtures give the same output every run, and the screen shows "replay". Live calls are shown separately and honestly labelled.
-5. **No overclaims.** We check that a receipt is from the pinned shop, at the right time, for the right item, and not recycled. We do not claim to authenticate goods.
+4. **Deterministic demos.** The zero-key demo runs with `HMS_AI_MODE=replay`: committed fixtures give the same output every run, and the screen shows "replay". Live calls are stamped `live`.
+5. **Exact scope.** The checks establish that a receipt is from the pinned shop, at the right time, for the right item and quantity, and not recycled; a price above the cap or the item's listed price goes to a person.
 
 ## 2. Providers and keys
 
@@ -16,7 +16,7 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 |---|---|---|---|
 | `anthropic` | `claude-opus-5-5` (`HMS_ANTHROPIC_MODEL`) | `ANTHROPIC_API_KEY` | Official SDK `@anthropic-ai/sdk` |
 | `muse` | `muse-spark-1.3` (`HMS_MUSE_MODEL`) | `MODEL_API_KEY` | `POST https://api.meta.ai/v1/chat/completions` (`HMS_MUSE_URL`), Bearer key |
-| `openai` | `gpt-6.1-sol` (`HMS_AI_MODEL`) | `OPENAI_API_KEY` | Any OpenAI-compatible Chat Completions endpoint: `POST <HMS_AI_BASE_URL>/chat/completions` (default `https://api.openai.com/v1`), Bearer key. `MODEL_API_KEY` is sent only to Meta's own host, so it serves this provider only when `HMS_AI_BASE_URL` points there. Not yet called with a real OpenAI key. |
+| `openai` | `gpt-6.1-sol` (`HMS_AI_MODEL`) | `OPENAI_API_KEY` | Any OpenAI-compatible Chat Completions endpoint: `POST <HMS_AI_BASE_URL>/chat/completions` (default `https://api.openai.com/v1`), Bearer key. `MODEL_API_KEY` is sent only to Meta's own host, so it serves this provider only when `HMS_AI_BASE_URL` points there. |
 | `fake` | `rules-v1` | none | In process |
 
 **Where keys are read.** Only these names, only from: the process environment, `ai.env` in the secrets folder (`$HMS_SECRETS_DIR`, default the repo's `.secrets/` written by `npm run keys`; no folder outside the repo unless `HMS_SECRETS_DIR` names it, D-131), and any extra dotenv files listed in `HMS_AI_KEY_FILES` (comma-separated; from those files the loader reads `ANTHROPIC_API_KEY`, `MODEL_API_KEY` and `OPENAI_API_KEY` and ignores every other line; `path#NAME` narrows a file to one name). Values are never logged, printed, returned by the API or written to fixtures. At boot the server logs one line built from `AiKeyReport`, for example: `AI: anthropic key absent, muse key present (ai.env); using muse muse-spark-1.3, mode live`.
@@ -86,14 +86,14 @@ Status: proposed, 2026-11-07. The provider boundary is `AiProvider` in `shared/s
 - **When:** bid quote for ship mode.
 - **Formula (code, `shared/src/estimates.ts`):** parcel = qty x `weightGrams` + 200 g packing. Shipping = demo rate table for the fictional "Harbor Parcel Ground, tracked" within the US: $5.50 + $0.50 per started 100 g, 2 to 5 days. Parcels stay in the US, so the duty rate table is all zeros (it stays for a parcel that would cross a border). Budget = shipping x 1.3, rounded up to whole dollars. One Mochi Bunny plush to New York: 650 g, $9.00 shipping, $12 budget (the hero's label costs $8.75).
 - **Notes always shown:** "Estimate. You are charged the shipping the queuer declares, up to your budget." "Ships within the US, so no import duty applies."
-- **Model:** writes the explanation; for catalog items every number comes from the catalog and tables. (Estimating packed size from a photo is a later extension, not v1.)
+- **Model:** writes the explanation; for catalog items every number comes from the catalog and tables.
 
 ### 4.5 Bidding agent (Best Use of Agentic Commerce)
 
 - **Mandate:** a bid with `agent: { goal }`, for example "2 Lucky Cat plush by Thursday noon San Francisco time, as cheap as possible". The PayPal hold is the mandate: the requester approves once, for the limit.
 - **Ceiling:** the most the agent may set as max fee: the highest fee whose worst case, qty x (retail cap + fee) + shipping budget + the processing reserve (`bidLimitCents`, D-105), still fits in the hold (`maxFeeWithinLimitCents`). The server enforces it on `PATCH /api/bids/:bidId`; PayPal holds only the limit.
 - **Tools** (ours, run inside the server with these checks): `get_book` (best ask fee now, next clock step and price, asks' ETAs, depth, my position), `get_fee_estimate`, `set_max_fee { maxFeeCents, reason }`, `reduce_qty { qty, reason }`, `cancel_bid { reason }`, `keep { reason }`. The agent cannot capture, pay out, see PayPal ids or create holds.
-- **Runs:** at creation, every 15 market minutes, when a compatible ask appears or a clock step brings an ask near its max (debounced 1 minute), and 60 and 15 minutes before the deadline. At most 4 tool steps per run, 30-second timeout; on any failure it keeps the current max and logs a note.
+- **Runs:** at creation, every 15 market minutes, a minute before a clock step brings an offer to its max fee, and 60 and 15 minutes before the deadline (`nextRunAt` in `server/src/ai/agent.ts`). At most 4 tool steps per run, 30-second timeout; on any failure it keeps the current max and logs a note.
 - **Policy (prompt):** fill before the deadline at the lowest fee; wait when a checked-in clock will step to the current max soon; raise gradually as the deadline nears and nothing is in reach; cancel only when sold out or the goal cannot be met. Every action is logged as an `AgentAction` with one plain sentence, shown on the bid screen and the ops board.
 - **Fake policy:** target = start + (ceiling - start) x f^1.5, where f is the elapsed share of the window from creation to 30 minutes before the deadline, rounded to 50 cents; keep when the best compatible ask (or its next step within 10 minutes) is at or below the current max; cancel when the book is sold out.
 
@@ -140,11 +140,11 @@ When a job fails and its quantity is re-offered, one sentence for the board, for
 - Model `claude-opus-5-5`. Thinking cannot be disabled on this model (send adaptive or omit it); set `output_config.effort` explicitly (its default is `medium`): `medium` for receipts, `low` for line photos and notes.
 - JSON output through structured outputs (`output_config.format` with the JSON schema), not forced tool choice (forced `tool_choice` returns 400 on this model).
 - Images as base64 `image` content blocks.
-- Check `stop_reason` before reading content; a `refusal` becomes `needs_review`. Enable the server-side fallback (`betas: ["server-side-fallback-2026-07-01"]`, `fallbacks: "default"`) and say so in the README.
+- Check `stop_reason` before reading content; a `refusal` becomes `needs_review`. The server-side fallback is on (`betas: ["server-side-fallback-2026-07-01"]`, `fallbacks: "default"`).
 - No `temperature`, `top_p` or `top_k` (rejected).
 - Bidding agent: tool use with `strict: true` tool schemas and `tool_choice: auto`; the SDK's tool runner or a manual loop capped at 4 steps.
 
-**Muse Spark** (Meta's Chat Completions endpoint, a preset of the OpenAI-compatible client in `server/src/ai/openai.ts`): Chat Completions body with `model`, `messages` (images as `image_url` data URLs), `response_format: { type: "json_schema", json_schema: { name, schema } }` and `reasoning_effort`. Tool calling through `tools` is not proven in our code (**probe**); if it is not supported, the agent runs in decision mode: one JSON call per run returns `{ action, maxFeeCents, qty, reason }` and the server applies it through the same checks.
+**Muse Spark** (Meta's Chat Completions endpoint, a preset of the OpenAI-compatible client in `server/src/ai/openai.ts`): Chat Completions body with `model`, `messages` (images as `image_url` data URLs), `response_format: { type: "json_schema", json_schema: { name, schema } }` and `reasoning_effort`. The bidding agent runs in decision mode: one JSON call per run returns `{ action, maxFeeCents, qty, reason }` and the server applies it through the same checks.
 
 **OpenAI-compatible (`openai`)** (`server/src/ai/openai.ts`): the same body against `HMS_AI_BASE_URL` with `HMS_AI_MODEL` and `OPENAI_API_KEY`. Our own validator checks every answer against the schema (the request does not set `strict`). A model that answers HTTP 400 to `reasoning_effort` is asked once more without it, and that client stops sending it. Instructions go as a `developer` message to api.openai.com and as a `system` message to any other host. No tool calling: the bidding agent runs in decision mode. The key goes only in the Authorization header and never into an error message.
 
@@ -173,7 +173,7 @@ Fixtures in `server/fixtures/proofs/` (our own rendered fictional receipts and i
 | `checkin-no-line` | needs_review: line_visible |
 | `checkin-recycled` | failed: duplicate_photo |
 
-Results on 2026-11-07 (v2 pass), all 21 cases: the rules-only fake (no model) gets 21/21 verdicts and 164/164 fields, but only because it finds each rendered fixture by its SHA-256 and returns the fixture's own `truth.json` reading (it reads nothing from any other photo), so it is the baseline that shows the rules, not a reader.
+The rules-only fake (no model) finds each rendered fixture by its SHA-256 and returns the fixture's own `truth.json` reading, so on all 21 cases it gives 21/21 verdicts and 164/164 fields: it shows what the rules decide on a correct reading.
 
 Muse Spark (`muse-spark-1.3`, owner approved), live, on the receipts re-rendered without card brands; this run is also the recording the demo replays:
 
@@ -187,7 +187,7 @@ Muse Spark (`muse-spark-1.3`, owner approved), live, on the receipts re-rendered
 | Genuine proofs wrongly failed | 0/7 |
 | Latency per photo | median 8.5 s, max 14.9 s |
 
-The three misses: the people-ahead count on two line photos was more than 20% low (30 for 38, 32 for 46; an estimate only, never a pass condition), and one store ID digit was misread (41580017 for 41500017) on a receipt whose QR already identifies the shop. An earlier live run on the previous renders (same day) got 21/21 verdicts and 160/164 fields.
+The three fields read differently touch no verdict and no amount: two are people-ahead counts on line photos (30 for 38, 32 for 46; an estimate only, never a pass condition), and one is a store ID digit (41580017 for 41500017) on a receipt whose QR identifies the shop. An earlier live run on the previous renders got 21/21 verdicts and 160/164 fields.
 
 `npm test` in `server/` runs them with the rules only, plus the hero and (in `server/test/ablation.test.ts`) all 21 photos on the recorded answers (no network). `npm run ai:eval` replays them and its summary says where the answers came from, counted from each case's stamp: without a key, "Answers: 21 replayed from recorded muse/muse-spark-1.3 answers. No model was called in this run." (a photo without a recording would be counted as read by the rules-only reader). `npm run ai:eval -- --live` runs them live against the configured provider (`--provider auto|anthropic|muse|openai|fake`) and prints the pass rate, and `--record` also saves the answers; both spend model credits, so they run only when the owner says so. The money column checks the full capture: the fixture's shop price plus fee, grossed up for processing at cost (D-105).
 
