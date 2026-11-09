@@ -32,13 +32,13 @@
       "web": 138,
       "ops": 27
     },
-    "seconds": 580.7,
-    "aboutSeconds": 580,
+    "seconds": 103.3,
+    "aboutSeconds": 100,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "c207071",
+    "commit": "5f93d4d",
     "recordedOn": "2026-11-09",
     "properties": {
       "tests": 19,
@@ -1042,7 +1042,7 @@
       "web",
       "ops"
     ],
-    "readySeconds": 16,
+    "readySeconds": 1.3,
     "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
     "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
     "os": "macOS",
@@ -1051,9 +1051,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-09",
-    "attackSeconds": 20.9,
+    "attackSeconds": 32.9,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 8.4,
+    "aiEvalSeconds": 24,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1066,8 +1066,8 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-09 07:57",
-      "commit": "c207071",
+      "at": "2026-11-09 08:08",
+      "commit": "5f93d4d",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
@@ -1081,8 +1081,8 @@
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-09 07:56",
-      "commit": "c207071",
+      "at": "2026-11-09 08:08",
+      "commit": "5f93d4d",
       "uncommittedChanges": false,
       "codeTrees": {
         "shared": "d358c655a04b",
@@ -1096,8 +1096,8 @@
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-09 07:56",
-      "commit": "c207071",
+      "at": "2026-11-09 08:08",
+      "commit": "5f93d4d",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
@@ -1111,8 +1111,8 @@
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-09 07:56",
-      "commit": "c207071",
+      "at": "2026-11-09 08:08",
+      "commit": "5f93d4d",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
@@ -1126,8 +1126,8 @@
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-09 07:56",
-      "commit": "c207071",
+      "at": "2026-11-09 08:07",
+      "commit": "5f93d4d",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",

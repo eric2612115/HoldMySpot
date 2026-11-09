@@ -2,9 +2,9 @@
   "tool": "npm test",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-09T07:57:27.677Z",
-  "seconds": 580.7,
-  "commit": "c207071",
+  "startedAt": "2026-11-09T08:08:47.758Z",
+  "seconds": 103.3,
+  "commit": "5f93d4d",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "d358c655a04b",
@@ -36,7 +36,7 @@
       "pkg": "shared",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 44.2,
+      "seconds": 2.3,
       "tests": 103,
       "passed": 103,
       "failed": 0,
@@ -112,7 +112,7 @@
       "pkg": "server",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 493.5,
+      "seconds": 91.8,
       "tests": 485,
       "passed": 485,
       "failed": 0,
@@ -164,13 +164,13 @@
       "pkg": "web",
       "label": "type check",
       "ok": true,
-      "seconds": 18.7
+      "seconds": 3.5
     },
     {
       "pkg": "web",
       "label": "tests (vitest)",
       "ok": true,
-      "seconds": 3.5,
+      "seconds": 1,
       "tests": 138,
       "passed": 138,
       "failed": 0,
@@ -180,13 +180,13 @@
       "pkg": "ops",
       "label": "type check",
       "ok": true,
-      "seconds": 17.3
+      "seconds": 3.9
     },
     {
       "pkg": "ops",
       "label": "tests",
       "ok": true,
-      "seconds": 3.4,
+      "seconds": 0.9,
       "tests": 27,
       "passed": 27,
       "failed": 0,

@@ -3,9 +3,9 @@
   "format": 1,
   "ok": true,
   "exitCode": 0,
-  "startedAt": "2026-11-09T07:56:41.702Z",
-  "seconds": 26.4,
-  "commit": "c207071",
+  "startedAt": "2026-11-09T08:08:45.531Z",
+  "seconds": 1.6,
+  "commit": "5f93d4d",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "d358c655a04b",
@@ -23,7 +23,7 @@
     "web",
     "ops"
   ],
-  "readySeconds": 16,
+  "readySeconds": 1.3,
   "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
   "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
   "keys": "none: no HMS_*, PAYPAL_* or model key variables, an empty HMS_SECRETS_DIR and no key files"
