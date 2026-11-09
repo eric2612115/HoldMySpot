@@ -1,6 +1,6 @@
 # Hosting the judge site on Render
 
-One Node process on one port serves the phone app, the ops console under `/ops/`, and `/api/*` (D-163). Every visitor automatically gets a whole market of their own: no sign-up, no shared state.
+The judge site runs at https://holdmyspot-k4a4.onrender.com (Render, plan `1c-2g`, deployed from this repository's `render.yaml`). One Node process on one port serves the phone app, the ops console under `/ops/`, and `/api/*` (D-163). Every visitor automatically gets a whole market of their own: no sign-up, no shared state.
 
 **There is no external database.** Each market is an in-memory SQLite database inside the process, one per visitor, with its own folder of uploaded photos. That is why nothing needs a backup or a migration and why visitors cannot collide. It also means a restart or a new deploy clears every market; a visitor reloads the page and gets a fresh one. Nothing here is meant to be kept.
 

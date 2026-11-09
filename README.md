@@ -21,9 +21,9 @@
 
 **How AI is used.** Meta's Muse Spark reads the line photo and the receipt into JSON. Code checks what it read and computes every amount. The model also estimates, proposes fee moves, drafts dispute notes and thinks for two ops agents. It moves no money.
 
-**Sponsors.** [AG Studio](#ag-studio-the-market-dashboard) is the market dashboard, with our agent delegating to Studio's own agents. [Bryntum Scheduler](#bryntum-scheduler-the-queuer-board) is the queuer board, where every drag is checked against the money rules.
+**Sponsors.** [AG Studio](#ag-studio-the-market-dashboard) is the market dashboard, with our agent delegating to Studio's own agents. [Bryntum Scheduler](#bryntum-scheduler-the-queuer-board) is the queuer board, where every drag is checked against the money rules. [Render](docs/HOSTING.md) hosts the judge site as one web service from `render.yaml`.
 
-**Run it** with Node 24, no keys, no accounts: `npm run setup && npm run demo` ([details](#run-it)).
+**Try it** at https://holdmyspot-k4a4.onrender.com: two phones side by side, the ops console at [/ops/](https://holdmyspot-k4a4.onrender.com/ops/), a private market for every visitor, no sign-up. **Run it** with Node 24, no keys, no accounts: `npm run setup && npm run demo` ([details](#run-it)).
 
 <!-- numbers:front-proof:start -->
 | Proof | Result | Log |
@@ -165,12 +165,14 @@ npm run setup     # installs shared/, server/, web/ and ops/
 npm run demo      # starts the server, the web app and the ops console; Ctrl-C stops all three
 ```
 
+Ports 8796, 5190 and 5197 busy? `npm run demo -- --port-offset 2900` adds 2900 to each; `npm run hosted` takes the same flag.
+
 It runs with zero keys on simulated PayPal and recorded model answers; add sandbox keys to run against PayPal's real sandbox ([below](#your-own-keys-real-paypal-sandbox-and-live-ai)). No accounts and no sign-in: the phone's **Mia asks / Wei queues** switch picks who you are.
 
 | Open | Then |
 |---|---|
 | Web app: http://127.0.0.1:5190/?demo=1 | Tap **Mochi Bunny plush**, **Set my max fee**, **Hold \$63.70 with PayPal** (a sheet labelled Simulated PayPal). |
-| Ops console: http://127.0.0.1:5197/ | Press **Play** by the clock: the whole day runs in about two minutes. |
+| Ops console: http://127.0.0.1:5197/ | Press **Play** by the clock: the whole day runs in about two minutes. Then the web app's money chip reads charged \$58.26, \$5.44 released. |
 | Bryntum: http://127.0.0.1:5197/?backend=mock&at=11:21 | Read the **Rescheduler** cards, then **Approve**, or drag a job between queuers. |
 | AG Studio: http://127.0.0.1:5197/?backend=mock&at=12:05#/market | Press **Widest gap** in the market desk. |
 | Needs a person: http://127.0.0.1:5197/?backend=mock&at=11:21#/people | One receipt, one refund and one dispute. |
@@ -190,12 +192,15 @@ With the demo running, `(cd ops && OUT_DIR=../.run/ops-shots npm run shots && np
 
 ### One command, one port, your own private market
 
-`npm run hosted` serves the phones side by side, the ops console and the API on `http://127.0.0.1:8796/`; every visitor gets a private in-memory market, cleared when idle, with no sign-up ([docs/HOSTING.md](docs/HOSTING.md)). An AI reviewer with no cookies takes a token instead:
+`npm run hosted` serves the phones side by side, the ops console and the API on `http://127.0.0.1:8796/`; every visitor gets a private in-memory market, cleared when idle, with no sign-up; Ctrl-C stops it. The same site runs at https://holdmyspot-k4a4.onrender.com ([docs/HOSTING.md](docs/HOSTING.md)). An AI reviewer with no cookies takes a token instead:
 
 ```sh
-BASE=http://127.0.0.1:8796   # npm run hosted; or the hosted site's URL
+BASE=https://holdmyspot-k4a4.onrender.com   # or http://127.0.0.1:8796 after npm run hosted
 TOKEN=$(curl -s -X POST "$BASE/api/demo/session" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
 curl -s -X POST "$BASE/api/demo/start" -H "X-HMS-Market: $TOKEN" -H 'content-type: application/json' -d '{"scriptId":"hero","speed":600}'
+until curl -s "$BASE/api/demo/state" -H "X-HMS-Market: $TOKEN" | grep -q '"finished"'; do sleep 1; done   # about 10 s
+curl -s "$BASE/api/ledger?mine=1" -H "X-HMS-Market: $TOKEN" -H 'X-HMS-User: mia'
+# held 6370, captured 4869 and 957, released 544 (cents)
 ```
 
 ### Your own keys: real PayPal sandbox and live AI

@@ -25,6 +25,7 @@ import { formatUsd, type Cents } from '../domain/money';
 import type { FeeOffer, TaskPoint } from '../domain/types';
 import { api, ApiError, eventsUrl } from '../services/api';
 import { createCheckout, startBidApproval, type BidApprovalOutcome, type CheckoutService } from '../services/payments';
+import { paidOutCents } from './paidOut';
 import { isOpenOrder, patchOrder, setOrder, useMarket, type ActivityRow, type BidChoice, type MarketDriver, type UserOrder } from './market';
 import { orderOf } from './orderOf';
 import { playerLngLat } from './position';
@@ -214,7 +215,7 @@ function upsert(rows: ActivityRow[], row: ActivityRow): ActivityRow[] {
 /** One money list for the page: the requester's lines and the queuer's payouts, newest first. */
 function publishActivity() {
   const sorted = [...requesterRows, ...queuerRows].sort((a, b) => b.at - a.at || (a.id < b.id ? 1 : -1));
-  const paidOut = queuerRows.filter((r) => r.kind === 'paid_out' && r.status === 'succeeded').reduce((sum, r) => sum + r.amountCents, 0);
+  const paidOut = paidOutCents(requesterRows, queuerRows);
   let charged = 0;
   for (const r of requesterRows) {
     if (r.status !== 'succeeded') continue;
