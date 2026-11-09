@@ -1,0 +1,32 @@
+The hero errand on the real PayPal sandbox through the web app on two phones (web/scripts/sandbox-walk.mjs, D-121), 2026-11-09,
+on the stamped-photo build (commit 0e53a6f). Server in sandbox mode with Muse Spark's recorded answers for the demo photos;
+Mia approved the $63.70 hold in PayPal's own window as the sandbox buyer.
+
+== The walk's checks
+ok   The max-fee picker holds $63.70 for a $12 max fee (Hold $63.70 with)
+ok   PayPal holds $63.70 for Mia (authorized in the sandbox) (held $63.70 9KJ11656GF995531R)
+ok   Wei offers $15, down $1 every 5 min, never below $8 ({"Opening fee":"$15","Step down by":"$1","Every":"5 min","Never below":"$8"})
+ok   Wei's check-in code is the one in his line photo (M4RT7)
+ok   The line photo passed and the fee clock runs from $15
+ok   Wei's fee met Mia's request at $12 (job_0001 $12.00)
+ok   Ledger for Mia: held 6370, captured 4869 and 957, released 544 (released:544:succeeded captured:957:succeeded captured:4869:succeeded held:6370:succeeded)
+ok   Payouts to Wei: fee 1080 and reimbursement 4275, both succeeded
+8/8 checks passed.
+
+== PayPal against the server's ledger, GET calls only (npm run paypal:check -- --bid bid_0065)
+PayPal sandbox, read back 2026-11-09 08:02 UTC (GET calls only)
+  Order 7396788025685924T: COMPLETED, intent AUTHORIZE, $63.70, invoice HMS-mw8yvho1-bid_0065, custom_id bid_0065
+  Tracking HPG-2611-11069237 on capture 6NA8650702616170F: SHIPPED
+
+Server bid_0065: request matched, hold captured $63.70, captured $58.26, released $5.44
+  [OK] order amount: PayPal $63.70, server hold $63.70
+  [OK] authorization: 9KJ11656GF995531R CAPTURED $63.70; server hold captured $63.70
+  [OK] capture 352158903M329042E: PayPal $9.57 COMPLETED final, PayPal's fee $0.82; ledger $9.57 succeeded, fee $0.82
+  [OK] capture 6NA8650702616170F: PayPal $48.69 COMPLETED final, PayPal's fee $2.19; ledger $48.69 succeeded, fee $2.19
+  [OK] captured total: PayPal $58.26 COMPLETED, server $58.26
+  [OK] released rest: server $5.44, PayPal remainder $5.44 (authorization CAPTURED)
+  [OK] tracking HPG-2611-11069237: on the PayPal order: HPG-2611-11069237
+  [OK] payout reimbursement batch 9RSCJELWW6AUS: PayPal $42.75 SUCCESS, fee $0.25 (batch SUCCESS); server $42.75 succeeded, fee $0.25
+  [OK] payout fee batch ZL7YXUPNNUCF4: PayPal $10.80 SUCCESS, fee $0.25 (batch SUCCESS); server $10.80 succeeded, fee $0.25
+
+PayPal matches the server to the cent.
