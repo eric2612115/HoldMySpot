@@ -2,12 +2,12 @@
   "tool": "npm run attack",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-08T14:50:25.642Z",
-  "commit": "c8e2a65",
+  "startedAt": "2026-11-09T07:18:22.587Z",
+  "commit": "5393b77",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "d358c655a04b",
-    "server": "ce9de942d02a",
+    "server": "a0e2e8d32f37",
     "web": "b227d7a17ac8",
     "ops": "75c53e05e553",
     "scripts": "dc6160b73b60"
@@ -15,7 +15,7 @@
   "node": "24.22.2",
   "platform": "darwin arm64",
   "server": {
-    "url": "http://127.0.0.1:58268",
+    "url": "http://127.0.0.1:61547",
     "startedHere": true,
     "mode": "fake",
     "ai": {

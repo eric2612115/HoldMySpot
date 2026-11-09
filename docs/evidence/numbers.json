@@ -22,24 +22,24 @@
   },
   "tests": {
     "steps": 6,
-    "tests": 752,
-    "passed": 752,
+    "tests": 753,
+    "passed": 753,
     "failed": 0,
     "skipped": 0,
     "byPackage": {
       "shared": 103,
-      "server": 484,
+      "server": 485,
       "web": 138,
       "ops": 27
     },
-    "seconds": 100.3,
-    "aboutSeconds": 100,
+    "seconds": 107.3,
+    "aboutSeconds": 110,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "c8e2a65",
-    "recordedOn": "2026-11-08",
+    "commit": "5393b77",
+    "recordedOn": "2026-11-09",
     "properties": {
       "tests": 19,
       "runs": 31680,
@@ -1061,7 +1061,7 @@
       }
     ],
     "serverStartedHere": true,
-    "recordedOn": "2026-11-08"
+    "recordedOn": "2026-11-09"
   },
   "smoke": {
     "answered": [
@@ -1069,16 +1069,16 @@
       "web",
       "ops"
     ],
-    "readySeconds": 1.3,
+    "readySeconds": 1.8,
     "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
     "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
     "os": "macOS",
     "node": "24.22.2",
-    "recordedOn": "2026-11-08"
+    "recordedOn": "2026-11-09"
   },
   "runs": {
-    "recordedOn": "2026-11-08",
-    "attackSeconds": 11.6,
+    "recordedOn": "2026-11-09",
+    "attackSeconds": 11.4,
     "attackDuration": "under a minute",
     "aiEvalSeconds": 6.3,
     "commands": [
@@ -1093,12 +1093,12 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-08 14:50",
-      "commit": "c8e2a65",
+      "at": "2026-11-09 07:18",
+      "commit": "5393b77",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "ce9de942d02a",
+        "server": "a0e2e8d32f37",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
         "scripts": "dc6160b73b60"
@@ -1108,12 +1108,12 @@
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-08 14:50",
-      "commit": "c8e2a65",
-      "uncommittedChanges": true,
+      "at": "2026-11-09 07:18",
+      "commit": "5393b77",
+      "uncommittedChanges": false,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "ce9de942d02a",
+        "server": "a0e2e8d32f37",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
         "scripts": "dc6160b73b60"
@@ -1123,12 +1123,12 @@
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-08 14:50",
-      "commit": "c8e2a65",
+      "at": "2026-11-09 07:18",
+      "commit": "5393b77",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "ce9de942d02a",
+        "server": "a0e2e8d32f37",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
         "scripts": "dc6160b73b60"
@@ -1138,12 +1138,12 @@
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-08 14:50",
-      "commit": "c8e2a65",
+      "at": "2026-11-09 07:18",
+      "commit": "5393b77",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "ce9de942d02a",
+        "server": "a0e2e8d32f37",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
         "scripts": "dc6160b73b60"
@@ -1153,12 +1153,12 @@
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-08 14:50",
-      "commit": "c8e2a65",
+      "at": "2026-11-09 07:18",
+      "commit": "5393b77",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "ce9de942d02a",
+        "server": "a0e2e8d32f37",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
         "scripts": "dc6160b73b60"
