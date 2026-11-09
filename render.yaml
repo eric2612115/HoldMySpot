@@ -6,7 +6,7 @@ services:
     plan: 1c-2g
     region: oregon
     branch: main
-    autoDeploy: false
+    autoDeployTrigger: "off"
     buildCommand: npm run setup && npm run hosted -- --build-only
     startCommand: node server/src/hosted/main.ts
     healthCheckPath: /api/health
