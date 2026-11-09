@@ -4,7 +4,7 @@ One Node process on one port serves the phone app, the ops console under `/ops/`
 
 **There is no external database.** Each market is an in-memory SQLite database inside the process, one per visitor, with its own folder of uploaded photos. That is why nothing needs a backup or a migration and why visitors cannot collide. It also means a restart or a new deploy clears every market; a visitor reloads the page and gets a fresh one. Nothing here is meant to be kept.
 
-## What the owner does
+## Deploy on Render
 
 1. In Render: **New > Blueprint**, pick this repository, branch `main`. Render reads `render.yaml` and offers one web service, `holdmyspot`.
 2. Render asks for the values below. Paste them; leave blank anything you do not want (each one only switches a feature off).
@@ -76,6 +76,7 @@ To run it on your machine with your own sandbox keys (saved by `npm run keys` in
 ## For an AI reviewer
 
 ```sh
+BASE=http://127.0.0.1:8796   # npm run hosted; or the hosted site's URL
 TOKEN=$(curl -s -X POST "$BASE/api/demo/session" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
 curl -s -X POST "$BASE/api/demo/start" -H "X-HMS-Market: $TOKEN" -H 'content-type: application/json' -d '{"scriptId":"hero","speed":600}'
 until curl -s "$BASE/api/demo/state" -H "X-HMS-Market: $TOKEN" | grep -q '"finished"'; do sleep 1; done

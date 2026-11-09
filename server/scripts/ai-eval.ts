@@ -71,13 +71,17 @@ function parseArgs(argv: string[]): Args {
  * D-143, D-149; `gitState` in scripts/common.mjs): the commit, whether the files differ from it
  * (untracked ones included), and the git tree of each code folder as the files are on disk.
  */
-function gitInfo(): { commit: string | null; dirty: boolean | null; trees: Record<string, string | null> | null } {
+function gitInfo(): { commit: string | null; dirty: boolean | null; trees: Record<string, string | null> | null; commitTrees: Record<string, string> | null } {
   const repo = join(SERVER_ROOT, '..');
   const git = (a: string[], env?: NodeJS.ProcessEnv) => spawnSync('git', a, { cwd: repo, encoding: 'utf8', env: env ?? process.env });
   const rev = git(['rev-parse', '--short', 'HEAD']);
-  if (rev.status !== 0) return { commit: null, dirty: null, trees: null };
+  if (rev.status !== 0) return { commit: null, dirty: null, trees: null, commitTrees: null };
   const st = git(['status', '--porcelain', '--untracked-files=all']);
   const folders = ['shared', 'server', 'web', 'ops', 'scripts'];
+  // The same folders' trees in the commit itself, so the log shows whether its code differed from the commit.
+  const committed = git(['rev-parse', ...folders.map((f) => `HEAD:${f}`)]);
+  const lines = committed.status === 0 ? committed.stdout.trim().split('\n') : [];
+  const commitTrees = lines.length === folders.length ? Object.fromEntries(folders.map((f, i) => [f, lines[i]!.slice(0, 12)])) : null;
   const index = join(tmpdir(), `hms-git-index-${process.pid}-${Date.now()}`);
   const env = { ...process.env, GIT_INDEX_FILE: index };
   let trees: Record<string, string | null> | null = null;
@@ -92,7 +96,7 @@ function gitInfo(): { commit: string | null; dirty: boolean | null; trees: Recor
   } finally {
     rmSync(index, { force: true });
   }
-  return { commit: rev.stdout.trim(), dirty: st.status === 0 ? st.stdout.trim().length > 0 : null, trees };
+  return { commit: rev.stdout.trim(), dirty: st.status === 0 ? st.stdout.trim().length > 0 : null, trees, commitTrees };
 }
 
 /**
@@ -345,6 +349,7 @@ async function main(): Promise<void> {
     commit: git.commit,
     uncommittedChanges: git.dirty,
     codeTrees: git.trees,
+    commitCodeTrees: git.commitTrees,
     node: process.versions.node,
     platform: `${process.platform} ${process.arch}`,
     ai: port.info,

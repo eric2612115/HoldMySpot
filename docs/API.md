@@ -87,7 +87,7 @@ Auth: `pub` public, `per` persona, `adm` admin, `pp` PayPal, `fake` fake mode, `
 | `POST /api/bids/:bidId/authorize` * | P0 | per | `{ orderId }` | `BidResult` | Authorizes; bid `open` only when PayPal answers `CREATED` for the hold's exact amount, then matching runs; `matches` may already contain fills. `PENDING`: 503 `PAYPAL_UNAVAILABLE`, the bid stays `awaiting_approval` and the sweep reads the authorization again; `DENIED` or another amount: 402 `PAYPAL_DECLINED`, bid `failed` (another amount is voided) (D-150). After a sell-out nothing is authorized: bid `failed` (close reason `sold_out`), 409 `SOLD_OUT`, nothing held (D-116) |
 | `POST /api/bids/:bidId/approval-failed` * | P0 | per | `{ reason, detail }` | `{ bid, hold }` | Bid `failed` |
 | `GET /api/bids` | P0 | per | `?mine=1&status=&shopId=` | `{ bids }` | Own bids only |
-| `GET /api/bids/:bidId` | P0 | per | | `BidDetail` | Owner and ops |
+| `GET /api/bids/:bidId` | P0 | per | | `BidDetail` | The requester and ops |
 | `PATCH /api/bids/:bidId` * | P1 | per | `AmendBidRequest` | `{ bid, matches }` | New `bidLimitCents` (qty x (retailCap + maxFee) + shippingBudget + the processing reserve, D-105) must stay within `limitCents` (`OVER_LIMIT`); qty not below matched qty; a new max fee resets time priority |
 | `POST /api/bids/:bidId/cancel` * | P0 | per | `{ reason }` | `{ bid, hold }` | Cancels the unmatched remainder; voids when nothing was captured and no job is active, else `closing` |
 | `POST /api/bids/:bidId/claim` * | P0 | per (queuer) | `ClaimBidRequest` | `ClaimBidResponse` | Same queuer rules as asks; fee = the bid's max fee; qty within the bid's remainder |

@@ -1,7 +1,7 @@
 /**
  * Screen words. docs/DOMAIN.md section 9 keeps exchange vocabulary (spread,
- * trading) off the screens and the film, while the owner frames the product
- * as a walking order book (docs/DECISIONS.md D-37, still open). The console
+ * trading) off the screens, while the product keeps "walking order book"
+ * as the name of its mechanism (docs/DECISIONS.md D-37). The console
  * defaults to the plain set; VITE_OPS_WORDS=market switches every label,
  * dataset name and agent sentence to the market set in one place.
  */

@@ -971,7 +971,6 @@ async function main() {
     for (const r of failed) console.log(red(`  Row ${r.order} (${r.attempt}): ${r.notes.join('; ')}.`));
     for (const r of unexpected) console.log(yellow(`  Row ${r.order} (${r.attempt}): ${r.notes.join('; ')}; no money moved.`));
     for (const v of violations) console.log(red(`  Invariant broken: ${v}.`));
-    const holds = invariantRuns.reduce((n, m) => n + m.holds, 0);
     const jobs = invariantRuns.reduce((n, m) => n + m.jobs, 0);
     const summary = [
       `${refused.length} refused, $0.00 moved`,
@@ -981,8 +980,8 @@ async function main() {
     ];
     console.log(`${rows.length} attempts: ${summary.join('; ')}.`);
     if (invariantRuns.length > 0) {
-      const after = invariantRuns.length === 1 ? 'the market' : `each of the ${invariantRuns.length} markets`;
-      console.log(`Checked after ${after}: no hold captured more than PayPal held, and no job paid out more than it charged (${holds} ${holds === 1 ? 'hold' : 'holds'} a capture was tried on, ${jobs} jobs).`);
+      const markets = `${invariantRuns.length} ${invariantRuns.length === 1 ? 'market' : 'markets'}`;
+      console.log(`Checked after each market: across ${markets} and ${jobs} ${jobs === 1 ? 'job' : 'jobs'}, no hold captured more than it held and no job paid out more than it charged.`);
     }
     console.log(
       ok
@@ -999,6 +998,7 @@ async function main() {
         commit: git.commit,
         uncommittedChanges: git.dirty,
         codeTrees: git.trees,
+        commitCodeTrees: git.commitTrees,
         node: process.versions.node,
         platform: `${process.platform} ${process.arch}`,
         server: base ? { url: base, startedHere: Boolean(server), mode: config.mode, ai: config.ai } : null,

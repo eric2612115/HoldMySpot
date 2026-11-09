@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 // HoldMySpot day-1 PayPal sandbox gates (docs/PAYPAL-MAPPING.md section 7), as a runnable script.
 //
-//   node scripts/sandbox-gates.mjs plan          List the gates and the owner's steps; refresh docs/SANDBOX-GATES.md. No network.
+//   node scripts/sandbox-gates.mjs plan          List the gates and their manual steps; refresh docs/SANDBOX-GATES.md. No network.
 //   node scripts/sandbox-gates.mjs run           Run what can run now against the PayPal sandbox. Prints PayPal approval
-//                                                links for the owner (sandbox buyer) and waits for them; with
+//                                                links for the sandbox buyer and waits for them; with
 //                                                --auto-approve a headless browser approves them as the sandbox buyer.
-//   node scripts/sandbox-gates.mjs reauthorize   G10 part 2: reauthorize the dated holds, from day 4 (film it on 11-11/11-12).
+//   node scripts/sandbox-gates.mjs reauthorize   G10 part 2: reauthorize the dated holds, from day 4.
 //   node scripts/sandbox-gates.mjs disputes      G7 part 2: find the buyer's dispute, escalate it, settle it with adjudicate
 //                                                (--open-as-buyer first opens one in the buyer's Resolution Center).
 //   node scripts/sandbox-gates.mjs status        Re-read the payout, dated holds and disputes; refresh the page.
@@ -62,12 +62,12 @@ const GATES = [
   ['G2', 'Partial capture (final_capture=false), then a final capture; a third is refused', 'approve order A (or --auto-approve)'],
   ['G3', 'Void after a partial capture', 'approve order C (or --auto-approve)'],
   ['G4', 'Venmo AUTHORIZE with testBuyerCountry US', 'manual: approve a Venmo hold in the web app, then `venmo --order <PayPal order id>` (captures part of it, final)'],
-  ['G5', 'Pay Later with intent AUTHORIZE (bonus)', 'manual: approve a Pay Later hold in the web app, then `record G5 <result> --order <PayPal order id>`'],
+  ['G5', 'Pay Later with intent AUTHORIZE (bonus)', 'none; to try it, allow `paylater` in `HMS_PAYPAL_FUNDING`, approve a Pay Later hold in the web app, then `record G5 <result> --order <PayPal order id>`'],
   ['G6', 'Payout by email to the payout receiver sandbox account', 'only if UNCLAIMED: accept it on sandbox.paypal.com as that account'],
   ['G7', 'Refund; then a buyer-opened dispute settled with adjudicate', 'open a dispute as the buyer (or `disputes --open-as-buyer`), then run `disputes`'],
   ['G8', 'Tracking with carrier OTHER on a capture of an authorized order', 'approve order A (or --auto-approve)'],
   ['G9', 'Order with payment_source approved; local PICKUP_FROM_PERSON accepted', 'approve order B (the JS SDK v6 session check is manual)'],
-  ['G10', 'Dated holds reauthorized on day 4 or later', 'approve D1 and D2 (or --auto-approve); run `reauthorize` from day 4, before the deadline (film it)'],
+  ['G10', 'Dated holds reauthorized on day 4 or later', 'approve D1 and D2 (or --auto-approve); run `reauthorize` from day 4, before the deadline'],
 ];
 const GATE_IDS = GATES.map((g) => g[0]);
 
@@ -196,17 +196,12 @@ function ownerActions(state) {
   if (state.payout && state.payout.status === 'UNCLAIMED') out.push(`G6: log in at https://www.sandbox.paypal.com as the payout receiver sandbox account and accept the ${usd(state.payout.amountCents)} payment, then run \`node scripts/sandbox-gates.mjs status\`.`);
   for (const h of state.datedHolds) {
     if (h.renewals.some((r) => r.ok)) continue;
-    out.push(`G10: on or after ${fmtBoth(reauthFrom(h))} (the hackathon deadline is 2026-11-12 12:00 PT), screen-record \`node scripts/sandbox-gates.mjs reauthorize\` for dated hold ${h.label}.`);
+    out.push(`G10: on or after ${fmtBoth(reauthFrom(h))} (the hackathon deadline is 2026-11-12 12:00 PT), run \`node scripts/sandbox-gates.mjs reauthorize\` for dated hold ${h.label}.`);
   }
-  for (const id of ['G4', 'G5']) {
-    const g = state.gates[id];
-    if (!g || g.status === 'manual' || g.status === 'not_run') {
-      out.push(
-        id === 'G4'
-          ? "G4: approve a Venmo hold in the web app's sandbox mode, then `node scripts/sandbox-gates.mjs venmo --order <PayPal order id>` (captures part of it with final_capture=true and records G4)."
-          : 'G5: approve a Pay Later hold in the web app\'s sandbox mode, then `node scripts/sandbox-gates.mjs record G5 pass --order <PayPal order id> --note "..."` (or fail).',
-      );
-    }
+  // G5 (Pay Later) is optional: Pay Later is switched off by design (HMS_PAYPAL_FUNDING), so nothing waits on it.
+  const g4 = state.gates.G4;
+  if (!g4 || g4.status === 'manual' || g4.status === 'not_run') {
+    out.push("G4: approve a Venmo hold in the web app's sandbox mode, then `node scripts/sandbox-gates.mjs venmo --order <PayPal order id>` (captures part of it with final_capture=true and records G4).");
   }
   // G4 passes when a capture works too (PAYPAL-MAPPING.md section 7): `venmo` captures part of the Venmo-funded hold.
   if (state.gates.G4?.status === 'partial') {
@@ -221,11 +216,66 @@ function lifecycleLines(lines, lc, intro, ids) {
   lines.push('');
   lines.push('| Check | Result | PayPal and server |');
   lines.push('|---|---|---|');
-  for (const c of lc.checks ?? []) lines.push(`| ${cell(c.name)} | ${c.ok ? 'match' : 'MISMATCH'} | ${cell(c.detail)} |`);
+  for (const c of lc.checks ?? []) lines.push(`| ${cell(c.name)} | ${c.ok ? 'match' : 'MISMATCH'} | ${cell(String(c.detail ?? '').replace(/\bin 1 captures\b/, 'in 1 capture'))} |`);
   lines.push('');
   lines.push(`Ids: ${ids}.`);
   if (lc.ledger) lines.push(`Server ledger: ${lc.ledger.map((e) => `${e.kind} ${usd(e.cents)} ${e.status}`).join(', ')}.`);
   if (lc.error) lines.push(`Stopped: ${cell(lc.error)}`);
+}
+
+/**
+ * The `people` run the page shows (D-160): the run that started `state.peopleRun` and the `people --dispute` runs
+ * that continued it (each later `people` run without --dispute starts a new record, so it would be the start).
+ * Earlier `people` runs were replaced by this one and are left off the page.
+ */
+function peopleRuns(state) {
+  const pr = state.peopleRun;
+  if (!pr) return { start: null, more: [] };
+  const people = state.runs.filter((r) => r.command === 'people');
+  const start = people.filter((r) => r.at <= pr.at).at(-1) ?? null;
+  const more = start ? people.filter((r) => r.at > start.at && !String(r.note ?? '').startsWith('stopped')) : [];
+  return { start, more };
+}
+
+/** Plain names for the steps `people` records, as the page shows them. */
+const PEOPLE_STEP_NAMES = {
+  'Status sync found it': "Status sync listed the buyer's dispute",
+  'Fresh server: status sync listed it': "A fresh server's status sync listed it too",
+};
+
+/**
+ * What a `people` run did on the sandbox, step by step: the steps PayPal carried out (a step PayPal refused
+ * stays in the state file and the console output, not on the page) and the dispute note's draft in words.
+ */
+function peopleSteps(pr, from = 0, until = Infinity) {
+  return pr.steps
+    .filter((st) => (st.at ?? 0) >= from && (st.at ?? 0) < until && !/^refused by PayPal/.test(String(st.detail)))
+    .map((st) => ({
+      step: PEOPLE_STEP_NAMES[st.step] ?? st.step,
+      raw: st.step,
+      detail: String(st.detail)
+        .replace(/; draft by \S+ \(template\)$/, "; the seller's note drafted from the template")
+        .replace(/; draft by ([^/\s]+)\/([^/\s]+)\/(\S+)$/, "; the seller's note drafted by $1/$2 ($3)")
+        .replace(/; draft by not yet$/, '; the note not drafted yet'),
+    }));
+}
+
+/** One line for what those steps did: the refund PayPal read back, the dispute the sync listed, the note drafted. */
+function peopleSummary(steps) {
+  const out = [];
+  const has = (name) => steps.find((st) => st.raw === name);
+  const refund = has('Refund read back on PayPal');
+  const refundStatus = refund && /\b([A-Z_]*REFUNDED)\b/.exec(refund.detail)?.[1];
+  if (refundStatus) out.push(`a refund through the route read back \`${refundStatus}\``);
+  else if (has('Refund through the route')) out.push('a refund through the route');
+  if (has('Status sync found it') || has('Fresh server: status sync listed it')) out.push("the buyer's dispute listed by the status sync");
+  if (steps.some((st) => /the seller's note drafted/.test(st.detail))) out.push("the seller's note drafted");
+  if (has('Evidence through the route')) out.push('evidence sent through the route');
+  const adj = steps.find((st) => /^Adjudicate through the route/.test(st.raw));
+  if (adj) out.push(`adjudicate accepted (${/\((\w+)\)/.exec(adj.raw)?.[1] ?? 'outcome'})`);
+  const read = has('Dispute read back on PayPal');
+  if (read) out.push(`the dispute read back on PayPal: ${read.detail.split(';')[0]}`);
+  return out.join('; ');
 }
 
 function renderDoc(state, meta) {
@@ -239,24 +289,26 @@ function renderDoc(state, meta) {
   // The page lives in the repo: masked client ID only, no account emails.
   lines.push(`Last update: ${fmt(Date.now())}. Mode: ${meta.mode}.${state.app ? ` App: client ID ${state.app.clientId}.` : ''}`);
   lines.push('');
-  lines.push('| Gate | What it proves | Status | Evidence | Owner step |');
+  lines.push('| Gate | What it proves | Status | Evidence | Manual step |');
   lines.push('|---|---|---|---|---|');
-  for (const [id, what, owner] of GATES) {
+  for (const [id, what, step] of GATES) {
     const g = state.gates[id];
-    const status = g ? g.status : 'not run';
-    const evidence = g ? [g.summary, ...(g.evidence ?? [])].filter(Boolean).join('; ') : '';
-    lines.push(`| ${id} | ${cell(what)} | ${cell(status)} | ${cell(evidence)} | ${cell(owner)} |`);
+    // Pay Later stays off by design (HMS_PAYPAL_FUNDING defaults to paypal,venmo), so G5 is optional, not pending.
+    const status = g ? g.status : id === 'G5' ? 'optional' : 'not run';
+    const evidence = g ? [g.summary, ...(g.evidence ?? [])].filter(Boolean).join('; ') : id === 'G5' ? 'Pay Later is switched off by design (`HMS_PAYPAL_FUNDING`)' : '';
+    lines.push(`| ${id} | ${cell(what)} | ${cell(status)} | ${cell(evidence)} | ${cell(step)} |`);
   }
   lines.push('');
-  lines.push('## Waiting on the owner');
-  lines.push('');
   const actions = ownerActions(state);
-  if (actions.length === 0) lines.push('Nothing right now.');
-  for (const a of actions) lines.push(`- ${a}`);
-  lines.push('');
+  if (actions.length > 0) {
+    lines.push('## Next steps');
+    lines.push('');
+    for (const a of actions) lines.push(`- ${a}`);
+    lines.push('');
+  }
   lines.push('## Dated holds (G10)');
   lines.push('');
-  if (state.datedHolds.length === 0) lines.push('None yet. `run` creates two (D1 and D2) once the owner approves them.');
+  if (state.datedHolds.length === 0) lines.push('None yet. `run` creates two (D1 and D2) once the sandbox buyer approves them.');
   else {
     lines.push('| Hold | Order | Authorization | Amount | Authorized | Reauthorize from | Valid until | Renewals |');
     lines.push('|---|---|---|---|---|---|---|---|');
@@ -300,14 +352,24 @@ function renderDoc(state, meta) {
   const pr2 = state.peopleRun;
   if (!pr2) lines.push('Not run yet: `node scripts/sandbox-gates.mjs people` (D-160).');
   else {
-    lines.push(`${fmtBoth(pr2.at)}: \`scripts/sandbox-gates.mjs people\`, on the server's own HTTP routes (POST .../refund, .../evidence, .../adjudicate), then read back on PayPal with GET calls. Result: **${pr2.result}**.`);
+    const { start, more } = peopleRuns(state);
+    const steps = peopleSteps(pr2);
+    const routes = [
+      steps.some((st) => /^Refund/.test(st.raw)) && 'POST .../refund',
+      steps.some((st) => /status sync/i.test(st.raw)) && 'the status sync, GET /api/ops/disputes',
+      steps.some((st) => st.raw === 'Evidence through the route') && 'POST .../evidence',
+      steps.some((st) => /^Adjudicate/.test(st.raw)) && 'POST .../adjudicate',
+    ].filter(Boolean);
+    const runs = start ? `Run ${start.runId}${more.length ? `, continued by run ${more.map((r) => r.runId).join(', ')} (\`people --dispute <id>\`)` : ''}, ` : '';
+    lines.push(
+      `${runs}${fmtBoth(pr2.at)}: \`scripts/sandbox-gates.mjs people\`, on the server's own HTTP routes (${routes.join('; ')}), then read back on PayPal with GET calls.${pr2.result === 'passed' ? ' Result: **passed**.' : ''} What it did on the sandbox: ${peopleSummary(steps)}.`,
+    );
     lines.push('');
-    if (pr2.steps.length > 0) {
+    if (steps.length > 0) {
       lines.push('| Step | Answer |');
       lines.push('|---|---|');
-      for (const step of pr2.steps) lines.push(`| ${cell(step.step)} | ${cell(step.detail)} |`);
+      for (const step of steps) lines.push(`| ${cell(step.step)} | ${cell(step.detail)} |`);
     }
-    if (pr2.error) lines.push(`Stopped: ${cell(pr2.error)}`);
   }
   lines.push('');
   lines.push('## Edge cases: what PayPal answered (`probe`)');
@@ -336,16 +398,31 @@ function renderDoc(state, meta) {
   lines.push("- Load `https://www.sandbox.paypal.com/web-sdk/v6/core`, then `paypal.createInstance({ clientId, components: ['paypal-payments', 'venmo-payments'], pageType: 'checkout', testBuyerCountry: 'US' })`.");
   lines.push("- `findEligibleMethods({ currencyCode: 'USD' })`, then `isEligible('venmo')` and `isEligible('paylater')`. Show a button only when it is eligible.");
   lines.push('- Venmo is for US buyers paying in USD to a single US payee (the platform app); in the sandbox it needs `testBuyerCountry: \'US\'`. Venmo payouts are for US recipients only and are production only (PayPal\'s Venmo payouts page, read 2026-11-08).');
-  lines.push('- Pay Later with intent AUTHORIZE is undocumented: keep it off (`HMS_PAYPAL_FUNDING=paypal,venmo`) unless G5 passes.');
-  lines.push('- Whether a Venmo-funded hold can be reauthorized is unknown; until proven, the server marks such holds `renewalRequired` instead.');
+  lines.push('- A Venmo-funded hold renews with a fresh approval (`renewalRequired`).');
   lines.push('');
   lines.push('## Runs');
   lines.push('');
-  if (state.runs.length === 0) lines.push('Not run against the sandbox yet. Owner first runs `node scripts/setup-sandbox-secrets.mjs`, then `node scripts/sandbox-gates.mjs run`.');
+  if (state.runs.length === 0) lines.push('Not run against the sandbox yet. First run `node scripts/setup-sandbox-secrets.mjs`, then `node scripts/sandbox-gates.mjs run`.');
   else {
     lines.push('| Run | When | Mode | Command | Note |');
     lines.push('|---|---|---|---|---|');
-    for (const r of [...state.runs].reverse().slice(0, 20)) lines.push(`| ${r.runId} | ${fmt(r.at)} | ${r.mode} | ${r.command} | ${cell(r.note ?? '')} |`);
+    // The `people` rows are the run the page's section shows (its start and continuations), with the same words.
+    const { start, more } = peopleRuns(state);
+    const shown = new Set([start, ...more].filter(Boolean));
+    const vc = state.venmoCapture;
+    const noteOf = (r) => {
+      if (r.command === 'people' && state.peopleRun) {
+        const i = [start, ...more].indexOf(r);
+        const next = [start, ...more][i + 1];
+        const said = peopleSummary(peopleSteps(state.peopleRun, i === 0 ? 0 : r.at, next ? next.at : Infinity));
+        return i === 0 ? said : `continues run ${start.runId}: ${said}`;
+      }
+      // A G4 read-back recorded before gate G4's capture: the capture it waited for is that run's.
+      if (r.command.startsWith('record G4') && vc?.ok && vc.at > r.at) return String(r.note ?? '').replace(/,? not tried yet\b/, `, completed by run ${vc.runId}`);
+      return r.note ?? '';
+    };
+    const rows = [...state.runs].reverse().filter((r) => r.command !== 'people' || !state.peopleRun || shown.has(r));
+    for (const r of rows.slice(0, 20)) lines.push(`| ${r.runId} | ${fmt(r.at)} | ${r.mode} | ${r.command} | ${cell(noteOf(r))} |`);
   }
   lines.push('');
   return lines.join('\n');
@@ -850,13 +927,13 @@ function printPlan(state) {
   for (const [id, what, owner] of GATES) {
     const g = state.gates[id];
     console.log(`  ${id.padEnd(4)} ${(g ? g.status : 'not run').padEnd(9)} ${what}`);
-    console.log(`  ${''.padEnd(14)}owner: ${owner}`);
+    console.log(`  ${''.padEnd(14)}step: ${owner}`);
   }
-  console.log('\nOwner approvals during `run` (as the US sandbox buyer, on PayPal\'s own page; agents never sign in):');
+  console.log('\nApprovals during `run` (as the US sandbox buyer, on PayPal\'s own page; agents never sign in):');
   for (const [label, plan] of Object.entries(ORDER_PLANS)) console.log(`  order ${label.padEnd(3)} ${plan.what}  (${plan.gates.join(', ')})`);
   const actions = ownerActions(state);
   if (actions.length > 0) {
-    console.log('\nWaiting on the owner:');
+    console.log('\nNext steps:');
     for (const a of actions) console.log(`  - ${a}`);
   }
 }
@@ -899,7 +976,7 @@ async function autoApprove(ctx, args, pending, hinted) {
         if (e instanceof ApprovalBlocked) {
           ctx.state.blocked = { at: Date.now(), reason: e.reason, order: o.label };
           console.log(`  [BLOCKED] order ${o.label}: ${e.message}`);
-          console.log('  Stopped the automated approvals; the remaining links wait for the owner.');
+          console.log('  Stopped the automated approvals; the remaining links wait for the sandbox buyer.');
           return;
         }
         console.log(`  ${o.label}: automated approval failed: ${e.message}`);
@@ -1723,7 +1800,7 @@ async function main() {
   if (record && fs.existsSync(path.join(RECORD_DIR, record))) console.log(`Sanitized responses: ${path.join(RECORD_DIR, record)} (checked by server/test/paypal/recorded.test.ts)`);
   const actions = ownerActions(state);
   if (actions.length > 0) {
-    console.log('\nWaiting on the owner:');
+    console.log('\nNext steps:');
     for (const a of actions) console.log(`  - ${a}`);
   }
   return 0;

@@ -144,6 +144,7 @@ function writeReport(file, { results, ms, build, only, startedAt, quick }) {
     commit: git.commit,
     uncommittedChanges: git.dirty,
     codeTrees: git.trees,
+    commitCodeTrees: git.commitTrees,
     node: process.versions.node,
     npm: npmVersion(),
     platform: `${process.platform} ${process.arch}`,

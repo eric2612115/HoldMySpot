@@ -8,7 +8,7 @@ The ops console's third page (`#/people`): the hard calls the AI and the rules c
 | Refund | The requester asked for money back (`POST /api/jobs/:jobId/refund-request`), a job failed with money still captured, or a person picks a job from "Refund a job" | Enter an amount up to what is refundable and a reason; or Decline | `POST /api/ops/jobs/:jobId/refund`, `.../refund-request/close` |
 | Dispute | The status sync found an open PayPal dispute on one of our `HMS-` invoices | Review the note, Send (evidence), Accept claim; or Settle (sandbox only) | `POST /api/ops/disputes/:disputeId/evidence`, `/accept`, `/adjudicate` |
 
-No charge until the receipt passes AI reading, rules or human review. Receipts that fail the checks move $0.
+No charge until AI reads the receipt and the rules pass it, or a person approves it. Receipts that fail the checks move $0.
 
 ## Where the money rules are
 

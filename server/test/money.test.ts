@@ -314,7 +314,7 @@ describe('hold renewal (reauthorize from day 4 to day 29)', () => {
     }
   });
 
-  it('marks Venmo holds renewal-required instead (unproven), and the request stops matching', async () => {
+  it('marks Venmo-funded holds renewal-required (a fresh approval renews them), and the request stops matching', async () => {
     const s = await testServer();
     try {
       const placed = await placeBid(s.app, 'leo', { qty: 1, maxFeeCents: 1200, funding: 'venmo', deadlineAt: s.app.now() + 9 * DAY });

@@ -157,7 +157,7 @@ for (const type of ['book.updated', 'ask.updated', 'claim.updated', 'match.creat
 }
 ```
 
-Each payload is the full current record: keep the latest per id. `queuer.moved` (demo walks, synthetic) moves the avatars; `demo.cue` carries the film captions. A demo reset (`POST /api/demo/start`) ends every stream with `resync`; reconnecting gives the new `bootId`.
+Each payload is the full current record: keep the latest per id. `queuer.moved` (demo walks, synthetic) moves the avatars; `demo.cue` carries the demo's captions. A demo reset (`POST /api/demo/start`) ends every stream with `resync`; reconnecting gives the new `bootId`.
 
 ## 9. Errors to show
 

@@ -1,6 +1,6 @@
 <h1><img src="docs/brand/lockup.svg" alt="HoldMySpot" width="340"></h1>
 
-**Can't stand in a long line? Pay someone nearby to stand in it for you.** PayPal holds the most it could cost. No charge until the receipt passes AI reading, rules or human review.
+**Can't stand in a long line? Pay someone nearby to stand in it for you.** PayPal holds the most it could cost. No charge until AI reads the receipt and the rules pass it, or a person approves it.
 
 <img src="docs/img/cover.jpg" width="800" alt="HoldMySpot on a phone: someone queues, PayPal holds">
 
@@ -28,7 +28,7 @@
 <!-- numbers:front-proof:start -->
 | Proof | Result | Log |
 |---|---|---|
-| Hero errand on the real PayPal sandbox, through the web app and through the API | Held \$63.70, captured \$48.69 + \$9.57, released \$5.44, paid out \$10.80 + \$42.75; PayPal's fees \$3.51, exactly the processing line; 10 of 10 read-back checks match | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox) |
+| Hero errand on the real PayPal sandbox, through the web app and through the API | Held \$63.70, captured \$48.69 + \$9.57, released \$5.44, paid out \$10.80 + \$42.75; PayPal's fees \$3.51, exactly the processing line; both runs read back from PayPal match the ledger to the cent (the API run: 10 of 10 read-back checks; the web app run: 9 of 9 walk checks and PayPal's read-back) | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), [web run](docs/evidence/web-run-20261107.txt) |
 | Local pickup on the real PayPal sandbox | Held \$50.50, one capture of \$48.43 at the handover code, released \$2.07, paid out \$44.80; 11 of 11 read-back checks match | [gates](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox) |
 | Gates passed on the real PayPal sandbox | G0, G1, G2, G3, G4, G6, G7, G8, G9 and G11 | [gates](docs/SANDBOX-GATES.md) |
 | AI reads, rules decide (21 demo photos) | 21/21 verdicts, 21/21 exact failed-check sets, 8/8 money, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |
@@ -133,7 +133,7 @@ Every screen says whether it talks to the PayPal sandbox or to simulated PayPal.
 - **An order book on a person's time.** The item is not traded; the queue fee is. Requests rest at their max fee, and offers walk down to meet them.
 - **A fee that falls only after a check-in at the shop.** It steps down once the phone reports a position inside the shop's geofence and an AI-read line photo shows the visit's one-time code.
 - **The receipt sets the price.** AI reads it, code checks it, PayPal captures exactly that, up to the cap.
-- **The model reads; it never decides.** With the rules on the true reading, 10 of 10 bad proofs are stopped ([ablation](docs/ABLATION.md)).
+- **The model reads; it never decides.** On the 10 bad demo proofs, rules + AI stop 10 of 10, the model's own report alone 3 of 10, and code alone 4 of 10 ([ablation](docs/ABLATION.md)).
 
 [prior-art.md](prior-art.md) sets this beside the nearest services and hackathon entries, with where this repo tests each difference.
 
@@ -144,7 +144,7 @@ Every step below runs in `npm run demo`, and PayPal's sandbox charged the same t
 1. **10:31.** Mia in New York asks for a \$34.00 plush, one per customer, shop price up to \$36, fee up to \$12, shipping up to \$12. PayPal authorizes a **\$63.70 hold**. Nothing is charged.
 2. **10:50.** Wei, a short walk away, checks in at the shop. His fee starts stepping down from \$15.
 3. **11:05.** His fee reaches \$12 and meets Mia's request.
-4. **11:16.** Rex's receipt fails four checks. **\$0 moves**, and Priya's request goes back on the map.
+4. **11:16.** Rex, another queuer, sends a receipt for Priya, another requester. It fails four checks: **\$0 moves**, and Priya's request goes back on the map.
 5. **About 11:40.** Wei buys the plush and uploads the receipt. AI reads it, the rules pass it, PayPal captures **\$48.69**, and Payouts sends Wei **\$10.80**.
 6. **14:00.** Wei ships it. Tracking goes on the order, a final capture of **\$9.57** (shipping declared by the queuer, capped by the budget) releases **\$5.44**, and Payouts sends Wei **\$42.75**.
 
@@ -193,6 +193,7 @@ With the demo running, `(cd ops && OUT_DIR=../.run/ops-shots npm run shots && np
 `npm run hosted` serves the phones side by side, the ops console and the API on `http://127.0.0.1:8796/`; every visitor gets a private in-memory market, cleared when idle, with no sign-up ([docs/HOSTING.md](docs/HOSTING.md)). An AI reviewer with no cookies takes a token instead:
 
 ```sh
+BASE=http://127.0.0.1:8796   # npm run hosted; or the hosted site's URL
 TOKEN=$(curl -s -X POST "$BASE/api/demo/session" | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
 curl -s -X POST "$BASE/api/demo/start" -H "X-HMS-Market: $TOKEN" -H 'content-type: application/json' -d '{"scriptId":"hero","speed":600}'
 ```
