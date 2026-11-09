@@ -1,0 +1,42 @@
+npm run errand on the real PayPal sandbox, 2026-11-09, on the stamped-photo build (commit 0e53a6f): the README's
+bring-your-own-keys path. Server in sandbox mode with Muse Spark's recorded answers for the demo photos; Mia's $63.70
+hold approved as the sandbox buyer on PayPal's page; then npm run errand played Wei over the HTTP API.
+
+== npm run errand -- --server-port 11396
+Wei's side of bid_0065 on http://127.0.0.1:11396 (PayPal sandbox)
+  Hold $63.70 (9BE6416664373732P), max fee $12.00. The market clock moves to 10:40, 10:50, 11:38, 11:42, 14:00.
+  ok claimed: clm_0001, job job_0001, fee $12.00
+  ok checked in: claim clm_0001 checked_in
+  ok proof: passed (muse replay), retail $34.00, capture $48.69
+  ok fee payout: po_0001 $10.80 succeeded
+  ok shipped: job shipped, tracking HPG-2611-11481905
+  ok reimbursement payout: po_0002 $42.75 succeeded
+
+Ledger of this request (Mia's hold and captures, Wei's payouts)
+  held        $63.70  succeeded 9BE6416664373732P
+  captured    $48.69  succeeded 0J260223X3204031D  (PayPal's fee $2.19)
+  paid_out    $10.80  succeeded batch ZA8MV9ZXVMT54  (PayPal's fee $0.25)
+  captured     $9.57  succeeded 4HE57002LK731594M  (PayPal's fee $0.82)
+  released     $5.44  succeeded 4HE57002LK731594M
+  paid_out    $42.75  succeeded batch 8YYKP2XBJK5HS  (PayPal's fee $0.25)
+  Hold captured: captured $58.26, released $5.44; tracking HPG-2611-11481905.
+
+Read it back from PayPal (GET calls only): npm run paypal:check -- --bid bid_0065 --server-port 11396
+
+== npm run paypal:check -- --bid bid_0065 --server-port 11396 (GET calls only)
+PayPal sandbox, read back 2026-11-09 08:05 UTC (GET calls only)
+  Order 4CM94847JR152032T: COMPLETED, intent AUTHORIZE, $63.70, invoice HMS-mw8z4yfo-bid_0065, custom_id bid_0065
+  Tracking HPG-2611-11481905 on capture 0J260223X3204031D: SHIPPED
+
+Server bid_0065: request matched, hold captured $63.70, captured $58.26, released $5.44
+  [OK] order amount: PayPal $63.70, server hold $63.70
+  [OK] authorization: 9BE6416664373732P CAPTURED $63.70; server hold captured $63.70
+  [OK] capture 4HE57002LK731594M: PayPal $9.57 COMPLETED final, PayPal's fee $0.82; ledger $9.57 succeeded, fee $0.82
+  [OK] capture 0J260223X3204031D: PayPal $48.69 COMPLETED final, PayPal's fee $2.19; ledger $48.69 succeeded, fee $2.19
+  [OK] captured total: PayPal $58.26 COMPLETED, server $58.26
+  [OK] released rest: server $5.44, PayPal remainder $5.44 (authorization CAPTURED)
+  [OK] tracking HPG-2611-11481905: on the PayPal order: HPG-2611-11481905
+  [OK] payout reimbursement batch 8YYKP2XBJK5HS: PayPal $42.75 SUCCESS, fee $0.25 (batch SUCCESS); server $42.75 succeeded, fee $0.25
+  [OK] payout fee batch ZA8MV9ZXVMT54: PayPal $10.80 SUCCESS, fee $0.25 (batch SUCCESS); server $10.80 succeeded, fee $0.25
+
+PayPal matches the server to the cent.
