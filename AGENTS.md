@@ -12,7 +12,7 @@ Run from the repo root, in this order:
 node --version                       # v24 or newer (.nvmrc)
 npm run setup                        # npm ci in shared, server, web, ops; exit 0
 npm run -s doctor -- --json          # pure JSON; exit 0 and "ok": true when the zero-key demo can start
-npm test                             # exit 0, ends "All green: 6 steps in N s." (no keys; no PayPal or model call); about two minutes, allow 10 on a busy machine
+npm test                             # exit 0, ends "All green: 6 steps in N s." (no keys; no PayPal or model call); a few minutes (docs/evidence/runs.json), allow 10 on a busy machine
 npm test -- --quick                  # the same without the generated server days and the attack, for a short check
 npm run ai:eval                      # exit 0, in seconds; replays the recorded model answers: verdict accuracy 21/21
 npm run attack                       # exit 0, under a minute; its own zero-key server, one table, ends "Every attempt moved exactly what the shared money rules say."

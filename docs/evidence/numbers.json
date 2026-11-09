@@ -32,13 +32,13 @@
       "web": 139,
       "ops": 27
     },
-    "seconds": 111.5,
-    "aboutSeconds": 110,
+    "seconds": 324.5,
+    "aboutSeconds": 320,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "0a9057b",
+    "commit": "6de6ee4",
     "recordedOn": "2026-11-09",
     "properties": {
       "tests": 19,
@@ -1042,7 +1042,7 @@
       "web",
       "ops"
     ],
-    "readySeconds": 3.4,
+    "readySeconds": 2.6,
     "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
     "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
     "os": "macOS",
@@ -1051,9 +1051,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-09",
-    "attackSeconds": 15.9,
+    "attackSeconds": 16.8,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 13,
+    "aiEvalSeconds": 9.6,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1066,80 +1066,80 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-09 08:24",
-      "commit": "0a9057b",
+      "at": "2026-11-09 12:22",
+      "commit": "6de6ee4",
       "uncommittedChanges": true,
-      "codeDiffersFromCommit": null,
+      "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "f2d772c516e9",
-        "server": "eba3365d795f",
-        "web": "12dec2f99a8e",
-        "ops": "9b8a3eac4f75",
-        "scripts": "9e97aa29eba8"
+        "shared": "a0db35b235d3",
+        "server": "80adb51f95c7",
+        "web": "575640d8fb98",
+        "ops": "08ff90394d1c",
+        "scripts": "959179cc338c"
       }
     },
     {
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-09 08:23",
-      "commit": "0a9057b",
+      "at": "2026-11-09 12:22",
+      "commit": "6de6ee4",
       "uncommittedChanges": false,
-      "codeDiffersFromCommit": null,
+      "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "f2d772c516e9",
-        "server": "eba3365d795f",
-        "web": "12dec2f99a8e",
-        "ops": "9b8a3eac4f75",
-        "scripts": "9e97aa29eba8"
+        "shared": "a0db35b235d3",
+        "server": "80adb51f95c7",
+        "web": "575640d8fb98",
+        "ops": "08ff90394d1c",
+        "scripts": "959179cc338c"
       }
     },
     {
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-09 08:23",
-      "commit": "0a9057b",
+      "at": "2026-11-09 12:22",
+      "commit": "6de6ee4",
       "uncommittedChanges": true,
-      "codeDiffersFromCommit": null,
+      "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "f2d772c516e9",
-        "server": "eba3365d795f",
-        "web": "12dec2f99a8e",
-        "ops": "9b8a3eac4f75",
-        "scripts": "9e97aa29eba8"
+        "shared": "a0db35b235d3",
+        "server": "80adb51f95c7",
+        "web": "575640d8fb98",
+        "ops": "08ff90394d1c",
+        "scripts": "959179cc338c"
       }
     },
     {
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-09 08:23",
-      "commit": "0a9057b",
+      "at": "2026-11-09 12:22",
+      "commit": "6de6ee4",
       "uncommittedChanges": true,
-      "codeDiffersFromCommit": null,
+      "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "f2d772c516e9",
-        "server": "eba3365d795f",
-        "web": "12dec2f99a8e",
-        "ops": "9b8a3eac4f75",
-        "scripts": "9e97aa29eba8"
+        "shared": "a0db35b235d3",
+        "server": "80adb51f95c7",
+        "web": "575640d8fb98",
+        "ops": "08ff90394d1c",
+        "scripts": "959179cc338c"
       }
     },
     {
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-09 08:23",
-      "commit": "0a9057b",
+      "at": "2026-11-09 12:22",
+      "commit": "6de6ee4",
       "uncommittedChanges": true,
-      "codeDiffersFromCommit": null,
+      "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "f2d772c516e9",
-        "server": "eba3365d795f",
-        "web": "12dec2f99a8e",
-        "ops": "9b8a3eac4f75",
-        "scripts": "9e97aa29eba8"
+        "shared": "a0db35b235d3",
+        "server": "80adb51f95c7",
+        "web": "575640d8fb98",
+        "ops": "08ff90394d1c",
+        "scripts": "959179cc338c"
       }
     }
   ]
