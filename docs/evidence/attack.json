@@ -2,20 +2,20 @@
   "tool": "npm run attack",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-09T07:18:22.587Z",
-  "commit": "5393b77",
+  "startedAt": "2026-11-09T07:56:21.051Z",
+  "commit": "c207071",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "d358c655a04b",
-    "server": "a0e2e8d32f37",
+    "server": "9b96ab4abab8",
     "web": "b227d7a17ac8",
     "ops": "75c53e05e553",
-    "scripts": "dc6160b73b60"
+    "scripts": "740e3a72f4b9"
   },
   "node": "24.22.2",
   "platform": "darwin arm64",
   "server": {
-    "url": "http://127.0.0.1:61547",
+    "url": "http://127.0.0.1:54189",
     "startedHere": true,
     "mode": "fake",
     "ai": {
@@ -27,7 +27,7 @@
   "parts": [
     "receipts",
     "money",
-    "limits",
+    "reprint",
     "paypal"
   ],
   "photos": {
@@ -339,9 +339,9 @@
       "id": "inflate-shipping",
       "attempt": "Claim $500.00 shipping on a $12.00 budget",
       "stoppedBy": "rules",
-      "answer": "capped: over-claims up to the budget are paid",
+      "answer": "capped at the $12.00 budget",
       "code": "capped",
-      "detail": "Shipping charged at $12.00 of the $500.00 claimed, plus PayPal's fee on it at cost; the payout repays the $34.00 shop price and that $12.00. Nothing checks the postage itself, so a claim up to the budget is paid as reported.",
+      "detail": "Shipping charged at $12.00 of the $500.00 claimed, plus PayPal's fee on it at cost; the payout repays the $34.00 shop price and that $12.00. Shipping is declared by the queuer and capped by the budget.",
       "refused": false,
       "moved": {
         "captured": 1294,
@@ -611,7 +611,7 @@
       "stoppedBy": "sent to a person",
       "answer": "listed_price (to a person)",
       "code": "listed_price",
-      "detail": "Receipt needs a person to check 1 check: listed price. The price is above the listed shop price ($34.00); a person checks it before anything is charged. The reprint matches itself (lines, total and QR) and stays under the $36.00 cap, but $36.00 is above the plush's listed $34.00, so a person decides (D-151); had it passed, $2.07 more would have been captured than the real receipt ($50.76, not $48.69).",
+      "detail": "Receipt needs a person to check 1 check: listed price. The price is above the listed shop price ($34.00); a person checks it before anything is charged. The reprint matches itself (lines, total and QR) and stays under the $36.00 cap, and the listed-price check catches it: $36.00 is above the plush's listed $34.00, so a person decides (D-151) and nothing is captured.",
       "refused": true,
       "moved": {
         "captured": 0,
@@ -626,33 +626,6 @@
         "held": 0
       },
       "outcome": "to_a_person",
-      "intended": false,
-      "ok": true,
-      "asExpected": true,
-      "notes": []
-    },
-    {
-      "n": 23,
-      "id": "spoofed-check-in",
-      "attempt": "Check in from home, the phone reporting the shop's position",
-      "stoppedBy": "not stopped",
-      "answer": "checked in; fee fell to $11.00 and filled",
-      "code": "checked_in",
-      "detail": "The server takes the position the phone reports, and the line photo shows the visit's code, so the check-in passed at 10:42 and the fee clock started, 3.1 km from the shop. From home, his fee fell from $15.00 and matched Priya K. at $11.00 at 11:02. No money moves until a receipt passes.",
-      "refused": false,
-      "moved": {
-        "captured": 0,
-        "refunded": 0,
-        "paidOut": 0,
-        "held": 0
-      },
-      "expected": {
-        "captured": 0,
-        "refunded": 0,
-        "paidOut": 0,
-        "held": 0
-      },
-      "outcome": "known_limit",
       "intended": false,
       "ok": true,
       "asExpected": true,
@@ -717,37 +690,36 @@
       "violations": []
     },
     {
-      "market": "known limits",
+      "market": "reprint",
       "holds": 0,
       "holdsInMarket": 65,
-      "jobs": 2,
+      "jobs": 1,
       "violations": []
     }
   ],
   "table": [
-    " #  Attempt                                                      Stopped by        Answer                                         Moved",
-    " 1  Genuine receipt and item photo (control: should pass)        -                 passed                                         $48.69 charged, $10.80 paid out (intended)",
-    " 2  Item photo recycled from Lin's job on 11-11                  rules             duplicate_photo                                $0.00",
-    " 3  Receipt whose QR carries another store's ID                  rules             shop_match                                     $0.00",
-    " 4  Receipt printed at 10:31, before the check-in                AI + rules        time_window                                    $0.00",
-    " 5  Receipt whose line does not add up to its total              AI + rules        totals_add_up                                  $0.00",
-    " 6  Item photo showing another job's code                        AI + rules        code_visible                                   $0.00",
-    " 7  Receipt file made by an image generator                      sent to a person  generator_metadata (to a person)               $0.00",
-    " 8  Raise the max fee to $40.00 after PayPal held $63.70         rules             OVER_LIMIT                                     $0.00",
-    " 9  Buy and send a receipt without checking in                   state machine     INVALID_TRANSITION                             $0.00",
-    "10  Check in from home, 3.1 km from the shop                     rules             OUTSIDE_GEOFENCE                               $0.00",
-    "11  Take a request whose hold was released                       state machine     CONFLICT                                       $0.00",
-    "12  Claim $500.00 shipping on a $12.00 budget                    rules             capped: over-claims up to the budget are paid  $12.94 charged, $46.00 paid out (capped)",
-    "13  Replay that tracking call (same Idempotency-Key)             state machine     first answer replayed                          $0.00",
-    "14  Add tracking again to capture after the final one            state machine     INVALID_TRANSITION                             $0.00",
-    "15  Send the receipt again for a second fee payout               state machine     INVALID_TRANSITION                             $0.00",
-    "16  Approve a hold after the item sold out                       state machine     SOLD_OUT                                       $0.00",
-    "17  Report the plush sold out alone, to void every hold on it    rules             only his own job ended; book open              $0.00",
-    "18  Guess the 4-digit handover code for two hours, then right    rules             locked after 10 wrong codes                    $0.00",
-    "19  Capture $73.26 of a $63.70 hold, straight at PayPal          PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED                    $0.00",
-    "20  Capture again after the final capture, straight at PayPal    PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED                 $0.00",
-    "21  Send the same payout batch again, straight at PayPal         PayPal emulator   USER_BUSINESS_ERROR                            $0.00",
-    "22  Reprint the $34.00 receipt at the $36.00 cap, QR to match    sent to a person  listed_price (to a person)                     $0.00",
-    "23  Check in from home, the phone reporting the shop's position  not stopped       checked in; fee fell to $11.00 and filled      $0.00 (known limit)"
+    " #  Attempt                                                    Stopped by        Answer                             Moved",
+    " 1  Genuine receipt and item photo (control: should pass)      -                 passed                             $48.69 charged, $10.80 paid out (intended)",
+    " 2  Item photo recycled from Lin's job on 11-11                rules             duplicate_photo                    $0.00",
+    " 3  Receipt whose QR carries another store's ID                rules             shop_match                         $0.00",
+    " 4  Receipt printed at 10:31, before the check-in              AI + rules        time_window                        $0.00",
+    " 5  Receipt whose line does not add up to its total            AI + rules        totals_add_up                      $0.00",
+    " 6  Item photo showing another job's code                      AI + rules        code_visible                       $0.00",
+    " 7  Receipt file made by an image generator                    sent to a person  generator_metadata (to a person)   $0.00",
+    " 8  Raise the max fee to $40.00 after PayPal held $63.70       rules             OVER_LIMIT                         $0.00",
+    " 9  Buy and send a receipt without checking in                 state machine     INVALID_TRANSITION                 $0.00",
+    "10  Check in from home, 3.1 km from the shop                   rules             OUTSIDE_GEOFENCE                   $0.00",
+    "11  Take a request whose hold was released                     state machine     CONFLICT                           $0.00",
+    "12  Claim $500.00 shipping on a $12.00 budget                  rules             capped at the $12.00 budget        $12.94 charged, $46.00 paid out (capped)",
+    "13  Replay that tracking call (same Idempotency-Key)           state machine     first answer replayed              $0.00",
+    "14  Add tracking again to capture after the final one          state machine     INVALID_TRANSITION                 $0.00",
+    "15  Send the receipt again for a second fee payout             state machine     INVALID_TRANSITION                 $0.00",
+    "16  Approve a hold after the item sold out                     state machine     SOLD_OUT                           $0.00",
+    "17  Report the plush sold out alone, to void every hold on it  rules             only his own job ended; book open  $0.00",
+    "18  Guess the 4-digit handover code for two hours, then right  rules             locked after 10 wrong codes        $0.00",
+    "19  Capture $73.26 of a $63.70 hold, straight at PayPal        PayPal emulator   MAX_CAPTURE_AMOUNT_EXCEEDED        $0.00",
+    "20  Capture again after the final capture, straight at PayPal  PayPal emulator   AUTHORIZATION_ALREADY_CAPTURED     $0.00",
+    "21  Send the same payout batch again, straight at PayPal       PayPal emulator   USER_BUSINESS_ERROR                $0.00",
+    "22  Reprint the $34.00 receipt at the $36.00 cap, QR to match  sent to a person  listed_price (to a person)         $0.00"
   ]
 }

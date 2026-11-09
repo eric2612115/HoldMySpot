@@ -32,13 +32,13 @@
       "web": 138,
       "ops": 27
     },
-    "seconds": 107.3,
-    "aboutSeconds": 110,
+    "seconds": 580.7,
+    "aboutSeconds": 580,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "5393b77",
+    "commit": "c207071",
     "recordedOn": "2026-11-09",
     "properties": {
       "tests": 19,
@@ -523,12 +523,6 @@
         "G11"
       ],
       "partial": [],
-      "waiting": [
-        "G10"
-      ],
-      "notRun": [
-        "G5"
-      ],
       "serverRun": {
         "run": "20261107-2047",
         "passed": true,
@@ -718,8 +712,8 @@
     "readingOnly": 6
   },
   "attack": {
-    "attempts": 23,
-    "movedNothing": 21,
+    "attempts": 22,
+    "movedNothing": 20,
     "refused": 18,
     "toPerson": [
       7,
@@ -741,14 +735,6 @@
         "paidOutCents": 4600
       }
     ],
-    "knownLimits": [
-      {
-        "n": 23,
-        "id": "spoofed-check-in",
-        "capturedCents": 0,
-        "paidOutCents": 0
-      }
-    ],
     "stoppedBy": {
       "rules": 6,
       "AI + rules": 3,
@@ -757,7 +743,7 @@
     },
     "markets": 9,
     "holdsChecked": 1,
-    "jobsChecked": 12,
+    "jobsChecked": 11,
     "violations": 0,
     "rows": [
       {
@@ -1045,19 +1031,6 @@
           "paidOut": 0,
           "held": 0
         }
-      },
-      {
-        "n": 23,
-        "id": "spoofed-check-in",
-        "stoppedBy": "not stopped",
-        "code": "checked_in",
-        "outcome": "known_limit",
-        "moved": {
-          "captured": 0,
-          "refunded": 0,
-          "paidOut": 0,
-          "held": 0
-        }
       }
     ],
     "serverStartedHere": true,
@@ -1069,7 +1042,7 @@
       "web",
       "ops"
     ],
-    "readySeconds": 1.8,
+    "readySeconds": 16,
     "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
     "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
     "os": "macOS",
@@ -1078,9 +1051,9 @@
   },
   "runs": {
     "recordedOn": "2026-11-09",
-    "attackSeconds": 11.4,
+    "attackSeconds": 20.9,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 6.3,
+    "aiEvalSeconds": 8.4,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1093,75 +1066,75 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-09 07:18",
-      "commit": "5393b77",
+      "at": "2026-11-09 07:57",
+      "commit": "c207071",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "a0e2e8d32f37",
+        "server": "9b96ab4abab8",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
-        "scripts": "dc6160b73b60"
+        "scripts": "740e3a72f4b9"
       }
     },
     {
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-09 07:18",
-      "commit": "5393b77",
+      "at": "2026-11-09 07:56",
+      "commit": "c207071",
       "uncommittedChanges": false,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "a0e2e8d32f37",
+        "server": "9b96ab4abab8",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
-        "scripts": "dc6160b73b60"
+        "scripts": "740e3a72f4b9"
       }
     },
     {
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-09 07:18",
-      "commit": "5393b77",
+      "at": "2026-11-09 07:56",
+      "commit": "c207071",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "a0e2e8d32f37",
+        "server": "9b96ab4abab8",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
-        "scripts": "dc6160b73b60"
+        "scripts": "740e3a72f4b9"
       }
     },
     {
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-09 07:18",
-      "commit": "5393b77",
+      "at": "2026-11-09 07:56",
+      "commit": "c207071",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "a0e2e8d32f37",
+        "server": "9b96ab4abab8",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
-        "scripts": "dc6160b73b60"
+        "scripts": "740e3a72f4b9"
       }
     },
     {
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-09 07:18",
-      "commit": "5393b77",
+      "at": "2026-11-09 07:56",
+      "commit": "c207071",
       "uncommittedChanges": true,
       "codeTrees": {
         "shared": "d358c655a04b",
-        "server": "a0e2e8d32f37",
+        "server": "9b96ab4abab8",
         "web": "b227d7a17ac8",
         "ops": "75c53e05e553",
-        "scripts": "dc6160b73b60"
+        "scripts": "740e3a72f4b9"
       }
     }
   ]
