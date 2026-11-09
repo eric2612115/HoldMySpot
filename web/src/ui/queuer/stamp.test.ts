@@ -2,7 +2,11 @@ import { PHOTO_STAMP_PNG_KEY, photoStampText } from '@holdmyspot/shared';
 import { describe, expect, it } from 'vitest';
 import { stampFontPx, stampedCode } from './stamp';
 
-function pngWithText(keyword: string, value: string): Uint8Array {
+// vitest runs in Node; the web app's types are the browser's, so the file reader comes in untyped.
+const fsModule = 'node:fs';
+const { readFileSync } = (await import(/* @vite-ignore */ fsModule)) as { readFileSync(path: URL): Uint8Array };
+
+function pngWithText(keyword: string, value: string, textAfterImage = false): Uint8Array {
   const body = new TextEncoder().encode(`${keyword}\0${value}`);
   const chunk = (type: string, data: Uint8Array) => {
     const out = new Uint8Array(12 + data.length);
@@ -11,7 +15,9 @@ function pngWithText(keyword: string, value: string): Uint8Array {
     out.set(data, 8);
     return out;
   };
-  const parts = [Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('tEXt', body), chunk('IDAT', new Uint8Array(1))];
+  const text = chunk('tEXt', body);
+  const image = chunk('IDAT', new Uint8Array(1));
+  const parts = [Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10]), ...(textAfterImage ? [image, text] : [text, image]), chunk('IEND', new Uint8Array(0))];
   const all = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
   let at = 0;
   for (const p of parts) {
@@ -30,6 +36,12 @@ describe('the app stamp', () => {
     expect(stampedCode(pngWithText(PHOTO_STAMP_PNG_KEY, 'K7MX4'))).toBe('K7MX4');
     expect(stampedCode(pngWithText('Software', 'other'))).toBeNull();
     expect(stampedCode(new Uint8Array([255, 216, 255, 224]))).toBeNull();
+  });
+
+  it('finds the tag after the image data too, as in the demo line photo, so that photo is sent unchanged', () => {
+    expect(stampedCode(pngWithText(PHOTO_STAMP_PNG_KEY, 'K7MX4', true))).toBe('K7MX4');
+    const line = readFileSync(new URL('../../../../server/fixtures/proofs/checkin-paper-moon-wei/line.png', import.meta.url));
+    expect(stampedCode(line)).toBe('M4RT7');
   });
 
   it('stays legible and inside narrow photos', () => {

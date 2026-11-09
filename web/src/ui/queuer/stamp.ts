@@ -9,7 +9,10 @@ export interface StampInfo {
 
 const MAX_SIDE = 2400;
 
-/** The code a PNG says it already carries (the repo's rendered photos), or null. Reads the text chunks before the image data. */
+/**
+ * The code a PNG says it already carries (the repo's rendered photos), or null. Reads every text chunk, before or
+ * after the image data: the rendered fixtures carry theirs after it, and PNG allows both.
+ */
 export function stampedCode(bytes: Uint8Array): string | null {
   const SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
   if (SIGNATURE.some((b, i) => bytes[i] !== b)) return null;
@@ -19,7 +22,7 @@ export function stampedCode(bytes: Uint8Array): string | null {
   while (at + 8 <= bytes.length) {
     const length = view.getUint32(at);
     const type = text.decode(bytes.subarray(at + 4, at + 8));
-    if (type === 'IDAT') return null;
+    if (type === 'IEND') return null;
     if (type === 'tEXt') {
       const body = text.decode(bytes.subarray(at + 8, at + 8 + length));
       const nul = body.indexOf('\0');
