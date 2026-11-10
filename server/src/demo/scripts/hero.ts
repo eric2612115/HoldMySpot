@@ -6,7 +6,7 @@ import { saveUpload } from '../../app/files.ts';
 import { addShipment, markBought, submitProof } from '../../app/jobs.ts';
 import { placeholderPng } from '../../util/images.ts';
 import { ATTACK_HANDOVER, ATTACK_RECEIPTS } from '../attack.ts';
-import type { DemoScript, StepContext } from '../director.ts';
+import type { DemoScript, DemoStep, StepContext } from '../director.ts';
 import { pinFixtureCode, stageHistory, uploadFixtureOr, uploadHash } from '../fixtures.ts';
 
 /**
@@ -55,6 +55,98 @@ async function proofFor(ctx: StepContext, queuerId: string, requesterId: string,
   submitProof(ctx.app, ctx.user(queuerId), job.id, { receiptFileId: receipt.id, itemFileId: photo.id });
 }
 
+/** The hero's hold: Mia holds $63.70 for one plush, shipped to New York (a request she already placed in the app is hers). */
+export const miaHolds: DemoStep = {
+  at: '10:31',
+  kind: 'bid.create',
+  label: 'Mia holds $63.70 for one plush, shipped to New York',
+  async run(ctx) {
+    const mia = ctx.user(HERO.requesterId);
+    // A request Mia already placed in the web app before Play is hers: the day runs with it (D-132).
+    const placed = ctx.app.store.bids
+      .where('requester_id = ? AND item_id = ?', mia.id, HERO.itemId)
+      .find((b) => ['awaiting_approval', 'open', 'partially_matched'].includes(b.status));
+    if (placed) {
+      ctx.refs.set('miaBid', placed.id);
+      return;
+    }
+    const destination = { mode: 'ship' as const, country: 'US' as const, region: 'NY', city: 'New York', postalCode: '10012' };
+    const quote = await quoteBid(ctx.app, mia, { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination });
+    const created = await createBid(ctx.app, mia, {
+      shopId: HERO.shopId,
+      itemId: HERO.itemId,
+      qty: 1,
+      retailCapCents: quote.suggested.retailCapCents,
+      maxFeeCents: quote.suggested.maxFeeCents,
+      shippingBudgetCents: quote.suggested.shippingBudgetCents,
+      destination,
+      deadlineAt: ctx.time('10:31') + 2 * 24 * 60 * 60_000,
+      funding: 'paypal',
+      agent: null,
+    });
+    ctx.refs.set('miaBid', created.bid.id);
+    if (created.checkout.next === 'fake_approve') {
+      await ctx.app.fakePayPal.approveOrder(created.checkout.orderId, 'paypal', 'approve');
+      await authorizeBid(ctx.app, { userId: mia.id, ops: false }, created.bid.id, created.checkout.orderId);
+    }
+  },
+};
+
+/** The script waits for Mia's hold (a sandbox run waits for the PayPal approval). */
+export const miaAuthorized: DemoStep = {
+  at: '10:31',
+  kind: 'wait_for',
+  label: "Mia's hold is authorized (a sandbox run waits for the PayPal approval)",
+  until: (ctx) => ctx.app.store.bids.must(ctx.ref('miaBid')).status !== 'awaiting_approval',
+  async run(ctx) {
+    const bid = ctx.app.store.bids.must(ctx.ref('miaBid'));
+    ctx.cue({ name: 'show_ledger', target: HERO.requesterId, text: `PayPal holds up to ${formatUsd(bid.limitCents, { exact: true })}. Nothing is charged yet.` });
+  },
+};
+
+/** Rex takes Priya's request at $11 and walks to the shop. */
+export const rexTakesPriya: DemoStep = {
+  at: '10:33',
+  kind: 'bid.claim',
+  label: "Rex takes Priya's request at $11",
+  async run(ctx) {
+    const rex = ctx.user(HERO.fakeReceiptQueuerId);
+    claimBid(ctx.app, rex, ctx.ref('priyaBid'), {
+      qty: 1,
+      etaAt: ctx.time('10:55'),
+      modes: ['ship'],
+      from: { lngLat: rex.home!, accuracyM: 12 },
+    });
+    ctx.walk(rex.id, AT_SHOP, ctx.time('10:55'));
+  },
+};
+
+/** Wei checks in with his rendered line photo. */
+export const weiChecksIn: DemoStep = {
+  at: '10:50',
+  kind: 'claim.checkIn',
+  label: 'Wei checks in; his fee clock starts at $15',
+  async run(ctx) {
+    const wei = ctx.user(HERO.queuerId);
+    const claim = ctx.app.store.claims.first("queuer_id = ? AND shop_id = ? AND status = 'awaiting_arrival'", wei.id, HERO.shopId)!;
+    const photo = await ctx.photo(wei.id, 'line_photo', `${CHECK_IN_FIXTURES.wei}/line.png`, 'wei-line', 'line_ok');
+    checkIn(ctx.app, wei, claim.id, { lngLat: AT_SHOP, accuracyM: 8, photoFileId: photo.id });
+  },
+};
+
+/** Rex checks in with his rendered line photo. */
+export const rexChecksIn: DemoStep = {
+  at: '10:57',
+  kind: 'claim.checkIn',
+  label: 'Rex checks in',
+  async run(ctx) {
+    const rex = ctx.user(HERO.fakeReceiptQueuerId);
+    const claim = ctx.app.store.claims.first("queuer_id = ? AND shop_id = ? AND status = 'awaiting_arrival'", rex.id, HERO.shopId)!;
+    const photo = await ctx.photo(rex.id, 'line_photo', `${CHECK_IN_FIXTURES.rex}/line.png`, 'rex-line', 'line_ok');
+    checkIn(ctx.app, rex, claim.id, { lngLat: [AT_SHOP[0] + 0.0002, AT_SHOP[1]], accuracyM: 9, photoFileId: photo.id });
+  },
+};
+
 export const heroScript: DemoScript = {
   id: 'hero',
   title: 'A plush drop in Japantown, shipped to New York',
@@ -85,66 +177,9 @@ export const heroScript: DemoScript = {
         ctx.cue({ name: 'focus_shop', target: HERO.shopId, text: 'Requests light up the map before anyone queues.' });
       },
     },
-    {
-      at: '10:31',
-      kind: 'bid.create',
-      label: 'Mia holds $63.70 for one plush, shipped to New York',
-      async run(ctx) {
-        const mia = ctx.user(HERO.requesterId);
-        // A request Mia already placed in the web app before Play is hers: the day runs with it (D-132).
-        const placed = ctx.app.store.bids
-          .where('requester_id = ? AND item_id = ?', mia.id, HERO.itemId)
-          .find((b) => ['awaiting_approval', 'open', 'partially_matched'].includes(b.status));
-        if (placed) {
-          ctx.refs.set('miaBid', placed.id);
-          return;
-        }
-        const destination = { mode: 'ship' as const, country: 'US' as const, region: 'NY', city: 'New York', postalCode: '10012' };
-        const quote = await quoteBid(ctx.app, mia, { shopId: HERO.shopId, itemId: HERO.itemId, qty: 1, destination });
-        const created = await createBid(ctx.app, mia, {
-          shopId: HERO.shopId,
-          itemId: HERO.itemId,
-          qty: 1,
-          retailCapCents: quote.suggested.retailCapCents,
-          maxFeeCents: quote.suggested.maxFeeCents,
-          shippingBudgetCents: quote.suggested.shippingBudgetCents,
-          destination,
-          deadlineAt: ctx.time('10:31') + 2 * 24 * 60 * 60_000,
-          funding: 'paypal',
-          agent: null,
-        });
-        ctx.refs.set('miaBid', created.bid.id);
-        if (created.checkout.next === 'fake_approve') {
-          await ctx.app.fakePayPal.approveOrder(created.checkout.orderId, 'paypal', 'approve');
-          await authorizeBid(ctx.app, { userId: mia.id, ops: false }, created.bid.id, created.checkout.orderId);
-        }
-      },
-    },
-    {
-      at: '10:31',
-      kind: 'wait_for',
-      label: "Mia's hold is authorized (a sandbox run waits for the PayPal approval)",
-      until: (ctx) => ctx.app.store.bids.must(ctx.ref('miaBid')).status !== 'awaiting_approval',
-      async run(ctx) {
-        const bid = ctx.app.store.bids.must(ctx.ref('miaBid'));
-        ctx.cue({ name: 'show_ledger', target: HERO.requesterId, text: `PayPal holds up to ${formatUsd(bid.limitCents, { exact: true })}. Nothing is charged yet.` });
-      },
-    },
-    {
-      at: '10:33',
-      kind: 'bid.claim',
-      label: "Rex takes Priya's request at $11",
-      async run(ctx) {
-        const rex = ctx.user(HERO.fakeReceiptQueuerId);
-        claimBid(ctx.app, rex, ctx.ref('priyaBid'), {
-          qty: 1,
-          etaAt: ctx.time('10:55'),
-          modes: ['ship'],
-          from: { lngLat: rex.home!, accuracyM: 12 },
-        });
-        ctx.walk(rex.id, AT_SHOP, ctx.time('10:55'));
-      },
-    },
+    miaHolds,
+    miaAuthorized,
+    rexTakesPriya,
     {
       at: '10:35',
       kind: 'ask.create',
@@ -166,28 +201,8 @@ export const heroScript: DemoScript = {
         ctx.cue({ name: 'focus_user', target: wei.id, text: `Offers are bound to a place: Wei is ${minutes} minutes away.` });
       },
     },
-    {
-      at: '10:50',
-      kind: 'claim.checkIn',
-      label: 'Wei checks in; his fee clock starts at $15',
-      async run(ctx) {
-        const wei = ctx.user(HERO.queuerId);
-        const claim = ctx.app.store.claims.first("queuer_id = ? AND shop_id = ? AND status = 'awaiting_arrival'", wei.id, HERO.shopId)!;
-        const photo = await ctx.photo(wei.id, 'line_photo', `${CHECK_IN_FIXTURES.wei}/line.png`, 'wei-line', 'line_ok');
-        checkIn(ctx.app, wei, claim.id, { lngLat: AT_SHOP, accuracyM: 8, photoFileId: photo.id });
-      },
-    },
-    {
-      at: '10:57',
-      kind: 'claim.checkIn',
-      label: 'Rex checks in',
-      async run(ctx) {
-        const rex = ctx.user(HERO.fakeReceiptQueuerId);
-        const claim = ctx.app.store.claims.first("queuer_id = ? AND shop_id = ? AND status = 'awaiting_arrival'", rex.id, HERO.shopId)!;
-        const photo = await ctx.photo(rex.id, 'line_photo', `${CHECK_IN_FIXTURES.rex}/line.png`, 'rex-line', 'line_ok');
-        checkIn(ctx.app, rex, claim.id, { lngLat: [AT_SHOP[0] + 0.0002, AT_SHOP[1]], accuracyM: 9, photoFileId: photo.id });
-      },
-    },
+    weiChecksIn,
+    rexChecksIn,
     {
       at: '11:05',
       kind: 'cue',

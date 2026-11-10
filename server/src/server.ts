@@ -9,6 +9,7 @@ import { Director } from './demo/director.ts';
 import { heroScript } from './demo/scripts/hero.ts';
 import { feeAgentScript, localErrandScript, renewalScript } from './demo/scripts/others.ts';
 import { needsPersonScript } from './demo/scripts/needsPerson.ts';
+import { soldOutScript } from './demo/scripts/soldOut.ts';
 import { buildHttp } from './http/server.ts';
 import type { AiPort } from './ports/ai.ts';
 import { loadAi, loadSandboxPayPal } from './ports/load.ts';
@@ -39,7 +40,7 @@ export interface HmsServer {
   close(): Promise<void>;
 }
 
-export const DEMO_SCRIPTS = [heroScript, localErrandScript, renewalScript, feeAgentScript, needsPersonScript];
+export const DEMO_SCRIPTS = [heroScript, localErrandScript, renewalScript, feeAgentScript, needsPersonScript, soldOutScript];
 
 export async function createServer(config: ServerConfig, opts: CreateOptions = {}): Promise<HmsServer> {
   const log = opts.log ?? ((line: string) => console.log(`[holdmyspot] ${line}`));

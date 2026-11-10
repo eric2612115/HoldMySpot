@@ -30,6 +30,7 @@ export type StepKind =
   | 'job.proof'
   | 'job.shipment'
   | 'job.handover'
+  | 'job.sold_out'
   | 'agent.run'
   | 'job.refund_request'
   | 'dispute.open'
@@ -76,6 +77,8 @@ export interface DemoScript {
   speed: number;
   /** Runs after the reset, before the first step (for example an older photo for a duplicate check). */
   setup?(ctx: StepContext): Promise<void>;
+  /** The requester and the queuer the scene follows (the hosted judge's two phones); the hero's Mia and Wei when absent. */
+  cast?: { requester: string; queuer: string };
   steps: DemoStep[];
 }
 
@@ -125,6 +128,11 @@ export class Director {
       nextStepAt: step && !step.until && this.#status !== 'finished' ? this.#timeOf(this.#script!, step.at) : null,
       seed: this.#seed,
     };
+  }
+
+  /** The requester and the queuer the current script follows, or null for the hero's (hosted judge page). */
+  cast(): { requester: string; queuer: string } | null {
+    return this.#script?.cast ?? null;
   }
 
   /** The next step of the script, or null when it is finished (hosted judge page). */

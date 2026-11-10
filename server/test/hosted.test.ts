@@ -10,12 +10,16 @@ import { FakeAi } from '../src/fakes/ai.ts';
 import { FakePayPal } from '../src/fakes/paypal.ts';
 import { Database } from '../src/db/database.ts';
 import { AiError } from '../src/ai/errors.ts';
-import type { AiPort, CheckInPhotoInput } from '../src/ports/ai.ts';
+import type { AiPort, AgentRunInput, CheckInPhotoInput } from '../src/ports/ai.ts';
+import type { AiJsonRequest, AiProvider } from '@holdmyspot/shared/ports';
+import { runAgent } from '../src/ai/agent.ts';
+import { startAgentRun } from '../src/app/agent.ts';
 import { AiBudget, HostedAi } from '../src/hosted/ai.ts';
 import { MarketPool } from '../src/hosted/pool.ts';
 import { COOKIE, createRouter } from '../src/hosted/router.ts';
 import { hostedSettings } from '../src/hosted/settings.ts';
 import type { HostedSettings } from '../src/hosted/settings.ts';
+import { placeBid, testServer } from './helpers.ts';
 
 /**
  * The hosted judge server (D-163): each visitor's market is theirs, created only when needed,
@@ -31,7 +35,7 @@ interface Site {
   stop(): Promise<void>;
 }
 
-async function site(over: Partial<HostedSettings> = {}, poolOver: { now?: () => number } = {}): Promise<Site> {
+async function site(over: Partial<HostedSettings> = {}, poolOver: { now?: () => number; crowd?: boolean } = {}): Promise<Site> {
   const dist = mkdtempSync(join(tmpdir(), 'hms-hosted-dist-'));
   const web = join(dist, 'web');
   const ops = join(dist, 'ops');
@@ -46,7 +50,7 @@ async function site(over: Partial<HostedSettings> = {}, poolOver: { now?: () => 
   const settings: HostedSettings = { ...hostedSettings({}), port: 0, cap: 50, createsPerMinute: 1000, createsPerIpPerHour: 1000, errandSpeed: 600, ...over };
   const pool = new MarketPool({
     settings,
-    env: { HMS_SECRETS_DIR: join(dist, 'none'), HMS_CROWD: '0', HMS_AI_PROVIDER: 'fake', HMS_AI_FIXTURES_DIR: join(dist, 'none') },
+    env: { HMS_SECRETS_DIR: join(dist, 'none'), HMS_CROWD: poolOver.crowd ? '1' : '0', HMS_AI_PROVIDER: 'fake', HMS_AI_FIXTURES_DIR: join(dist, 'none') },
     replayAi: new FakeAi(),
     liveAi: null,
     sandboxPayPal: null,
@@ -355,6 +359,59 @@ describe('hosted eviction and caps', () => {
   });
 });
 
+describe('more scenes on the hosted site', () => {
+  async function finished(v: Visitor) {
+    for (let i = 0; i < 120; i++) {
+      if ((await v.get('/api/demo/state')).json.status === 'finished') return;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    assert.fail('the scene did not finish');
+  }
+
+  it("the sold-out scene and the local pickup play in the visitor's own market, with their own people and money", async () => {
+    const s = await site({}, { crowd: true });
+    try {
+      const v = await visitor(s);
+      const other = await visitor(s);
+
+      assert.equal((await v.post('/api/demo/start', { scriptId: 'sold-out', speed: 600 })).status, 200);
+      await finished(v);
+      let info = (await v.get('/api/hosted/info')).json;
+      assert.deepEqual(info.people, { requester: 'mia', queuer: 'wei' });
+      assert.deepEqual(info.money, { heldCents: 6370, capturedCents: 0, releasedCents: 6370, paidCents: 0 });
+      const records = (await v.get('/api/ops/records')).json;
+      const plush = records.bids.filter((b: any) => b.itemId === HERO.itemId);
+      assert.equal(plush.length, 13);
+      for (const b of plush) {
+        const hold = records.holds.find((h: any) => h.id === b.holdId);
+        assert.equal(b.closeReason, 'sold_out');
+        assert.deepEqual([hold.status, hold.capturedCents, hold.releasedCents], ['released', 0, hold.amount.cents], `${b.requesterId}: released, $0 charged`);
+      }
+      assert.equal(records.ledger.filter((e: any) => e.kind === 'captured' || e.kind === 'paid_out').length, 0);
+      for (const step of ['/api/hosted/hold', '/api/hosted/break']) {
+        const refused = await v.post(step);
+        assert.equal(refused.status, 409, `${step} belongs to the hero errand`);
+        assert.equal(refused.json.error.code, 'OTHER_SCENE');
+      }
+
+      assert.equal((await v.post('/api/demo/start', { scriptId: 'local-errand', speed: 600 })).status, 200);
+      await finished(v);
+      info = (await v.get('/api/hosted/info')).json;
+      assert.deepEqual(info.people, { requester: 'jun', queuer: 'dana' });
+      assert.deepEqual(info.money, { heldCents: 5154, capturedCents: 4947, releasedCents: 207, paidCents: 4610 }, 'one capture at the handover code');
+      const jun = (await v.get('/api/ledger?mine=1', 'jun')).json.entries.filter((e: any) => e.kind === 'captured');
+      assert.equal(jun.length, 1);
+
+      const theirs = (await other.get('/api/hosted/info')).json;
+      assert.deepEqual([theirs.demo.scriptId, theirs.demo.status, theirs.money.heldCents], ['hero', 'idle', 0], "another visitor's market did not move");
+      assert.equal((await v.post('/api/demo/reset', { scriptId: 'hero' })).status, 200);
+      assert.deepEqual((await v.get('/api/hosted/info')).json.people, { requester: 'mia', queuer: 'wei' }, 'Start over returns to the hero errand');
+    } finally {
+      await s.stop();
+    }
+  });
+});
+
 describe('the sandbox path on the emulator', () => {
   it("Wei's errand runs on the server with the stamped photos and pays out the hero's numbers", async () => {
     const dist = mkdtempSync(join(tmpdir(), 'hms-hosted-sb-'));
@@ -491,5 +548,80 @@ describe('hosted AI', () => {
     await ai.opsAgentTurn({ agent: 'market' } as never);
     await assert.rejects(() => ai.opsAgentTurn({ agent: 'market' } as never), /used up/);
     assert.equal(calls.filter((c) => c === 'turn').length, 2);
+  });
+
+  /** A stand-in for Meta's Muse Spark: decision mode (no tool use), one JSON answer per run, stamped live. */
+  function museSpark(fees: number[]) {
+    const asked: AiJsonRequest[] = [];
+    const provider: AiProvider = {
+      id: 'muse',
+      model: 'muse-spark-1.3',
+      mode: 'live',
+      vision: true,
+      async json<T>(req: AiJsonRequest) {
+        asked.push(req);
+        const cents = fees[asked.length - 1] ?? 1000;
+        const data = { action: 'lower_fee', maxFeeCents: cents, qty: null, reason: `No queuer is in line yet, so it opens at $${(cents / 100).toFixed(2)}.` };
+        return { data: data as T, stamp: { provider: 'muse' as const, model: 'muse-spark-1.3', mode: 'live' as const, latencyMs: 1200 }, usage: null };
+      },
+      async agent() {
+        throw new AiError('unsupported', 'Muse answers in decision mode.');
+      },
+    };
+    // The live port's bidding agent is the real runAgent on that provider, as server/src/ai/index.ts builds it.
+    const live = {
+      info: { provider: 'muse', model: 'muse-spark-1.3', mode: 'live' },
+      biddingAgent: (input: AgentRunInput) => runAgent(input, provider),
+      opsAgentTurn: async () => ({ calls: [] }),
+    } as unknown as AiPort;
+    // The replay port's bidding agent: a replay miss, so the written policy decides.
+    const replay = Object.assign(new FakeAi(), { biddingAgent: (input: AgentRunInput) => runAgent(input, null) });
+    return { live, replay, asked };
+  }
+
+  async function agentRuns(ai: HostedAi, runs: number) {
+    const s = await testServer();
+    s.app.ai = ai;
+    try {
+      const placed = await placeBid(s.app, 'mia', { qty: 1, maxFeeCents: 1200, agent: { goal: 'As cheap as I can get it, never above my max fee.' } });
+      for (let i = 0; i < runs; i++) {
+        startAgentRun(s.app, placed.bid.id);
+        await s.app.idle();
+      }
+      const http = await s.call('GET', `/api/bids/${placed.bid.id}/agent-actions`, { as: 'mia' });
+      return { actions: http.json.actions as any[], bid: s.app.store.bids.must(placed.bid.id) };
+    } finally {
+      await s.done();
+    }
+  }
+
+  it('the bidding agent decides on the live model under the agent turn caps, then the written rules decide and say why', async () => {
+    const { live, replay, asked } = museSpark([1000, 900]);
+    const use = { reads: 0, turns: 0 };
+    const ai = new HostedAi(replay, live, new AiBudget(settings), use);
+    const { actions, bid } = await agentRuns(ai, 3);
+    assert.equal(asked.length, 2, 'two model calls: the per-market turn cap');
+    assert.equal(use.turns, 2);
+    assert.deepEqual(
+      actions.slice(0, 2).map((a) => [a.kind, a.fromFeeCents, a.toFeeCents]),
+      [
+        ['lower_fee', 1200, 1000],
+        ['lower_fee', 1000, 900],
+      ],
+    );
+    for (const a of actions.slice(0, 2)) assert.deepEqual([a.ai.provider, a.ai.model, a.ai.mode], ['muse', 'muse-spark-1.3', 'live'], 'the phone row reads "Decided by AI · muse muse-spark-1.3 (live)"');
+    assert.equal(bid.maxFeeCents, 900, "each model decision went through the same checks as the requester's own change");
+    const third = actions[2];
+    assert.equal(third.ai.provider, 'fake', 'past the cap the written policy decides');
+    assert.match(third.reason, /\(The written rules decided: the live AI turns of this hosted demo are used up for now\.\)$/);
+    await assert.rejects(() => ai.opsAgentTurn({ agent: 'market' } as never), /used up/, 'the ops agents share the same turns');
+  });
+
+  it('without a key the bidding agent keeps its written rules and says there is no model', async () => {
+    const { replay } = museSpark([]);
+    const { actions } = await agentRuns(new HostedAi(replay, null, new AiBudget(settings), { reads: 0, turns: 0 }), 1);
+    assert.equal(actions.length, 1);
+    assert.equal(actions[0].ai.provider, 'fake');
+    assert.match(actions[0].reason, /\(The written rules decided: this hosted demo has no AI model\.\)$/);
   });
 });

@@ -177,6 +177,10 @@ It runs with zero keys on simulated PayPal and recorded model answers; add sandb
 | AG Studio: http://127.0.0.1:5197/?backend=mock&at=12:05#/market | Press **Widest gap** in the market desk. |
 | Needs a person: http://127.0.0.1:5197/?backend=mock&at=11:21#/people | One receipt, one refund and one dispute. |
 | API: http://127.0.0.1:8796/api/health | Also `/api/config` and `/api/books`; [every endpoint](docs/API.md). |
+| Live site, **More scenes** | **Shortcake errand in New York**: one capture at the handover code. **Sold out at Paper Moon Toys**: two queuers report it, every hold on the plush is released, \$0 charged. |
+| Live site, Wei's phone | **Mochi Bunny plush**, **Take this task**, **Use the sample line photo**, **Check in with this photo**: the AI check passes. |
+| Live site, Mia's phone | **Let AI adjust my fee** runs the bidding agent on the site's live model, under the ops agents' caps; rows read "Decided by AI · muse muse-spark-1.3 (live)". |
+| Live site, **Use the real PayPal sandbox** | After **Let Wei run the errand**, the ops console's **Market** page shows that run's PayPal ids in the AG Studio ledger. |
 
 Checks, with no keys and no network:
 
@@ -219,6 +223,8 @@ npm run gates -- lifecycle --by-hand --out .run/gates.md --no-record     # the w
 npm run demo -- --ai live                      # zero-key PayPal with a live model
 ```
 
+The captures and payouts of your own run also appear in your own sandbox business account's activity on sandbox.paypal.com.
+
 ## Other tools
 
 Node.js 24 and TypeScript 5.9; Fastify 5, Zod 4 and `node:sqlite`; React 19 and Vite 8; MapLibre GL JS with OpenFreeMap tiles; three.js; jsQR, jpeg-js and qrcode; Playwright; node:test and Vitest ([full table](docs/TECHNICAL-DETAILS.md#other-tools)).
@@ -227,18 +233,12 @@ Node.js 24 and TypeScript 5.9; Fastify 5, Zod 4 and `node:sqlite`; React 19 and 
 
 | If you want to know | Read |
 |---|---|
-| Every technical detail, on one page | [docs/TECHNICAL-DETAILS.md](docs/TECHNICAL-DETAILS.md) |
-| Every PayPal call | [docs/PAYPAL-MAPPING.md](docs/PAYPAL-MAPPING.md) |
-| What PayPal's sandbox answered | [docs/SANDBOX-GATES.md](docs/SANDBOX-GATES.md) |
-| What each claim rests on | [claims.md](claims.md) |
-| The nearest existing work | [prior-art.md](prior-art.md) |
 | What the AI does and which layer stops what | [docs/AI-SERVICES.md](docs/AI-SERVICES.md), [docs/ABLATION.md](docs/ABLATION.md) |
 | The money rules and the worked example | [docs/DOMAIN.md](docs/DOMAIN.md) |
 | The hard calls for a person | [docs/NEEDS-A-PERSON.md](docs/NEEDS-A-PERSON.md) |
 | Why it was built this way | [docs/DECISIONS.md](docs/DECISIONS.md) |
 | How the sponsors are wired in | [ops/README.md](ops/README.md) |
 | The API and the system | [docs/API.md](docs/API.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| How to check this repo with an AI agent | [AGENTS.md](AGENTS.md) |
 
 ## Licence
 

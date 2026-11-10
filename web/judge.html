@@ -23,19 +23,27 @@
       <p class="note" id="note">Your own private copy. PayPal is simulated.</p>
     </header>
     <main class="stage">
-      <figure class="phone"><figcaption><b>Mia</b> pays</figcaption><iframe id="mia" title="Mia's phone" allow="payment; publickey-credentials-get; publickey-credentials-create"></iframe></figure>
+      <figure class="phone"><figcaption><b id="left-name">Mia</b> pays</figcaption><iframe id="mia" title="Mia's phone" allow="payment; publickey-credentials-get; publickey-credentials-create"></iframe></figure>
       <aside class="money" aria-label="What moved">
         <dl>
           <div><dt>Held</dt><dd id="held" class="is-held">$0.00</dd></div>
           <div><dt>Charged</dt><dd id="captured" class="is-captured">$0.00</dd></div>
           <div><dt>Released</dt><dd id="released" class="is-released">$0.00</dd></div>
-          <div><dt>Wei paid</dt><dd id="paid" class="is-paid">$0.00</dd></div>
+          <div><dt id="paid-label">Wei paid</dt><dd id="paid" class="is-paid">$0.00</dd></div>
         </dl>
         <p id="hint" class="hint" role="status"></p>
         <ol id="ids" class="ids" hidden></ol>
-        <button type="button" id="sandbox" class="sandbox" hidden>Use the real PayPal sandbox</button>
+        <div id="sandbox-choice" class="sandbox-choice" hidden>
+          <button type="button" id="sandbox" class="sandbox">Use the real PayPal sandbox</button>
+          <p>Sign in to PayPal's window with the sandbox buyer login from the Devpost testing instructions.</p>
+        </div>
+        <section id="scenes" class="scenes" aria-labelledby="scenes-title">
+          <h2 id="scenes-title">More scenes</h2>
+          <button type="button" data-scene="local-errand"><b>Shortcake errand in New York</b><span>One capture at the handover code</span></button>
+          <button type="button" data-scene="sold-out"><b>Sold out at Paper Moon Toys</b><span>Two reports release every hold; $0 charged</span></button>
+        </section>
       </aside>
-      <figure class="phone" id="wei-phone"><figcaption><b>Wei</b> stands in line</figcaption><iframe id="wei" title="Wei's phone" allow="payment; publickey-credentials-get; publickey-credentials-create"></iframe></figure>
+      <figure class="phone" id="wei-phone"><figcaption><b id="right-name">Wei</b> stands in line</figcaption><iframe id="wei" title="Wei's phone" allow="payment; publickey-credentials-get; publickey-credentials-create"></iframe></figure>
     </main>
     <div id="gone" class="gone" hidden>
       <p>This copy was cleared after sitting idle.</p>

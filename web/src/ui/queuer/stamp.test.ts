@@ -1,6 +1,6 @@
 import { PHOTO_STAMP_PNG_KEY, photoStampText } from '@holdmyspot/shared';
 import { describe, expect, it } from 'vitest';
-import { stampFontPx, stampedCode } from './stamp';
+import { stampFontPx, stampPhoto, stampedCode } from './stamp';
 
 // vitest runs in Node; the web app's types are the browser's, so the file reader comes in untyped.
 const fsModule = 'node:fs';
@@ -42,6 +42,14 @@ describe('the app stamp', () => {
     expect(stampedCode(pngWithText(PHOTO_STAMP_PNG_KEY, 'K7MX4', true))).toBe('K7MX4');
     const line = readFileSync(new URL('../../../../server/fixtures/proofs/checkin-paper-moon-wei/line.png', import.meta.url));
     expect(stampedCode(line)).toBe('M4RT7');
+  });
+
+  it("serves the demo line photo as the sample, byte for byte, and sends it unchanged on Wei's demo visit", async () => {
+    const fixture = readFileSync(new URL('../../../../server/fixtures/proofs/checkin-paper-moon-wei/line.png', import.meta.url));
+    const sample = readFileSync(new URL('../../../public/samples/line.png', import.meta.url));
+    expect(sample.length === fixture.length && sample.every((b, i) => b === fixture[i])).toBe(true);
+    const file = new File([new Uint8Array(sample)], 'sample-line.png', { type: 'image/png' });
+    expect(await stampPhoto(file, { code: 'M4RT7', hhmm: '10:30', shopName: 'Paper Moon Toys' })).toBe(file);
   });
 
   it('stays legible and inside narrow photos', () => {
