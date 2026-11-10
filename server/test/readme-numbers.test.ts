@@ -168,10 +168,7 @@ describe('README numbers (scripts/readme-numbers.mjs)', { skip: WAIT_FOR_RECORD 
     const block = checkEdited((t) => t.replace(/(<!-- numbers:ai-eval:start -->[\s\S]*?Verdict accuracy: +)21\/21/, (_m, head: string) => `${head}20/21`));
     assert.equal(block.code, 1, block.out);
     assert.match(block.out, /generated block "ai-eval" differs/);
-    const gate = checkEdited((t) => t.replace('(G1, G2), void', '(G1, G2, G10), void'));
-    assert.equal(gate.code, 1, gate.out);
-    assert.match(gate.out, /README lists G10 as passed/);
-    // A gate the page has not recorded as a pass may not join the passed line either; G4's capture is PayPal's.
+    // A gate the page has not recorded as a pass (G5; G10 passed on 2026-11-10) may not join the passed line; G4's capture is PayPal's.
     const notRun = checkEdited((t) => t.replace('(G1, G2), void', '(G1, G2, G5), void'));
     assert.equal(notRun.code, 1, notRun.out);
     assert.match(notRun.out, /README lists G5 as passed/);
