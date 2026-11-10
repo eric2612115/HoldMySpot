@@ -3,20 +3,20 @@
   "format": 1,
   "ok": true,
   "exitCode": 0,
-  "startedAt": "2026-11-09T17:09:03.091Z",
-  "seconds": 3.3,
-  "commit": "9c31a35",
+  "startedAt": "2026-11-10T08:30:22.443Z",
+  "seconds": 7.2,
+  "commit": "9405927",
   "uncommittedChanges": true,
   "codeTrees": {
-    "shared": "a0db35b235d3",
-    "server": "80adb51f95c7",
+    "shared": "37d28d4a410a",
+    "server": "620394b21d7c",
     "web": "4002cffe84da",
     "ops": "08ff90394d1c",
     "scripts": "959179cc338c"
   },
   "commitCodeTrees": {
-    "shared": "a0db35b235d3",
-    "server": "80adb51f95c7",
+    "shared": "37d28d4a410a",
+    "server": "620394b21d7c",
     "web": "4002cffe84da",
     "ops": "08ff90394d1c",
     "scripts": "959179cc338c"
@@ -24,13 +24,13 @@
   "node": "24.22.2",
   "npm": "11.19.1",
   "platform": "darwin arm64",
-  "portOffset": 3200,
+  "portOffset": 3400,
   "answered": [
     "server",
     "web",
     "ops"
   ],
-  "readySeconds": 3,
+  "readySeconds": 6.3,
   "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
   "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
   "keys": "none: no HMS_*, PAYPAL_* or model key variables, an empty HMS_SECRETS_DIR and no key files"

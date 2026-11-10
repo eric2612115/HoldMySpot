@@ -1035,7 +1035,7 @@
       }
     ],
     "serverStartedHere": true,
-    "recordedOn": "2026-11-09"
+    "recordedOn": "2026-11-10"
   },
   "smoke": {
     "answered": [
@@ -1043,12 +1043,12 @@
       "web",
       "ops"
     ],
-    "readySeconds": 3,
+    "readySeconds": 6.3,
     "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
     "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
     "os": "macOS",
     "node": "24.22.2",
-    "recordedOn": "2026-11-09"
+    "recordedOn": "2026-11-10"
   },
   "runs": {
     "recordedOn": "2026-11-09",
@@ -1083,13 +1083,13 @@
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-09 17:08",
-      "commit": "9c31a35",
+      "at": "2026-11-10 08:29",
+      "commit": "9405927",
       "uncommittedChanges": false,
       "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
+        "shared": "37d28d4a410a",
+        "server": "620394b21d7c",
         "web": "4002cffe84da",
         "ops": "08ff90394d1c",
         "scripts": "959179cc338c"
@@ -1099,13 +1099,13 @@
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-09 17:08",
-      "commit": "9c31a35",
+      "at": "2026-11-10 08:29",
+      "commit": "9405927",
       "uncommittedChanges": true,
       "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
+        "shared": "37d28d4a410a",
+        "server": "620394b21d7c",
         "web": "4002cffe84da",
         "ops": "08ff90394d1c",
         "scripts": "959179cc338c"
@@ -1115,13 +1115,13 @@
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-09 17:09",
-      "commit": "9c31a35",
+      "at": "2026-11-10 08:30",
+      "commit": "9405927",
       "uncommittedChanges": true,
       "codeDiffersFromCommit": false,
       "codeTrees": {
-        "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
+        "shared": "37d28d4a410a",
+        "server": "620394b21d7c",
         "web": "4002cffe84da",
         "ops": "08ff90394d1c",
         "scripts": "959179cc338c"
