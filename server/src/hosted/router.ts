@@ -18,6 +18,7 @@ import { runSandboxErrand, sandboxErrandStatus } from './sandboxErrand.ts';
 export const COOKIE = 'hms_market';
 export const MARKET_HEADER = 'x-hms-market';
 const COOKIE_MAX_AGE_S = 8 * 60 * 60;
+const HERO_SCRIPT = 'hero';
 
 /** Query words of a phone link; without one, `/` is the judge's page. */
 const PHONE_PARAMS = ['demo', 'phone', 'as', 'queuer', 'backend', 'view', 'city', 'speed'];
@@ -121,11 +122,17 @@ interface Entry {
   status: string;
 }
 
+/** The two people the market's scene follows: the hero's Mia and Wei, or the scene's own (the local pickup's Jun and Dana). */
+function castOf(market: Market | undefined): { requester: string; queuer: string } {
+  return market?.server.director?.cast() ?? { requester: HERO.requesterId, queuer: HERO.queuerId };
+}
+
 /** Totals for the judge's page, from the same ledger the phones read. */
 async function moneyOf(market: Market): Promise<{ heldCents: number; capturedCents: number; releasedCents: number; paidCents: number }> {
-  const [mia, wei] = (await Promise.all([inner(market, 'GET', '/api/ledger?mine=1', undefined, HERO.requesterId), inner(market, 'GET', '/api/ledger?mine=1', undefined, HERO.queuerId)])) as { entries: Entry[] }[];
+  const cast = castOf(market);
+  const [requester, queuer] = (await Promise.all([inner(market, 'GET', '/api/ledger?mine=1', undefined, cast.requester), inner(market, 'GET', '/api/ledger?mine=1', undefined, cast.queuer)])) as { entries: Entry[] }[];
   const sum = (entries: Entry[], kind: string) => entries.filter((e) => e.kind === kind && e.status === 'succeeded').reduce((n, e) => n + e.amount.cents, 0);
-  return { heldCents: sum(mia!.entries, 'held'), capturedCents: sum(mia!.entries, 'captured'), releasedCents: sum(mia!.entries, 'released'), paidCents: sum(wei!.entries, 'paid_out') };
+  return { heldCents: sum(requester!.entries, 'held'), capturedCents: sum(requester!.entries, 'captured'), releasedCents: sum(requester!.entries, 'released'), paidCents: sum(queuer!.entries, 'paid_out') };
 }
 
 export function createRouter(pool: MarketPool, opts: RouterOptions): (req: IncomingMessage, res: ServerResponse) => void {
@@ -192,6 +199,7 @@ export function createRouter(pool: MarketPool, opts: RouterOptions): (req: Incom
       sendJson(res, 200, {
         hosted: true,
         demo: market?.server.director?.state() ?? null,
+        people: castOf(market),
         money: market ? await moneyOf(market) : null,
         market: market ? 'alive' : token && pool.isGone(token) ? 'gone' : 'none',
         marketMode: market?.mode ?? null,
@@ -213,8 +221,11 @@ export function createRouter(pool: MarketPool, opts: RouterOptions): (req: Incom
     const director = market.server.director;
     if (!director) return sendError(res, 500, 'NO_DIRECTOR', 'This market has no demo director.');
 
+    // Steps 1 and 3 walk the hero's script; another scene (POST /api/demo/start) plays on its own.
+    const otherScene = director.state().scriptId !== HERO_SCRIPT;
     if (req.method === 'POST' && path === '/api/hosted/hold') {
       if (market.mode === 'sandbox') return sendError(res, 409, 'USE_PAYPAL_WINDOW', "On the real sandbox, tap the plush on Mia's phone and approve the hold in PayPal's window.");
+      if (otherScene) return sendError(res, 409, 'OTHER_SCENE', 'This market is playing another scene. Press Start over for the hero errand.');
       for (let i = 0; i < 5; i++) {
         const next = director.peek();
         if (!next || next.index > 2) break;
@@ -230,6 +241,7 @@ export function createRouter(pool: MarketPool, opts: RouterOptions): (req: Incom
     }
     if (req.method === 'POST' && path === '/api/hosted/break') {
       if (market.mode === 'sandbox') return sendError(res, 409, 'USE_ERRAND', 'Try to break it runs on the simulated market.');
+      if (otherScene) return sendError(res, 409, 'OTHER_SCENE', 'This market is playing another scene. Press Start over for the hero errand.');
       if (director.state().status === 'running') director.pause();
       for (let i = 0; i < 40; i++) {
         const next = director.peek();

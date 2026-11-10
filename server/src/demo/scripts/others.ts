@@ -18,6 +18,7 @@ export const localErrandScript: DemoScript = {
   startsAt: '2026-11-12T09:30:00-05:00',
   timeZone: 'America/New_York',
   speed: 60,
+  cast: { requester: 'jun', queuer: 'dana' },
   steps: [
     {
       at: '09:31',

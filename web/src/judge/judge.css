@@ -13,11 +13,25 @@ body { margin: 0; background: var(--ground); color: var(--ink); font-family: var
 .tools button, .tools a { border: 1px solid var(--line); background: var(--paper); color: var(--ink-2); padding: 8px 14px; border-radius: 999px; font: 500 14px var(--font-play); cursor: pointer; text-decoration: none; }
 .tools button:hover, .tools a:hover { background: var(--mist); }
 .note { grid-column: 1 / -1; margin: 0; text-align: center; font-size: 12.5px; color: var(--ink-3); }
-.stage { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: stretch; gap: 22px; padding: 12px 22px 14px; }
-.phone { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0; width: 396px; }
-.phone figcaption { font: 500 14px var(--font-play); color: var(--ink-2); }
+.stage { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: center; gap: 22px; padding: 12px 22px 14px; container-type: size; }
+.phone { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0; }
+.phone figcaption { font: 500 14px/20px var(--font-play); color: var(--ink-2); }
 .phone figcaption b { color: var(--ink); font-weight: 600; }
-.phone iframe { flex: 1; min-height: 0; width: 100%; border: 8px solid var(--ink); border-radius: 34px; background: var(--ground); box-shadow: var(--shadow-2); }
+/*
+ * Each phone keeps a real phone's proportions, 390 x 844 inside its 8 px frame, sized by the stage: the
+ * height left under the caption (26 px), half the width beside the money column (196 px and three 22 px
+ * gaps), and at most a large phone's 932 px; the space left over stays empty around the centered phones.
+ */
+.phone iframe {
+  --phone-h: min(calc(100cqh - 26px), calc(((100cqw - 240px) / 2 - 16px) / 0.46209 + 16px), 948px);
+  flex: none;
+  height: var(--phone-h);
+  width: calc((var(--phone-h) - 16px) * 0.46209 + 16px);
+  border: 8px solid var(--ink);
+  border-radius: 34px;
+  background: var(--ground);
+  box-shadow: var(--shadow-2);
+}
 .money { width: 196px; align-self: center; display: flex; flex-direction: column; gap: 12px; }
 .money dl { margin: 0; display: grid; gap: 7px; }
 .money dl div { display: flex; justify-content: space-between; align-items: baseline; background: var(--paper); border-radius: 12px; padding: 9px 12px; box-shadow: var(--shadow-1); }
@@ -26,7 +40,18 @@ body { margin: 0; background: var(--ground); color: var(--ink); font-family: var
 .is-held { color: var(--held); } .is-captured { color: var(--captured); } .is-released { color: var(--released); } .is-paid { color: var(--paid); }
 .hint { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-2); min-height: 18px; }
 .ids { margin: 0; padding: 0; list-style: none; font-size: 11px; line-height: 1.5; color: var(--ink-2); word-break: break-all; max-height: 220px; overflow: auto; }
+.sandbox-choice { display: flex; flex-direction: column; gap: 6px; }
+.sandbox-choice[hidden] { display: none; }
+.sandbox-choice p { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--ink-3); }
 .sandbox { border: 1px dashed var(--pp); background: transparent; color: var(--pp); border-radius: 10px; padding: 8px 10px; font: 500 13px var(--font-play); cursor: pointer; }
+.scenes { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.scenes[hidden] { display: none; }
+.scenes h2 { margin: 0; font: 600 12px var(--font-play); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.scenes button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 7px 10px; cursor: pointer; font-family: var(--font-money); }
+.scenes button:hover { background: var(--mist); }
+.scenes button[aria-pressed='true'] { border-color: var(--grape); box-shadow: inset 3px 0 0 var(--grape); }
+.scenes button b { font: 500 13px var(--font-play); }
+.scenes button span { font-size: 11.5px; color: var(--ink-3); }
 .gone { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; background: rgba(238, 244, 230, 0.94); font: 500 18px var(--font-play); }
 .gone[hidden] { display: none; }
 .gone button { border: 0; background: var(--grape); color: #fff; padding: 10px 22px; border-radius: 999px; font: 500 16px var(--font-play); cursor: pointer; }
@@ -39,10 +64,10 @@ body { margin: 0; background: var(--ground); color: var(--ink); font-family: var
   .tools { gap: 4px; }
   .tools button, .tools a { padding: 5px 9px; font-size: 12px; white-space: nowrap; }
   .note { font-size: 11.5px; text-align: left; }
-  .stage { padding: 0; gap: 0; }
+  .stage { padding: 0; gap: 0; align-items: stretch; container-type: normal; }
   #wei-phone, .money { display: none; }
   .phone { width: 100%; }
   .phone figcaption { display: none; }
-  .phone iframe { border: 0; border-radius: 0; box-shadow: none; }
+  .phone iframe { flex: 1; min-height: 0; width: 100%; height: auto; border: 0; border-radius: 0; box-shadow: none; }
   body { min-height: 100%; }
 }

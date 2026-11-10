@@ -30,7 +30,7 @@ import {
 import { PhotoField } from './PhotoField';
 import type { StampInfo } from './stamp';
 import { LINE_READINGS, MODEL_READING, RECEIPT_READINGS, SimulatedReading, useSimulatedReadings } from './SimulatedReading';
-import { samplePhoto, useBreakArmed, useModelReads } from './hosted';
+import { sampleLinePhoto, samplePhoto, useBreakArmed, useModelReads } from './hosted';
 import { stampPhoto } from './stamp';
 import { queuerActions, useQueuer } from './store';
 
@@ -99,6 +99,12 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
   const tz = point.shop.timezone;
   const failed = lineProof && lineProof.status === 'failed' ? lineProof : null;
   const fee = ask ? liveFee(ask, now) : null;
+  const stamp = stampOf(claim.checkInCode, point);
+  // The demo line photo carries its own visit's stamp, so on that visit the app sends it as it is.
+  const fillSampleLine = async () => {
+    const sample = await sampleLinePhoto();
+    setPhoto(stamp ? await stampPhoto(sample, stamp) : sample);
+  };
 
   return (
     <div className="q-card">
@@ -134,7 +140,12 @@ export function ArrivalCard({ errand, point, scene }: CardProps & { scene: MapSc
 
       {failed && <AiCheckCard view={lineCheckView(failed, claim)} kind="line" />}
 
-      <PhotoField name="line" label={failed ? 'A new photo of the line' : 'Photo of the line'} hint="The line and the shop front. The app stamps your code on it." file={photo} onFile={setPhoto} disabled={checking} stamp={stampOf(claim.checkInCode, point)} />
+      <PhotoField name="line" label={failed ? 'A new photo of the line' : 'Photo of the line'} hint="The line and the shop front. The app stamps your code on it." file={photo} onFile={setPhoto} disabled={checking} stamp={stamp} />
+      {params.demo && !photo && (
+        <button type="button" className="q-chipbtn" data-sample="line" disabled={checking} onClick={() => void fillSampleLine().catch(() => undefined)}>
+          Use the sample line photo
+        </button>
+      )}
       {simulated && <SimulatedReading name="line" options={LINE_READINGS} value={reading} onChange={setReading} disabled={checking} modelReads={modelReads} />}
       <button
         type="button"

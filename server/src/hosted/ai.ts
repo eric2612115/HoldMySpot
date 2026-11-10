@@ -7,9 +7,10 @@ import type { HostedSettings } from './settings.ts';
 /**
  * AI of a hosted market (D-163). Demo photos and everything else replay recorded answers. A
  * visitor's own photo (no recording, no simulated reading picked) gets a real model read when the
- * service has a key and the caps allow; the two ops agents think live under the same rule. Past a
- * cap the existing behaviour returns: the phone offers simulated readings, an unread photo goes to
- * a person, and the console's agents use their offline planner; the message says why.
+ * service has a key and the caps allow; the two ops agents and the requester's bidding agent think
+ * live under the same rule, sharing the agent turns. Past a cap the existing behaviour returns: the
+ * phone offers simulated readings, an unread photo goes to a person, the console's agents use their
+ * offline planner and the bidding agent its written policy; the message says why.
  */
 
 export interface MarketAiUse {
@@ -64,6 +65,8 @@ export class AiBudget {
   }
 }
 
+const AGENT_NO_MODEL = '(The written rules decided: this hosted demo has no AI model.)';
+const AGENT_PAST_CAP = '(The written rules decided: the live AI turns of this hosted demo are used up for now.)';
 const PAST_CAP = 'The live AI reads of this hosted demo are used up for now, so nothing read this photo: pick a simulated reading, or a person reviews it.';
 
 export class HostedAi implements AiPort {
@@ -110,9 +113,19 @@ export class HostedAi implements AiPort {
     return this.#replay.disputeNote(input);
   };
   dHash: NonNullable<AiPort['dHash']> = async (bytes, contentType) => (this.#replay.dHash ? this.#replay.dHash(bytes, contentType) : null);
-  biddingAgent: NonNullable<AiPort['biddingAgent']> = (input) => {
+  /**
+   * The requester's bidding agent: a live model run when the service has a key and this market and the day
+   * still have agent turns (the ops agents' caps); otherwise the replay port, whose written policy decides,
+   * and the row says why no model decided.
+   */
+  biddingAgent: NonNullable<AiPort['biddingAgent']> = async (input) => {
+    const live = this.#live?.biddingAgent?.bind(this.#live);
+    if (live && this.#budget.takeTurn(this.#use)) return live(input);
     if (!this.#replay.biddingAgent) throw new AiError('unavailable', 'No bidding agent on this server.');
-    return this.#replay.biddingAgent(input);
+    const result = await this.#replay.biddingAgent(input);
+    if (result.decidedBy !== 'policy') return result;
+    const why = live ? AGENT_PAST_CAP : AGENT_NO_MODEL;
+    return { ...result, decision: { ...result.decision, reason: `${result.decision.reason} ${why}` } };
   };
 
   async opsAgentTurn(req: OpsAgentTurnRequest): Promise<OpsAgentTurnResponse> {
