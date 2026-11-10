@@ -4,6 +4,8 @@
 
 <img src="docs/img/cover.jpg" width="800" alt="HoldMySpot on a phone: someone queues, PayPal holds">
 
+**Watch the film:** https://youtu.be/uu06ICP9rrc
+
 | <img src="docs/img/paypal-window.jpg" width="200" alt="PayPal's own sandbox window approving the hold"> | <img src="docs/img/order-book.jpg" width="200" alt="A queuer's fee stepping down on the order book"> | <img src="docs/img/receipt-check.jpg" width="200" alt="AI reads the receipt, the rules pass it"> | <img src="docs/img/money-moved.jpg" width="200" alt="Every PayPal amount read back from PayPal"> |
 |:---:|:---:|:---:|:---:|
 | **Hold** in PayPal's own window | **Match** on a falling fee | **Check** the receipt with AI and rules | **Settle**, every cent read back |
