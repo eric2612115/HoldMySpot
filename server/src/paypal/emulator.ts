@@ -18,7 +18,7 @@ import { SANDBOX_BASE_URL } from './constants.ts';
  * - captures are accepted up to 115% of the authorization, like PayPal, so
  *   our own 100% limit is what stops over-capture in the server's tests;
  * - a final capture releases the rest; voids work after partial captures;
- *   reauthorize only from day 4 to 29, at most 115% and +$75, new id, and a
+ *   reauthorize once per original, only from day 4 to 29, at most 115% and +$75, new id, and a
  *   reauthorized payment cannot itself be reauthorized;
  * - payouts succeed for known receivers and stay UNCLAIMED for unknown ones;
  * - a repeated PayPal-Request-Id returns the first result;
@@ -903,6 +903,11 @@ export class PayPalEmulator {
     if (this.#take('reauthorize', ['expired'])) throw unprocessable('AUTHORIZATION_EXPIRED', 'An expired authorization cannot be reauthorized.');
     const now = this.#now();
     if (now < a.createdAt + HONOR_DAYS * DAY_MS) {
+      throw unprocessable('REAUTHORIZATION_TOO_SOON', 'A reauthorization is only allowed once from Day 4 to Day 29 since the date of the original authorization.');
+    }
+    // PayPal allows one reauthorization per original: a second one answered REAUTHORIZATION_TOO_SOON on the sandbox
+    // (gate G10, run 20261110-1621, server/test/paypal/fixtures/recorded/20261110-1621-reauthorize/005).
+    if (Object.values(this.#state.authorizations).some((x) => x.parentId === a.id)) {
       throw unprocessable('REAUTHORIZATION_TOO_SOON', 'A reauthorization is only allowed once from Day 4 to Day 29 since the date of the original authorization.');
     }
     const b = obj(json);

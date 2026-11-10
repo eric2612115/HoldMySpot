@@ -280,6 +280,13 @@ describe('hold renewal', () => {
     assert.equal(renewalVerdict(hold, authorizedAt + 4 * DAY_MS, { ...open, bidStillOpen: false }), 'not_needed');
   });
 
+  it('renews once: a renewed hold is kept until a day before the validity ends, then needs a new approval', () => {
+    const renewed = { ...hold, authorizedAt: authorizedAt + 4 * DAY_MS };
+    assert.equal(renewalVerdict(renewed, authorizedAt + 8 * DAY_MS, open), 'not_needed');
+    assert.equal(renewalVerdict(renewed, authorizedAt + 27 * DAY_MS, open), 'not_needed');
+    assert.equal(renewalVerdict(renewed, authorizedAt + 28 * DAY_MS, open), 'renewal_required');
+  });
+
   it('restarts the honor period but keeps the original validity', () => {
     const reauthorizedAt = authorizedAt + 4 * DAY_MS;
     const t = holdTiming({ authorizedAt: reauthorizedAt, originalAuthorizedAt: authorizedAt });

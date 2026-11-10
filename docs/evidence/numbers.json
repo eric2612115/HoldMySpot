@@ -509,7 +509,7 @@
     },
     "gates": {
       "page": "docs/SANDBOX-GATES.md",
-      "lastUpdate": "2026-11-09 20:29 Taipei",
+      "lastUpdate": "2026-11-10 16:21 Taipei",
       "pass": [
         "G0",
         "G1",
@@ -520,6 +520,7 @@
         "G7",
         "G8",
         "G9",
+        "G10",
         "G11"
       ],
       "partial": [],

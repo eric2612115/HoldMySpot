@@ -30,7 +30,7 @@
 |---|---|---|
 | Hero errand on the real PayPal sandbox, through the web app and through the API | Held \$63.70, captured \$48.69 + \$9.57, released \$5.44, paid out \$10.80 + \$42.75; PayPal's fees \$3.51, exactly the processing line; both runs read back from PayPal match the ledger to the cent (the API run: 10 of 10 read-back checks; the web app run: 9 of 9 walk checks and PayPal's read-back) | [gates](docs/SANDBOX-GATES.md#full-job-through-the-server-sandbox), [web run](docs/evidence/web-run-20261107.txt) |
 | Local pickup on the real PayPal sandbox | Held \$50.50, one capture of \$48.43 at the handover code, released \$2.07, paid out \$44.80; 11 of 11 read-back checks match | [gates](docs/SANDBOX-GATES.md#local-errand-through-the-server-sandbox) |
-| Gates passed on the real PayPal sandbox | G0, G1, G2, G3, G4, G6, G7, G8, G9 and G11 | [gates](docs/SANDBOX-GATES.md) |
+| Gates passed on the real PayPal sandbox | G0, G1, G2, G3, G4, G6, G7, G8, G9, G10 and G11 | [gates](docs/SANDBOX-GATES.md) |
 | AI reads, rules decide (21 demo photos) | 21/21 verdicts, 21/21 exact failed-check sets, 8/8 money, 161/164 fields, 10/10 bad proofs caught, 0/7 genuine proofs failed | [ai-eval.json](docs/evidence/ai-eval.json) |
 | `npm run attack`, no keys | 22 attempts: 18 refused with \$0.00 moved; rows 7 and 22 sent to a person, \$0.00 until they decide; row 1 moved exactly the genuine receipt's amount; row 12 paid shipping as declared, capped by the budget | [attack.json](docs/evidence/attack.json) |
 | `npm test`, no keys | 756 tests, 0 failed; 19 property tests, 31,680 generated cases | [tests.json](docs/evidence/tests.json) |
@@ -49,7 +49,7 @@ These numbers are generated from the logs, and `npm test` fails if this page dis
 | Authorize | Holds the money for up to 29 days. Nothing is charged. | Holds `88232929HR885933A`, `5XK23595W1944882C`, `2KG09036B9936292Y` |
 | Partial capture, `final_capture` | The receipt, then the shipping; the final capture releases the rest. Our code stops at 100% of the hold, though PayPal allows 115%. | \$48.69 and \$9.57: `54N68839TA957213Y`, `4U786596DF2537313`; Venmo-funded \$10.00: `41C59314FX8286919` (G4) |
 | Void | Releases a hold that can capture nothing more. | G3, after a partial capture |
-| Reauthorize | Renews an untouched hold from day 4, after PayPal's 3-day honor period. | PayPal's sandbox enforces the same window: day 1 answered `REAUTHORIZATION_TOO_SOON` |
+| Reauthorize | Renews an untouched hold once, from day 4, after PayPal's 3-day honor period. | G10: two holds renewed on day 4 ([ids](docs/SANDBOX-GATES.md)); day 1 answered `REAUTHORIZATION_TOO_SOON` |
 | Add tracking | The queuer's tracking number goes on the order before the shipping capture. | G8; both hero runs, `SHIPPED` |
 | Payouts | Pays the queuer after a `COMPLETED` capture: the fee minus 10%, then the shop price and shipping. | \$10.80 and \$42.75, `SUCCESS`; G6 |
 | Refunds | The ops console refunds all or part, never more than is refundable, once per key. | G7; a refund through the route read back `PARTIALLY_REFUNDED` |

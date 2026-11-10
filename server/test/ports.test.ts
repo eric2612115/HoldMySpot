@@ -58,7 +58,7 @@ describe('PayPal port in fake mode', () => {
     }
   });
 
-  it('renews a hold twice by reauthorizing the original authorization (a reauthorized payment cannot be reauthorized)', async () => {
+  it('renews a hold once by reauthorizing the original, then keeps it without a second renewal (PayPal allows one, G10)', async () => {
     const s = await testServer();
     try {
       const placed = await placeBid(s.app, 'jun', { qty: 1, maxFeeCents: 900, deadlineAt: s.app.now() + 9 * DAY });
@@ -66,18 +66,16 @@ describe('PayPal port in fake mode', () => {
       await s.at(h0.honorEndsAt! + MIN);
       const h1 = s.app.store.holds.must(h0.id);
       assert.equal(h1.renewals, 1);
+      assert.notEqual(h1.authorizationId, h0.authorizationId);
       await s.at(h1.honorEndsAt! + MIN);
       const h2 = s.app.store.holds.must(h0.id);
-      assert.equal(h2.renewals, 2, 'the second renewal went through');
-      assert.equal(h2.renewalRequired, false);
+      assert.equal(h2.renewals, 1, 'no second renewal');
+      assert.equal(h2.renewalRequired, false, 'the renewed hold is still valid until day 29');
+      assert.equal(h2.authorizationId, h1.authorizationId);
       assert.equal(h2.originalAuthorizationId, h0.authorizationId);
       const renewed = s.app.store.ledger.where("hold_id = ? AND kind = 'renewed'", h0.id);
-      assert.deepEqual(renewed.map((e) => [e.status, e.paypal?.authorizationId]), [
-        ['succeeded', h1.authorizationId],
-        ['succeeded', h2.authorizationId],
-      ]);
-      assert.notEqual(h1.authorizationId, h2.authorizationId);
-      assert.equal(s.app.fakePayPal.inspectAuthorization(h2.authorizationId!)?.status, 'CREATED');
+      assert.deepEqual(renewed.map((e) => [e.status, e.paypal?.authorizationId]), [['succeeded', h1.authorizationId]]);
+      assert.equal(s.app.fakePayPal.inspectAuthorization(h1.authorizationId!)?.status, 'CREATED');
     } finally {
       await s.done();
     }

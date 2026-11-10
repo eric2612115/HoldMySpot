@@ -449,9 +449,12 @@ export type RenewalVerdict =
 
 /**
  * Hold renewal rule. Only an untouched hold (no captures) of a bid that is
- * still open is reauthorized, from the end of the honor period (day 4) until
- * one day before the 29-day validity ends. Holds with captures are not
- * reauthorized: their later captures still work until the validity ends.
+ * still open is reauthorized, once, from the end of the honor period (day 4)
+ * until one day before the 29-day validity ends: PayPal allows one
+ * reauthorization per authorization (gate G10, 2026-11-10). Holds with
+ * captures and holds already renewed are not reauthorized: their captures
+ * still work until the validity ends, and a day before it the requester is
+ * asked to approve a new hold.
  */
 export function renewalVerdict(
   h: {
@@ -467,6 +470,7 @@ export function renewalVerdict(
 ): RenewalVerdict {
   if (!opts.bidStillOpen || h.status !== 'held' || h.capturedCents > 0 || h.renewalRequired) return 'not_needed';
   const t = holdTiming(h, rules);
+  if (h.authorizedAt > h.originalAuthorizedAt) return now >= t.expiresAt - DAY_MS ? 'renewal_required' : 'not_needed';
   if (now < t.honorEndsAt) return 'not_needed';
   if (!opts.reauthorizeSupported || now >= t.expiresAt - DAY_MS) return 'renewal_required';
   return 'reauthorize';

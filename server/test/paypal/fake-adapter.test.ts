@@ -213,7 +213,7 @@ describe('fake adapter: PayPal capture rules', () => {
 });
 
 describe('fake adapter: honor period, validity and renewals on the market clock', () => {
-  it('reauthorizes only from day 4, keeps the original validity, and never renews a renewal', async () => {
+  it('reauthorizes once from day 4, keeps the original validity, and never renews a renewal or the original twice', async () => {
     const { fake, advance } = setup();
     const { auth } = await hold(fake);
 
@@ -233,12 +233,12 @@ describe('fake adapter: honor period, validity and renewals on the market clock'
     assert.equal(child.issue, 'FAKE_REAUTHORIZED_PAYMENT');
 
     advance(2 * DAY);
-    const r2 = await fake.reauthorize(auth.authorizationId, { requestId: 'reauth:hold_0001:4', amountCents: 11_500 });
-    assert.equal(r2.authorizationId, 'FAKE-AUTH-0003', 'the original can be reauthorized again');
+    const again = await rejectsWith(fake.reauthorize(auth.authorizationId, { requestId: 'reauth:hold_0001:4', amountCents: 11_500 }));
+    assert.equal(again.issue, 'REAUTHORIZATION_TOO_SOON', 'one reauthorization per original, as the sandbox answered on 2026-11-10 (G10)');
 
     advance(24 * DAY); // day 29
     assert.equal((await fake.getAuthorization(auth.authorizationId)).status, 'EXPIRED');
-    const late = await rejectsWith(fake.captureAuthorization(r2.authorizationId, cap('c1', 1_000, false, 'HMS-job_0006-R')));
+    const late = await rejectsWith(fake.captureAuthorization(r1.authorizationId, cap('c1', 1_000, false, 'HMS-job_0006-R')));
     assert.equal(late.code, 'HOLD_EXPIRED');
   });
 

@@ -210,8 +210,8 @@ Same port, no network, deterministic ids (`FAKE-ORDER-0001`, `FAKE-AUTH-0001`, `
 - orders must be approved through `POST /api/fake/paypal/orders/:orderId/approve` before authorize;
 - the honor period (3 days) and validity (29 days) run on the market clock, so a demo can show a renewal;
 - captures are accepted up to 115% of the authorization, exactly like PayPal (proven: $11.50 on a $10.00 hold passed, $11.51 did not), which is how tests prove that our own limit check is what stops them;
-- a final capture releases the rest; voids work after partial captures; reauthorize only from day 4 to 29 (`REAUTHORIZATION_TOO_SOON` before), at most 115% and +$75, with a new id;
-- a reauthorized payment cannot itself be reauthorized, so renewals always reauthorize the original authorization (D-52);
+- a final capture releases the rest; voids work after partial captures; reauthorize once per original, only from day 4 to 29 (`REAUTHORIZATION_TOO_SOON` before, and for a second one), at most 115% and +$75, with a new id;
+- a reauthorized payment cannot itself be reauthorized, so the one renewal reauthorizes the original authorization (D-52, D-164);
 - a new payout batch answers PENDING; reading it back gives the item status: SUCCESS for persona emails (`<userId>@queuers.example`), UNCLAIMED for unknown ones (the server reads each new batch once and polls, D-51). The batch reads PROCESSING for a minute after its items were paid, then SUCCESS; each paid item costs $0.25. Option `payoutProcessingMs` keeps items PENDING for a while, as the sandbox did (15 to 25 s); fake mode keeps the default 0, so the demo's payouts settle at the first read;
 - every capture carries PayPal's fee (3.49% + $0.49) in `seller_receivable_breakdown` and, once its authorization is closed, reads `final_capture: true`; the server records that fee, and the requester's processing line pays it to the cent (D-105);
 - a repeated request id returns the first result with HTTP 200, except for payouts: a batch sent again is refused as a duplicate (`isDuplicatePayout`), naming the batch PayPal has; a captured invoice id under a new request id is `DUPLICATE_TRANSACTION`;

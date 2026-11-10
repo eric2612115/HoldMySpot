@@ -224,6 +224,9 @@ describe('the real sandbox, as recorded on 11-07', () => {
     assert.equal(issue('20261107-1644-probe/001-authorizations.void-422.json'), 'PREVIOUSLY_CAPTURED');
     assert.equal(issue('20261107-1644-probe/016-authorizations.capture-422.json'), 'DUPLICATE_TRANSACTION');
     assert.equal(issue('20261107-1644-probe/012-authorizations.reauthorize-422.json'), 'REAUTHORIZATION_TOO_SOON');
+    // G10 on day 4: two reauthorizations succeeded, and a second one of the same original was refused.
+    assert.equal(recorded('20261110-1621-reauthorize/001-authorizations.reauthorize-201.json').status, 201);
+    assert.equal(issue('20261110-1621-reauthorize/005-authorizations.reauthorize-422.json'), 'REAUTHORIZATION_TOO_SOON');
     assert.equal(issue('20261107-1644-probe/008-orders.track-422.json'), 'CAPTURE_ID_NOT_FOUND');
     assert.equal(issue('20261107-1644-probe/009-payouts.item.cancel-400.json'), 'ITEM_INCORRECT_STATUS');
     assert.equal(issue('20261107-1644-probe/013-authorizations.capture-422.json'), 'MAX_CAPTURE_AMOUNT_EXCEEDED');
@@ -322,6 +325,16 @@ describe('the emulator matches the sandbox', () => {
     advance(2 * 86_400_000);
     const early = await refusal(fake.reauthorize(auth.authorizationId, { requestId: 'reauth:1', amountCents: 11_500 }));
     assert.deepEqual([early.httpStatus, early.issue, early.code], [422, 'REAUTHORIZATION_TOO_SOON', 'PAYPAL_ERROR']);
+  });
+
+  it('reauthorizes an untouched hold once from day 4 and refuses a second reauthorization of it, as the sandbox did on 2026-11-10', async () => {
+    const { fake, advance } = setup();
+    const { auth } = await held(fake);
+    advance(3 * 86_400_000 + 60_000);
+    const first = await fake.reauthorize(auth.authorizationId, { requestId: 'reauth:1', amountCents: 11_500 });
+    assert.equal(first.status, 'CREATED');
+    const second = await refusal(fake.reauthorize(auth.authorizationId, { requestId: 'reauth:2', amountCents: 11_500 }));
+    assert.deepEqual([second.httpStatus, second.issue, second.code], [422, 'REAUTHORIZATION_TOO_SOON', 'PAYPAL_ERROR']);
   });
 
   it('walks a payout through PENDING, then SUCCESS with the batch PROCESSING, then SUCCESS; fees $0.25; a paid item cannot be cancelled', async () => {
