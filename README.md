@@ -23,7 +23,7 @@
 
 **Sponsors.** [AG Studio](#ag-studio-the-market-dashboard) is the market dashboard, with our agent delegating to Studio's own agents. [Bryntum Scheduler](#bryntum-scheduler-the-queuer-board) is the queuer board, where every drag is checked against the money rules. [Render](docs/HOSTING.md) hosts the judge site as one web service from `render.yaml`.
 
-**Try it** at https://holdmyspot-k4a4.onrender.com: two phones side by side, the ops console at [/ops/](https://holdmyspot-k4a4.onrender.com/ops/), a private market for every visitor, no sign-up. **Run it** with Node 24, no keys, no accounts: `npm run setup && npm run demo` ([details](#run-it)).
+**Try it** at https://holdmyspot-k4a4.onrender.com: two phones side by side, the ops console at [/ops/](https://holdmyspot-k4a4.onrender.com/ops/), a private market for every visitor, no sign-up. Straight to a scene: [Bryntum at 11:21](https://holdmyspot-k4a4.onrender.com/ops/?backend=mock&at=11:21), [AG Studio](https://holdmyspot-k4a4.onrender.com/ops/?backend=mock&at=12:05&agents=model#/market) (type "Add a bar chart of captured dollars by shop."), [Needs a person](https://holdmyspot-k4a4.onrender.com/ops/?backend=mock&at=11:21#/people). **Run it** with Node 24, no keys, no accounts: `npm run setup && npm run demo` ([details](#run-it)).
 
 <!-- numbers:front-proof:start -->
 | Proof | Result | Log |
