@@ -2,22 +2,22 @@
   "tool": "npm test",
   "format": 1,
   "ok": true,
-  "startedAt": "2026-11-10T08:35:10.172Z",
-  "seconds": 126.5,
-  "commit": "3538fbf",
+  "startedAt": "2026-11-10T09:21:13.441Z",
+  "seconds": 137.9,
+  "commit": "1b66180",
   "uncommittedChanges": true,
   "codeTrees": {
     "shared": "37d28d4a410a",
-    "server": "91df088fbd90",
-    "web": "4002cffe84da",
-    "ops": "08ff90394d1c",
+    "server": "7f7fa5a5b40f",
+    "web": "05787d85632d",
+    "ops": "0541a8275a24",
     "scripts": "959179cc338c"
   },
   "commitCodeTrees": {
     "shared": "37d28d4a410a",
-    "server": "91df088fbd90",
-    "web": "4002cffe84da",
-    "ops": "08ff90394d1c",
+    "server": "7f7fa5a5b40f",
+    "web": "05787d85632d",
+    "ops": "0541a8275a24",
     "scripts": "959179cc338c"
   },
   "node": "24.22.2",
@@ -33,8 +33,8 @@
   ],
   "totals": {
     "steps": 6,
-    "tests": 763,
-    "passed": 763,
+    "tests": 771,
+    "passed": 771,
     "failed": 0,
     "skipped": 0
   },
@@ -43,7 +43,7 @@
       "pkg": "shared",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 2.4,
+      "seconds": 2.5,
       "tests": 104,
       "passed": 104,
       "failed": 0,
@@ -119,9 +119,9 @@
       "pkg": "server",
       "label": "type check + tests",
       "ok": true,
-      "seconds": 109.1,
-      "tests": 491,
-      "passed": 491,
+      "seconds": 122.3,
+      "tests": 497,
+      "passed": 497,
       "failed": 0,
       "skipped": 0,
       "properties": [
@@ -171,15 +171,15 @@
       "pkg": "web",
       "label": "type check",
       "ok": true,
-      "seconds": 6.6
+      "seconds": 5.3
     },
     {
       "pkg": "web",
       "label": "tests (vitest)",
       "ok": true,
-      "seconds": 1.9,
-      "tests": 141,
-      "passed": 141,
+      "seconds": 1.8,
+      "tests": 142,
+      "passed": 142,
       "failed": 0,
       "skipped": 0
     },
@@ -187,15 +187,15 @@
       "pkg": "ops",
       "label": "type check",
       "ok": true,
-      "seconds": 5.2
+      "seconds": 4.9
     },
     {
       "pkg": "ops",
       "label": "tests",
       "ok": true,
       "seconds": 1.3,
-      "tests": 27,
-      "passed": 27,
+      "tests": 28,
+      "passed": 28,
       "failed": 0,
       "skipped": 0,
       "properties": [

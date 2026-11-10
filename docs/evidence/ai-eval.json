@@ -1,19 +1,19 @@
 {
-  "at": "2026-11-10T08:34:53.276Z",
-  "commit": "3538fbf",
+  "at": "2026-11-10T09:20:57.415Z",
+  "commit": "1b66180",
   "uncommittedChanges": false,
   "codeTrees": {
     "shared": "37d28d4a410a",
-    "server": "91df088fbd90",
-    "web": "4002cffe84da",
-    "ops": "08ff90394d1c",
+    "server": "7f7fa5a5b40f",
+    "web": "05787d85632d",
+    "ops": "0541a8275a24",
     "scripts": "959179cc338c"
   },
   "commitCodeTrees": {
     "shared": "37d28d4a410a",
-    "server": "91df088fbd90",
-    "web": "4002cffe84da",
-    "ops": "08ff90394d1c",
+    "server": "7f7fa5a5b40f",
+    "web": "05787d85632d",
+    "ops": "0541a8275a24",
     "scripts": "959179cc338c"
   },
   "node": "24.22.2",
@@ -73,7 +73,7 @@
         }
       ],
       "confidence": 0.8,
-      "latencyMs": 38,
+      "latencyMs": 35,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Line photo failed 1 check: one-time code."
@@ -117,7 +117,7 @@
         }
       ],
       "confidence": 0.6,
-      "latencyMs": 33,
+      "latencyMs": 28,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Line photo needs a person to check 1 check: line."
@@ -159,7 +159,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 41,
+      "latencyMs": 28,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Line photo shows the code and about 32 people ahead."
@@ -201,7 +201,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 41,
+      "latencyMs": 28,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Line photo shows the code and about 32 people ahead."
@@ -245,7 +245,7 @@
         }
       ],
       "confidence": 0.99,
-      "latencyMs": 46,
+      "latencyMs": 28,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Line photo failed 1 check: recycled photo."
@@ -331,7 +331,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 325,
+      "latencyMs": 255,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt matches Little Lantern Toys at 11:32."
@@ -419,7 +419,7 @@
         }
       ],
       "confidence": 0.8,
-      "latencyMs": 344,
+      "latencyMs": 255,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: quantity."
@@ -507,7 +507,7 @@
         }
       ],
       "confidence": 0.9,
-      "latencyMs": 257,
+      "latencyMs": 222,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt needs a person to check 1 check: image metadata."
@@ -593,7 +593,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 250,
+      "latencyMs": 223,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt matches Paper Moon Toys at 11:41."
@@ -681,7 +681,7 @@
         }
       ],
       "confidence": 0.9,
-      "latencyMs": 248,
+      "latencyMs": 235,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt needs a person to check 1 check: retail cap."
@@ -767,7 +767,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 249,
+      "latencyMs": 238,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt matches Paper Moon Toys at 11:50."
@@ -855,7 +855,7 @@
         }
       ],
       "confidence": 0.8,
-      "latencyMs": 259,
+      "latencyMs": 234,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: QR versus print."
@@ -943,7 +943,7 @@
         }
       ],
       "confidence": 0.99,
-      "latencyMs": 262,
+      "latencyMs": 218,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: shop."
@@ -1031,7 +1031,7 @@
         }
       ],
       "confidence": 0.99,
-      "latencyMs": 252,
+      "latencyMs": 220,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: recycled photo."
@@ -1122,7 +1122,7 @@
         }
       ],
       "confidence": 0.99,
-      "latencyMs": 303,
+      "latencyMs": 252,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 4 checks: shop, printed time, totals, recycled photo."
@@ -1210,7 +1210,7 @@
         }
       ],
       "confidence": 0.8,
-      "latencyMs": 253,
+      "latencyMs": 285,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: printed time."
@@ -1298,7 +1298,7 @@
         }
       ],
       "confidence": 0.8,
-      "latencyMs": 302,
+      "latencyMs": 263,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: totals."
@@ -1386,7 +1386,7 @@
         }
       ],
       "confidence": 0.8,
-      "latencyMs": 313,
+      "latencyMs": 220,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt failed 1 check: one-time code."
@@ -1472,7 +1472,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 180,
+      "latencyMs": 169,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt matches Petal & Crumb Bakery at 15:12."
@@ -1572,7 +1572,7 @@
         }
       ],
       "confidence": 0.6,
-      "latencyMs": 233,
+      "latencyMs": 197,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt needs a person to check 1 check: item lines."
@@ -1658,7 +1658,7 @@
         }
       ],
       "confidence": 0.97,
-      "latencyMs": 215,
+      "latencyMs": 203,
       "stamp": "muse/muse-spark-1.3/replay",
       "error": null,
       "summary": "Receipt matches Sugar Cloud Bakery at 10:21."
