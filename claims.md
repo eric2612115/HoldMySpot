@@ -15,11 +15,11 @@ Every claim that [README.md](README.md), [docs/TECHNICAL-DETAILS.md](docs/TECHNI
 <!-- numbers:logs:start -->
 | Log | Made by | Recorded (UTC) | Commit | Code (shared, server, web, ops, scripts) differs from the commit | Git trees of shared, server, web, ops and scripts |
 |---|---|---|---|---|---|
-| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-09 17:09 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
-| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-09 17:08 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
-| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-09 17:08 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
-| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-09 17:09 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
-| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-09 17:08 | `9c31a35` | no | `a0db35b235d3`, `80adb51f95c7`, `4002cffe84da`, `08ff90394d1c`, `959179cc338c` |
+| [tests.json](docs/evidence/tests.json) | `npm test -- --json` | 2026-11-10 09:16 | `8024377` | no | `a0db35b235d3`, `5872a9e484a5`, `05787d85632d`, `0541a8275a24`, `959179cc338c` |
+| [ai-eval.json](docs/evidence/ai-eval.json) | `npm run ai:eval -- --json` | 2026-11-10 09:16 | `8024377` | no | `a0db35b235d3`, `5872a9e484a5`, `05787d85632d`, `0541a8275a24`, `959179cc338c` |
+| [attack.json](docs/evidence/attack.json) | `npm run attack -- --json` | 2026-11-10 09:16 | `8024377` | no | `a0db35b235d3`, `5872a9e484a5`, `05787d85632d`, `0541a8275a24`, `959179cc338c` |
+| [smoke.json](docs/evidence/smoke.json) | `npm run demo -- --smoke` | 2026-11-10 09:16 | `8024377` | no | `a0db35b235d3`, `5872a9e484a5`, `05787d85632d`, `0541a8275a24`, `959179cc338c` |
+| [runs.json](docs/evidence/runs.json) | `npm run numbers -- --record` | 2026-11-10 09:15 | `8024377` | no | `a0db35b235d3`, `5872a9e484a5`, `05787d85632d`, `0541a8275a24`, `959179cc338c` |
 <!-- numbers:logs:end -->
 
 **Where:** R = docs/TECHNICAL-DETAILS.md, by section; Devpost = the Devpost text, by field (section 10's ids start with V, so they are never confused with the D- rows of docs/DECISIONS.md). Test names are quoted in part; `P1` to `P8` are the property tests in section 3.

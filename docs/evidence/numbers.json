@@ -22,24 +22,24 @@
   },
   "tests": {
     "steps": 6,
-    "tests": 756,
-    "passed": 756,
+    "tests": 764,
+    "passed": 764,
     "failed": 0,
     "skipped": 0,
     "byPackage": {
       "shared": 103,
-      "server": 485,
-      "web": 141,
-      "ops": 27
+      "server": 491,
+      "web": 142,
+      "ops": 28
     },
-    "seconds": 557.8,
-    "aboutSeconds": 560,
+    "seconds": 144.8,
+    "aboutSeconds": 140,
     "os": "macOS",
     "platform": "darwin arm64",
     "node": "24.22.2",
     "npm": "11.19.1",
-    "commit": "9c31a35",
-    "recordedOn": "2026-11-09",
+    "commit": "8024377",
+    "recordedOn": "2026-11-10",
     "properties": {
       "tests": 19,
       "runs": 31680,
@@ -1034,7 +1034,7 @@
       }
     ],
     "serverStartedHere": true,
-    "recordedOn": "2026-11-09"
+    "recordedOn": "2026-11-10"
   },
   "smoke": {
     "answered": [
@@ -1042,18 +1042,18 @@
       "web",
       "ops"
     ],
-    "readySeconds": 3,
+    "readySeconds": 4.2,
     "paypal": "simulated PayPal (fake mode): no network, no keys, same rules as the sandbox",
     "ai": "recorded answers of a real model for the demo photos (replay; no network), rules for any other photo",
     "os": "macOS",
     "node": "24.22.2",
-    "recordedOn": "2026-11-09"
+    "recordedOn": "2026-11-10"
   },
   "runs": {
-    "recordedOn": "2026-11-09",
-    "attackSeconds": 12,
+    "recordedOn": "2026-11-10",
+    "attackSeconds": 35.2,
     "attackDuration": "under a minute",
-    "aiEvalSeconds": 6.9,
+    "aiEvalSeconds": 15,
     "commands": [
       "npm run ai:eval",
       "npm run attack",
@@ -1066,15 +1066,15 @@
       "file": "tests.json",
       "path": "docs/evidence/tests.json",
       "tool": "npm test -- --json",
-      "at": "2026-11-09 17:09",
-      "commit": "9c31a35",
+      "at": "2026-11-10 09:16",
+      "commit": "8024377",
       "uncommittedChanges": true,
       "codeDiffersFromCommit": false,
       "codeTrees": {
         "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
-        "web": "4002cffe84da",
-        "ops": "08ff90394d1c",
+        "server": "5872a9e484a5",
+        "web": "05787d85632d",
+        "ops": "0541a8275a24",
         "scripts": "959179cc338c"
       }
     },
@@ -1082,15 +1082,15 @@
       "file": "ai-eval.json",
       "path": "docs/evidence/ai-eval.json",
       "tool": "npm run ai:eval -- --json",
-      "at": "2026-11-09 17:08",
-      "commit": "9c31a35",
+      "at": "2026-11-10 09:16",
+      "commit": "8024377",
       "uncommittedChanges": false,
       "codeDiffersFromCommit": false,
       "codeTrees": {
         "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
-        "web": "4002cffe84da",
-        "ops": "08ff90394d1c",
+        "server": "5872a9e484a5",
+        "web": "05787d85632d",
+        "ops": "0541a8275a24",
         "scripts": "959179cc338c"
       }
     },
@@ -1098,15 +1098,15 @@
       "file": "attack.json",
       "path": "docs/evidence/attack.json",
       "tool": "npm run attack -- --json",
-      "at": "2026-11-09 17:08",
-      "commit": "9c31a35",
+      "at": "2026-11-10 09:16",
+      "commit": "8024377",
       "uncommittedChanges": true,
       "codeDiffersFromCommit": false,
       "codeTrees": {
         "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
-        "web": "4002cffe84da",
-        "ops": "08ff90394d1c",
+        "server": "5872a9e484a5",
+        "web": "05787d85632d",
+        "ops": "0541a8275a24",
         "scripts": "959179cc338c"
       }
     },
@@ -1114,15 +1114,15 @@
       "file": "smoke.json",
       "path": "docs/evidence/smoke.json",
       "tool": "npm run demo -- --smoke",
-      "at": "2026-11-09 17:09",
-      "commit": "9c31a35",
+      "at": "2026-11-10 09:16",
+      "commit": "8024377",
       "uncommittedChanges": true,
       "codeDiffersFromCommit": false,
       "codeTrees": {
         "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
-        "web": "4002cffe84da",
-        "ops": "08ff90394d1c",
+        "server": "5872a9e484a5",
+        "web": "05787d85632d",
+        "ops": "0541a8275a24",
         "scripts": "959179cc338c"
       }
     },
@@ -1130,15 +1130,15 @@
       "file": "runs.json",
       "path": "docs/evidence/runs.json",
       "tool": "npm run numbers -- --record",
-      "at": "2026-11-09 17:08",
-      "commit": "9c31a35",
+      "at": "2026-11-10 09:15",
+      "commit": "8024377",
       "uncommittedChanges": true,
       "codeDiffersFromCommit": false,
       "codeTrees": {
         "shared": "a0db35b235d3",
-        "server": "80adb51f95c7",
-        "web": "4002cffe84da",
-        "ops": "08ff90394d1c",
+        "server": "5872a9e484a5",
+        "web": "05787d85632d",
+        "ops": "0541a8275a24",
         "scripts": "959179cc338c"
       }
     }
