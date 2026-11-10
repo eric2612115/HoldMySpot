@@ -1,5 +1,5 @@
 The live judge site on Render, https://holdmyspot-k4a4.onrender.com, driven in Chromium at 1440 x 900 by
-web/scripts/hosted-walk.mjs (BASE_URL set to the site), 2026-11-10 01:1x Taipei, deploy of commit 9c31a35 (plan 1c-2g, the
+web/scripts/hosted-walk.mjs (BASE_URL set to the site), 2026-11-10 17:3x Taipei, deploy of commit 08cc13d (plan 1c-2g, the
 nine variables set, AG Studio licensed). Each line is one check; screenshots stay on the machine that ran it.
 
 ok   the page fits 1440 without horizontal scroll
@@ -30,6 +30,23 @@ ok   #/people shows no licence watermark
 ok   #/people shows this visitor's server market, not the in-browser replay
 ok   "Fake receipt" is picked on Wei's phone
 ok   the receipt that failed the checks moved $0
+ok   after Start over Mia's phone is on this visitor's server market
+ok   the sample line photo passes Wei's check-in: code M4RT7, about 30 people ahead (PASS Line photo: passed Line photo shows the code and about 32 people ahead. ✓ Code M4RT7 )
+ok   the sold-out scene starts in this market
+ok   sold out: every hold on the plush is released (13 of 13)
+ok   sold out: $0 captured from every requester, no payout
+ok   the page shows Mia's $63.70 released and $0.00 charged
+ok   Mia's phone reads Released (Released)
+ok   Wei's phone reads Sold out: holds released
+ok   the local pickup scene starts, on Jun's and Dana's phones in New York
+ok   the local pickup: one capture at the handover code (released 207 succeeded, captured 4947 succeeded, held 5154 succeeded)
+ok   the page shows $49.47 charged and Dana paid $46.10
+ok   the page still fits 1440 with More scenes
+ok   the second context did not change during the scenes
+ok   the sandbox choice names the Devpost sandbox buyer login
 ok   a narrow screen shows one phone
 ok   the narrow page has no sideways scroll
 ok   no console errors
+
+== The bidding agent on the live site (a fresh market, Mia's request with "Let AI adjust my fee" on, simulated PayPal):
+keep $12.00 -> $12.00, stamped muse/muse-spark-1.3/live: "Keeping your request open at a $12.00 fee to wait for a helper offer."
